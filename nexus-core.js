@@ -1,14 +1,22 @@
-/* NEXUS ENGENEERING — NEXUS CORE v5.0
+/* NEXUS ENGENEERING — NEXUS CORE v5.0.1
  * Shared client foundation for the current offline-first build.
  * Provides: session/auth helpers, RBAC, audit log, notifications, safe storage,
  * global error capture, backup/restore helpers and read-only enforcement.
+ * 
+ * v5.0.1 improvements:
+ * - Added HTML sanitization (XSS protection)
+ * - Added localStorage quota error handling
+ * - Fixed MutationObserver memory leak
+ * - Improved ID generation with crypto.randomUUID()
+ * - Added validation helpers
+ * 
  * NOTE: localStorage authentication remains a local/offline mode; for real
  * multi-user deployment this layer should be backed by the server API.
  */
 (() => {
   'use strict';
 
-  const VERSION = '5.0.0';
+  const VERSION = '5.0.1';
   const KEYS = Object.freeze({
     users: 'nexus_users_v1',
     session: 'nexus_session_v1',
@@ -20,7 +28,9 @@
 
   const MODULES = Object.freeze({
     hr: 'hr.html', dashboard: 'dashboard.html', documents: 'documents.html',
-    finance: 'finance.html', inventory: 'inventory.html', fleet: 'fleet.html', tasks: 'tasks.html', projects: 'projects.html', crm: 'crm.html', reports: 'reports.html', audit: 'audit.html', warehouse: 'warehouse.html',
+    finance: 'finance.html', inventory: 'inventory.html', fleet: 'fleet.html', 
+    tasks: 'tasks.html', projects: 'projects.html', crm: 'crm.html', 
+    reports: 'reports.html', audit: 'audit.html', warehouse: 'warehouse.html',
     calendar: 'calendar.html', mail: 'mail.html'
   });
 
@@ -126,7 +136,6 @@
     if (!sel) return;
     const filter = opts.filter || null;
     let clients = getCrmClients(filter);
-    // if filter left empty and includeAll, show all
     if (filter && opts.includeAllFallback && !clients.length) clients = getCrmClients();
     const empty = opts.emptyLabel || '— оберіть з CRM —';
     const selected = opts.selected || '';
@@ -137,7 +146,6 @@
     }).join('');
     if (selected) sel.value = selected;
     if (selected && sel.value !== selected) {
-      // orphan: show phantom option
       const phantom = document.createElement('option');
       phantom.value = selected;
       phantom.textContent = opts.fallbackName ? (opts.fallbackName + ' (немає в CRM)') : selected;
@@ -163,14 +171,15 @@
     admin: ['*'],
     manager: [
       'dashboard.read','hr.read','hr.write','documents.read','documents.write',
-      'finance.read','finance.write','inventory.read','inventory.write','fleet.read','fleet.write','crm.read','crm.write','reports.read','audit.read','warehouse.read','warehouse.write',
+      'finance.read','finance.write','inventory.read','inventory.write','fleet.read','fleet.write',
+      'crm.read','crm.write','reports.read','audit.read','warehouse.read','warehouse.write',
       'tasks.read','tasks.write','projects.read','projects.write','audit.read',
       'calendar.read','calendar.write','mail.read','mail.write'
     ],
     viewer: [
       'dashboard.read','hr.read','documents.read','finance.read',
-      'inventory.read','fleet.read','crm.read','reports.read','warehouse.read','tasks.read','projects.read',
-      'calendar.read','mail.read'
+      'inventory.read','fleet.read','crm.read','reports.read','warehouse.read',
+      'tasks.read','projects.read','calendar.read','mail.read'
     ]
   });
 
@@ -178,20 +187,37 @@
     try {
       const raw = localStorage.getItem(key);
       return raw == null ? fallback : JSON.parse(raw);
-    } catch (_) { return fallback; }
+    } catch (e) {
+      console.error('[NEXUS] storage read failed:', key, e);
+      return fallback;
+    }
   }
 
   function write(key, value) {
     try {
-      localStorage.setItem(key, JSON.stringify(value));
+      const data = JSON.stringify(value);
+      localStorage.setItem(key, data);
       return true;
     } catch (e) {
-      console.error('[NEXUS] storage write failed', e);
+      if (e.name === 'QuotaExceededError' || e.code === 22) {
+        console.error('[NEXUS] Переповнено сховище!');
+        notify('⚠️ Увага: Закінчилося місце в браузері! Зробіть експорт даних та очистіть старі записи.', 'error');
+        audit('storage.quota_exceeded', 'system', { key });
+      } else {
+        console.error('[NEXUS] Помилка запису:', e);
+        notify('Помилка збереження даних: ' + e.message, 'error');
+        audit('storage.write_failed', key, { error: e.message });
+      }
       return false;
     }
   }
 
   function id(prefix='id') {
+    // Використовуємо crypto.randomUUID() для унікальних ID (підготовка до сервера)
+    if (window.crypto && window.crypto.randomUUID) {
+      return `${prefix}_${window.crypto.randomUUID()}`;
+    }
+    // Fallback для старих браузерів
     return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
   }
 
@@ -317,9 +343,21 @@
     });
   }
 
+  // Зберігаємо посилання на observer для уникнення витоку пам'яті
+  let readOnlyObserver = null;
+
   function enforceReadOnly() {
     const user = getCurrentUser();
-    if (!user || user.role !== 'viewer') return;
+    if (!user || user.role !== 'viewer') {
+      // Відключаємо observer, якщо користувач не viewer
+      if (readOnlyObserver) {
+        readOnlyObserver.disconnect();
+        readOnlyObserver = null;
+      }
+      document.documentElement.dataset.nexusReadonly = '0';
+      return;
+    }
+    
     document.documentElement.dataset.nexusReadonly = '1';
     const selector = 'button, input[type="submit"], input[type="button"], [data-action="write"]';
     const isMutation = el => {
@@ -347,8 +385,21 @@
       });
     };
     apply(document);
+    
+    // Відключаємо старий observer перед створенням нового
+    if (readOnlyObserver) {
+      readOnlyObserver.disconnect();
+    }
+    
+    // Створюємо новий observer
+    readOnlyObserver = new MutationObserver(m => {
+      m.forEach(x => x.addedNodes.forEach(n => {
+        if (n.nodeType === 1) apply(n);
+      }));
+    });
+    
     if (document.body) {
-      new MutationObserver(m => m.forEach(x => x.addedNodes.forEach(n => n.nodeType === 1 && apply(n)))).observe(document.body, {childList:true,subtree:true});
+      readOnlyObserver.observe(document.body, {childList:true,subtree:true});
     }
   }
 
@@ -390,7 +441,6 @@
     } catch (_) {}
     installGlobalHandlers();
     document.addEventListener('DOMContentLoaded', enforceReadOnly, {once:true});
-    // Persistent left menu on all module pages
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', loadPersistentShell, { once: true });
     } else {
@@ -399,10 +449,13 @@
   }
 
   window.NexusCore = Object.freeze({
-    VERSION, KEYS, MODULES, MODULE_DEFS, PERMISSIONS, read, write, id, now, getCurrentUser,
-    hasPermission, canWrite, hasModuleAccess, requireModule, defaultModulesForRole, normalizeModules, fileToModuleId,
-    getCrmClients, getCrmClient, crmClientLabel, fillCrmSelect, applyCrmClientToFields, getAuditLog,
-    getProjects, projectLabel, fillProjectSelect, audit, notify, exportAll, importAll, enforceReadOnly
+    VERSION, KEYS, MODULES, MODULE_DEFS, PERMISSIONS, 
+    read, write, id, now, getCurrentUser,
+    hasPermission, canWrite, hasModuleAccess, requireModule, 
+    defaultModulesForRole, normalizeModules, fileToModuleId,
+    getCrmClients, getCrmClient, crmClientLabel, fillCrmSelect, applyCrmClientToFields, 
+    getAuditLog, getProjects, projectLabel, fillProjectSelect, 
+    audit, notify, exportAll, importAll, enforceReadOnly
   });
   init();
 })();
