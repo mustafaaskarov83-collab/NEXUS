@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS - Кадровий облік</title>
+<link rel="stylesheet" href="app.css">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>if(!window.XLSX){document.write('<script src="vendor/xlsx.full.min.js"><\/script>');}</script>
+<script>
+  (function(){
+    try {
+      var saved = localStorage.getItem('nexus_theme_v1') || 'auto';
+      document.documentElement.setAttribute('data-theme', saved);
+      // Примусово українська мова
+      localStorage.setItem('nexus_lang_v1', 'uk');
+    } catch(e){}
+  })();
+</script>
+</head>
+<body>
+
+<div id="auth-ov" class="auth-ov">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12h6M9 16h6M9 8h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
+      <div><div class="auth-brand-n">NEXUS ENGENEERING</div><div class="auth-brand-s" id="abs">Кадровий облік</div></div>
+    </div>
+    <h2 class="auth-t" id="auth-t">Вхід до системи</h2>
+    <p class="auth-h" id="auth-h">Введіть облікові дані</p>
+    <div class="auth-err" id="auth-err"></div>
+    <form id="auth-form" onsubmit="event.preventDefault();Auth.submit()">
+      <div class="auth-f"><label id="lbu">Ім'я користувача</label>
+        <input id="au" type="text" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
+      <div class="auth-f"><label id="lbp">Пароль</label>
+        <input id="ap" type="password" autocomplete="current-password">
+        <div class="pwd-s" id="pwd-s" style="display:none"><div class="pwd-sb" id="pwd-sb"></div></div></div>
+      <div class="auth-f" id="conf-f" style="display:none"><label id="lbc">Підтвердіть пароль</label>
+        <input id="ac" type="password" autocomplete="new-password"></div>
+      <button type="submit" class="btn bp auth-sub"><span id="auth-btn-t">Увійти</span></button>
+    </form>
+    <div class="auth-foot">
+      <div class="auth-v" id="app-version" style="text-align:center;width:100%">NEXUS v5.0.0</div>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <header class="hd">
+    <div class="hd-in">
+      <div class="hd-br">
+        <a href="index.html" style="display:flex;align-items:center;gap:12px;color:inherit;text-decoration:none">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6M9 16h6M9 8h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
+          <span><b class="bn">NEXUS - Кадровий облік</b></span>
+        </a>
+      </div>
+      <div class="hd-r">
+        <button class="theme-btn" type="button" title="Змінити тему">🌗</button>
+        <button class="hd-u" onclick="Auth.toggleMenu(event)">
+          <div class="hd-av" id="av">?</div>
+          <div class="hd-ui"><div class="hd-un" id="hun">—</div><div class="hd-ur" id="hur">—</div></div>
+        </button>
+      </div>
+    </div>
+    <div class="um" id="um">
+      <div class="um-h"><div class="um-n" id="umn">—</div><div class="um-r" id="umr">—</div></div>
+      <button class="um-i" onclick="Auth.openChangePwd()">🔑 <span id="um-cp">Змінити пароль</span></button>
+      <button class="um-i dg" onclick="Auth.logout()">🚪 <span id="um-lo">Вийти</span></button>
+    </div>
+  </header>
+  <nav class="nav">
+    <div class="nav-in">
+      <button class="nb active" data-tab="dashboard">📊 <span id="nb-dash">Панель</span></button>
+      <button class="nb" data-tab="employees">👥 <span id="nb-emp">Співробітники</span></button>
+      <button class="nb" data-tab="calendar">📅 <span id="nb-cal">Календар</span></button>
+      <button class="nb" data-tab="import" data-role="edit">📂 <span id="nb-imp">Імпорт Excel</span></button>
+      <button class="nb" data-tab="calc">🧮 <span id="nb-calc">Розрахунок</span></button>
+      <button class="nb" data-tab="laws">⚖️ <span id="nb-laws">Законодавство</span></button>
+      <button class="nb" data-tab="settings" data-role="settings">⚙️ <span id="nb-set">Налаштування</span></button>
+    </div>
+  </nav>
+  <main class="mn">
+    <section id="tp-dashboard" class="tp active">
+      <div class="c"><div class="ch"><div>
+        <div class="ct">📊 <span id="t-dash">Загальна статистика</span></div>
+        <div class="cs"><span id="t-dash-sub">Огляд станом на</span> <span id="dash-date"></span></div>
+      </div></div><div class="sg" id="stats"></div></div>
+      <div class="c"><div class="ch"><div class="ct">📋 <span id="t-up">Найближчі відпустки</span></div></div><div id="upcoming"></div></div>
+    </section>
+    <section id="tp-employees" class="tp">
+      <div class="c" data-role="edit">
+        <div class="ch">
+          <div class="ct">🏢 <span>Відділи</span></div>
+          <button class="btn bp" type="button" onclick="App.openDepartmentForm()" id="dep-open-btn">➕ Додати відділ</button>
+        </div>
+        <input type="hidden" id="dep-edit-id" value="">
+        <div id="departments-list" class="m16"></div>
+      </div>
+      <div class="c" data-role="edit">
+        <div class="ch">
+          <div class="ct">👥 <span id="t-list">Список співробітників</span></div>
+          <div class="fg">
+            <input id="search" placeholder="Пошук..." style="width:200px" oninput="App.filterEmp()">
+            <span class="bg bg-b" id="emp-count">0</span>
+            <button class="btn bp" type="button" onclick="App.openEmployeeForm()" id="btn-open-emp">➕ <span id="t-add">Додати співробітника</span></button>
+          </div>
+        </div>
+        <div id="emp-list"></div>
+      </div>
+    </section>
+    <section id="tp-calendar" class="tp">
+      <div class="c">
+        <div class="ch">
+          <div>
+            <div class="ct">📅 <span id="t-cal">Календар відпусток</span></div>
+            <div class="cs" id="t-cal-sub">Візуальна сітка на місяць</div>
+          </div>
+          <div class="fg">
+            <button class="btn bs bsm" onclick="Cal.prev()">◀</button>
+            <span id="cal-period" style="font-weight:700;min-width:170px;text-align:center;font-size:14px"></span>
+            <button class="btn bs bsm" onclick="Cal.next()">▶</button>
+            <button class="btn bs bsm" onclick="Cal.today()" id="cal-today-btn">Сьогодні</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;font-size:12px;color:var(--text-muted)">
+          <span><span style="display:inline-block;width:12px;height:12px;background:#10b981;border-radius:2px;vertical-align:middle;margin-right:4px"></span>У відпустці</span>
+          <span><span style="display:inline-block;width:12px;height:12px;background:#3b82f6;border-radius:2px;vertical-align:middle;margin-right:4px"></span>Лікарняний</span>
+          <span><span style="display:inline-block;width:12px;height:12px;background:var(--g200);border-radius:2px;vertical-align:middle;margin-right:4px"></span>Вихідний</span>
+          <span><span style="display:inline-block;width:12px;height:12px;background:#fef3c7;border-radius:2px;vertical-align:middle;margin-right:4px"></span>Сьогодні</span>
+        </div>
+        <div id="cal-grid" style="overflow-x:auto"></div>
+      </div>
+    </section>
+    <section id="tp-import" class="tp">
+      <div class="c">
+        <div class="ch"><div><div class="ct">📂 <span id="t-imp">Імпорт персоналу з Excel</span></div>
+          <div class="cs" id="t-imp-sub">Підтримуються .xlsx, .xls, .csv</div></div></div>
+        <div class="dz" id="dz"><div class="dzi">📂</div>
+          <div class="dzt" id="t-dz">Перетягніть Excel-файл сюди</div>
+          <div class="dzh" id="t-dzh">або натисніть, щоб вибрати</div>
+          <input type="file" id="xls-in" accept=".xlsx,.xls,.csv" style="display:none"></div>
+        <div class="m16">
+          <div class="tsm tmu mb16" id="t-cols">Колонки: ПІБ, Посада, Дата прийняття, Дата народження, Тривалість, Категорія.</div>
+          <button class="btn bs bsm" onclick="App.downloadTemplate()" id="t-tpl">📥 Шаблон Excel</button>
+        </div>
+        <div id="imp-status"></div><div id="xls-preview"></div>
+      </div>
+      <div class="c">
+        <div class="ch"><div class="ct">📤 <span id="t-exp">Експорт даних</span></div></div>
+        <div class="fg">
+          <button class="btn bs" onclick="App.exportExcel()" id="t-exx">📊 Excel</button>
+          <button class="btn bs" onclick="App.exportJSON()" id="t-exj">💾 JSON</button>
+          <button class="btn bs" onclick="document.getElementById('json-in').click()" id="t-inj">📥 Імпорт JSON</button>
+          <input type="file" id="json-in" accept=".json" style="display:none" onchange="App.importJSON(event)">
+        </div>
+      </div>
+    </section>
+    <section id="tp-calc" class="tp">
+      <div class="c">
+        <div class="ch"><div><div class="ct">🧮 <span id="t-calc">Калькулятор відпускних</span></div>
+          <div class="cs" id="t-calc-sub">Розрахунок за Порядком № 100</div></div></div>
+        <div class="fr">
+          <div class="ff"><label id="l-cEmp">Співробітник</label><select id="ce"></select></div>
+          <div class="ff"><label id="l-cStart">Дата початку</label><input type="date" id="cs"></div>
+          <div class="ff ffn"><label id="l-cDays">Днів</label><input type="number" id="cd" value="14" min="1" max="60"></div>
+          <div class="ff ffn"><label>&nbsp;</label><button class="btn bp" onclick="App.runCalc()" id="btn-calc">Розрахувати</button></div>
+        </div>
+        <div id="calc-out"></div>
+      </div>
+      <div class="c">
+        <div class="ch"><div class="ct">📅 <span id="t-comp">Компенсація при звільненні</span></div></div>
+        <div class="fr">
+          <div class="ff"><label id="l-mEmp">Співробітник</label><select id="me"></select></div>
+          <div class="ff"><label id="l-mDate">Дата звільнення</label><input type="date" id="md"></div>
+          <div class="ff ffn"><label>&nbsp;</label><button class="btn bp" onclick="App.runComp()" id="btn-comp">Розрахувати</button></div>
+        </div>
+        <div id="comp-out"></div>
+      </div>
+    </section>
+    <section id="tp-laws" class="tp">
+      <div class="c">
+        <div class="ch"><div><div class="ct">⚖️ <span id="t-laws">Офіційні джерела</span></div>
+          <div class="cs" id="t-laws-sub">Портал Верховної Ради України</div></div>
+          <button class="btn bs bsm" onclick="App.checkAll()" id="btn-check">🔍 Перевірити</button></div>
+        <div class="ll" id="laws-list"></div>
+      </div>
+      <div class="c">
+        <div class="ch"><div><div class="ct">📖 <span id="t-ref">Довідник норм</span></div>
+          <div class="cs" id="t-ref-sub">Ключові норми в розрахунках</div></div></div>
+        <table class="dt"><thead><tr><th id="th-n">Норма</th><th id="th-v">Значення</th><th id="th-b">Підстава</th></tr></thead>
+          <tbody id="norms-body"></tbody></table>
+      </div>
+    </section>
+    <section id="tp-settings" class="tp">
+      <div class="c">
+        <div class="ch"><div><div class="ct">👤 <span id="t-users">Користувачі системи</span></div>
+          <div class="cs" id="t-users-sub">Керування доступом</div></div></div>
+        <div id="users-list"></div>
+        <div class="m16" id="add-user-bl"><button class="btn bs" onclick="Auth.openAddUser()" id="btn-add-u">➕ Додати користувача</button></div>
+      </div>
+      <div class="c">
+        <div class="ch"><div class="ct">⚙️ <span id="t-set">Загальні налаштування</span></div></div>
+        <div class="fr">
+          <div class="ff ffn"><label id="l-base">Базова відпустка (к.д.)</label><input type="number" id="set-base" value="24" min="1"></div>
+          <div class="ff"><label id="l-mode">Режим свят</label>
+            <select id="set-hol"><option value="0" id="m1">Воєнний стан</option>
+            <option value="1" id="m2">Мирний час</option></select></div>
+          <div class="ff ffn"><label>&nbsp;</label><button class="btn bp" onclick="App.saveSettings()" id="btn-save">Зберегти</button></div>
+        </div>
+        <div class="tsm tmu m8" id="t-mil">Під час воєнного стану ст. 73 КЗпП не застосовується.</div>
+      </div>
+      <div class="c">
+        <div class="ch"><div class="ct">🎉 <span id="t-hol">Святкові дні</span></div></div>
+        <div class="tsm tmu mb16" id="t-hol-sub">Формат MM-DD. Лише для мирного часу.</div>
+        <div id="hol-list"></div>
+        <div class="fr m16" style="align-items:flex-end">
+          <div class="ff ffn"><label id="l-hAdd">Додати (MM-DD)</label><input id="new-hol" placeholder="01-01" maxlength="5"></div>
+          <button class="btn bs" onclick="App.addHoliday()" id="btn-hAdd">Додати</button>
+        </div>
+      </div>
+      <div class="c">
+        <div class="ch"><div class="ct">🏢 <span id="t-company">Дані підприємства</span></div></div>
+        <div class="tsm tmu mb16" id="t-company-h">Використовується для друку наказів (форма П-3)</div>
+        <div class="fr">
+          <div class="ff"><label id="l-co-name">Назва підприємства</label><input id="co-name" placeholder="ТОВ «NEXUS ENGENEERING»"></div>
+          <div class="ff ffn"><label id="l-co-edrpou">Код ЄДРПОУ</label><input id="co-edrpou" placeholder="12345678"></div>
+        </div>
+        <div class="fr">
+          <div class="ff"><label id="l-co-city">Місто</label><input id="co-city" placeholder="Київ"></div>
+          <div class="ff"><label id="l-co-director">Керівник (ПІБ, посада)</label><input id="co-director" placeholder="Директор Іваненко І.І."></div>
+        </div>
+        <div class="fr">
+          <div class="ff ffn"><label>&nbsp;</label><button class="btn bp" onclick="App.saveCompany()" id="btn-save-co">Зберегти</button></div>
+        </div>
+      </div>
+      <div class="c">
+        <div class="ch"><div class="ct">💾 <span id="t-data">Управління даними</span></div></div>
+        <div class="fg">
+          <button class="btn bs" onclick="App.exportJSON()" id="t-dEx">Експорт JSON</button>
+          <button class="btn bs" onclick="document.getElementById('json-in2').click()" id="t-dIm">Імпорт JSON</button>
+          <input type="file" id="json-in2" accept=".json" style="display:none" onchange="App.importJSON(event)">
+          <button class="btn bd" onclick="App.clearAll()" id="t-clear">🗑️ Очистити все</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+
+<!-- МОДАЛКА ВІДДІЛУ -->
+<div class="mo" id="dep-modal" onclick="if(event.target===this)App.closeDepartmentForm()">
+  <div class="md sm">
+    <div class="md-h">
+      <div class="md-t" id="dep-mt">Додати відділ</div>
+      <button class="md-x" type="button" onclick="App.closeDepartmentForm()">×</button>
+    </div>
+    <div class="md-b">
+      <div class="fr">
+        <div class="ff"><label>Код відділу <span class="rq">*</span></label><input id="dep-code" maxlength="30" placeholder="PROD-01"></div>
+        <div class="ff" style="flex:2"><label>Назва відділу <span class="rq">*</span></label><input id="dep-name" maxlength="120" placeholder="Виробничий відділ"></div>
+      </div>
+      <div class="fg m16">
+        <button class="btn bp" onclick="App.saveDepartment()" id="dep-save">Додати відділ</button>
+        <button class="btn bs" onclick="App.closeDepartmentForm()" id="dep-cancel">Скасувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛКА СПІВРОБІТНИКА -->
+<div class="mo" id="emp-form-modal" onclick="if(event.target===this)App.closeEmployeeForm()">
+  <div class="md">
+    <div class="md-h">
+      <div class="md-t" id="emp-form-mt">Додати співробітника</div>
+      <button class="md-x" type="button" onclick="App.closeEmployeeForm()">×</button>
+    </div>
+    <div class="md-b">
+      <div class="fr">
+        <div class="ff" style="flex:2"><label><span id="l-name">ПІБ</span> <span class="rq">*</span></label><input id="en" placeholder="Прізвище Ім'я По батькові"></div>
+        <div class="ff"><label id="l-pos">Посада</label><input id="ep" placeholder="Менеджер"></div>
+        <div class="ff"><label>Відділ <span class="rq">*</span></label><select id="ed"><option value="">— Оберіть відділ —</option></select></div>
+      </div>
+      <div class="fr">
+        <div class="ff"><label><span id="l-hire">Дата прийняття</span> <span class="rq">*</span></label><input type="date" id="eh"></div>
+        <div class="ff"><label id="l-birth">Дата народження</label><input type="date" id="eb"></div>
+        <div class="ff"><label id="l-cat">Категорія</label>
+          <select id="ec">
+            <option value="standard" id="c1">Звичайна (24 к.д.)</option>
+            <option value="disabled_1_2" id="c2">Інвалідність I–II (30 к.д.)</option>
+            <option value="disabled_3" id="c3">Інвалідність III (26 к.д.)</option>
+            <option value="minor" id="c4">Неповнолітній (31 к.д.)</option>
+            <option value="teacher" id="c5">Педагог (56 к.д.)</option>
+          </select></div>
+        <div class="ff ffn"><label id="l-leave">Відпустка (к.д.)</label><input type="number" id="el" value="24" min="1" max="60"></div>
+        <div class="ff ffn"><label id="l-exp">Страховий стаж (р.)</label>
+          <input type="number" id="ee" value="0" min="0" max="60" step="0.5">
+          <div class="tsm tmu" id="ee-hint" style="font-size:10px"></div></div>
+      </div>
+      <div class="fr"><div class="ff" style="flex:2"><label>Проекти співробітника</label><select id="e-projects" multiple size="4"><option value="">— завантаження проектів —</option></select><div class="tsm tmu">Ctrl + клік — вибрати декілька проектів</div></div></div>
+      <div style="margin:12px 0 4px;font-weight:700;font-size:13px;color:var(--text-muted)">📄 Трудовий договір <span style="font-weight:500">(опційно)</span></div>
+      <div class="fr">
+        <div class="ff"><label>Номер договору</label><input id="e-ctr-num" type="text" placeholder="ТД-001"></div>
+        <div class="ff"><label>Дата укладення</label><input id="e-ctr-signed" type="date"></div>
+        <div class="ff"><label>Діє до</label><input id="e-ctr-end" type="date"><div class="tsm tmu" style="font-size:10px">Порожньо = безстроковий</div></div>
+      </div>
+      <div class="fg m16">
+        <button class="btn bp" onclick="App.addEmployee()" id="btn-add">Додати</button>
+        <button class="btn bs" onclick="App.closeEmployeeForm()">Скасувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mo" id="emp-modal" onclick="if(event.target===this)App.closeModal()">
+  <div class="md"><div class="md-h"><div class="md-t" id="emp-mt"></div>
+    <button class="md-x" onclick="App.closeModal()">×</button></div>
+    <div class="md-b" id="emp-mb"></div></div>
+</div>
+<div class="mo" id="user-modal" onclick="if(event.target===this)Auth.closeUserModal()">
+  <div class="md sm"><div class="md-h"><div class="md-t" id="user-mt"></div>
+    <button class="md-x" onclick="Auth.closeUserModal()">×</button></div>
+    <div class="md-b" id="user-mb"></div></div>
+</div>
+
+<script src="nexus-core.js"></script>
+<script src="app-theme.js"></script>
+<script src="app.js"></script>
+<script src="app-calendar.js"></script>
+<script src="nexus-assistant.js"></script>
+</body>
+</html>

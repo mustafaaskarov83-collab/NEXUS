@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS - Задачі та проєкти</title>
+<link rel="stylesheet" href="tasks.css">
+<script>
+  (function(){
+    try {
+      var saved = localStorage.getItem('nexus_theme_v1') || 'auto';
+      document.documentElement.setAttribute('data-theme', saved);
+    } catch(e){}
+  })();
+</script>
+</head>
+<body>
+
+<div id="auth-ov" class="auth-ov">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-n">NEXUS ENGENEERING</div>
+      <div class="auth-brand-s">Задачі та проєкти</div>
+    </div>
+    <h2 class="auth-t">Потрібен вхід</h2>
+    <p class="auth-h">Спочатку увійдіть у систему кадрового обліку</p>
+    <a href="hr.html" class="btn bp auth-sub" style="text-decoration:none">Перейти до входу</a>
+  </div>
+</div>
+
+<div id="app">
+  <header class="hd">
+    <div class="hd-in">
+      <div class="hd-br">
+        <a href="index.html" class="hd-home" title="На головну">←</a>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+        </svg>
+        <span>
+          <b class="bn">NEXUS - Задачі та проєкти</b>
+          
+        </span>
+      </div>
+      <div class="hd-r">
+        <button class="theme-btn" type="button" title="Змінити тему">🌗</button>
+        <button class="hd-u" onclick="Tasks.logout()" title="Вийти">
+          <div class="hd-av" id="av">?</div>
+          <div class="hd-ui">
+            <div class="hd-un" id="hun">—</div>
+            <div class="hd-ur" id="hur">—</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="mn">
+
+    <!-- СТАТИСТИКА + КНОПКИ -->
+    <div class="sg" id="stats"></div>
+
+    <div class="c" style="padding:16px">
+      <div class="fg" style="justify-content:space-between">
+        <div class="fg">
+          <input id="search" placeholder="🔍 Пошук задач..." style="width:220px" oninput="Tasks.filter()">
+          <select id="filter-priority" onchange="Tasks.filter()" style="width:auto">
+            <option value="">Всі пріоритети</option>
+            <option value="low">🟢 Низький</option>
+            <option value="normal">🔵 Звичайний</option>
+            <option value="high">🟠 Високий</option>
+            <option value="urgent">🔴 Терміново</option>
+          </select>
+          <select id="filter-emp" onchange="Tasks.filter()" style="width:auto">
+            <option value="">Всі виконавці</option>
+          </select>
+        </div>
+        <button class="btn bp" onclick="Tasks.openForm()">➕ Нова задача</button>
+      </div>
+    </div>
+
+    <!-- KANBAN BOARD -->
+    <div class="kanban" id="kanban"></div>
+
+  </main>
+</div>
+
+<!-- МОДАЛКА ЗАДАЧИ -->
+<div class="mo" id="task-modal" onclick="if(event.target===this)Tasks.closeForm()">
+  <div class="md">
+    <div class="md-h"><div class="md-t" id="task-mt">Нова задача</div>
+      <button class="md-x" onclick="Tasks.closeForm()">×</button>
+    </div>
+    <div class="md-b" id="task-mb"></div>
+  </div>
+</div>
+
+<!-- МОДАЛКА ДЕТАЛЕЙ -->
+<div class="mo" id="detail-modal" onclick="if(event.target===this)Tasks.closeDetail()">
+  <div class="md">
+    <div class="md-h"><div class="md-t" id="detail-title"></div>
+      <button class="md-x" onclick="Tasks.closeDetail()">×</button>
+    </div>
+    <div class="md-b" id="detail-body"></div>
+  </div>
+</div>
+
+<script src="nexus-core.js"></script>
+  <script src="tasks.js"></script>
+<script src="nexus-assistant.js"></script>
+</body>
+</html>

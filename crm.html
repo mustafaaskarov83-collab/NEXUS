@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS — CRM Клієнти</title>
+<link rel="stylesheet" href="crm.css">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>if(!window.XLSX){document.write('<script src="vendor/xlsx.full.min.js"><\/script>');}</script>
+<script>
+(function(){try{document.documentElement.setAttribute('data-theme',localStorage.getItem('nexus_theme_v1')||'auto')}catch(e){}})();
+</script>
+</head>
+<body>
+<div id="auth-ov" class="auth-ov">
+  <div class="auth-card">
+    <div class="auth-brand"><div class="auth-brand-n">NEXUS ENGENEERING</div><div class="auth-brand-s">CRM — Клієнти</div></div>
+    <h2 class="auth-t">Потрібен вхід</h2>
+    <p class="auth-h">Увійдіть через головну сторінку системи</p>
+    <a href="index.html" class="btn bp auth-sub" style="text-decoration:none">Перейти до входу</a>
+  </div>
+</div>
+
+<div id="app">
+  <header class="hd">
+    <div class="hd-in">
+      <div class="hd-br">
+        <a href="index.html" class="hd-home" title="На головну">←</a>
+        <span><b class="bn">NEXUS — CRM</b> <span class="hd-sub">Клієнти та відносини</span></span>
+      </div>
+      <div class="hd-r">
+        <button class="theme-btn" type="button" title="Тема">🌗</button>
+        <button class="hd-u" type="button" onclick="CRM.logout()">
+          <div class="hd-av" id="av">?</div>
+          <div class="hd-ui"><div class="hd-un" id="hun">—</div><div class="hd-ur" id="hur">—</div></div>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="nav">
+    <div class="nav-in">
+      <button class="nb active" data-tab="list" type="button" onclick="CRM.switchTab('list')">📋 Клієнти</button>
+      <button class="nb" data-tab="pipeline" type="button" onclick="CRM.switchTab('pipeline')">📊 Воронка</button>
+      <button class="nb" data-tab="activity" type="button" onclick="CRM.switchTab('activity')">🗓 Активності</button>
+    </div>
+  </nav>
+
+  <main class="main crm-main">
+    <div class="sg" id="stats"></div>
+
+    <!-- LIST -->
+    <section id="tab-list" class="tp active">
+      <div class="c toolbar-c">
+        <div class="fg toolbar-row">
+          <div class="tsm tmu" style="margin-right:auto;max-width:420px">Замовники та підрядники в одній базі. Договори підтягуються з Документообігу.</div>
+          <button class="btn bs" type="button" onclick="CRM.importFromContracts()">📥 З договорів (Документообіг)</button>
+          <button class="btn bp" type="button" onclick="CRM.openForm()">➕ Новий клієнт</button>
+        </div>
+      </div>
+      <div class="c">
+        <div class="ch">
+          <div class="ct">Клієнтська база <span class="bg bg-b" id="cli-count">0</span></div>
+          <div class="fg filters">
+            <input id="search" placeholder="Пошук: назва, ЄДРПОУ, телефон, email…" oninput="CRM.renderList()">
+            <select id="filter-status" onchange="CRM.renderList()">
+              <option value="">Усі статуси</option>
+              <option value="lead">Потенційний клієнт</option>
+              <option value="negotiation">Переговори</option>
+              <option value="active">Клієнт</option>
+              <option value="archive">Архів</option>
+            </select>
+            <select id="filter-type" onchange="CRM.renderList()">
+              <option value="">Усі типи</option>
+              <option value="company">Юр. особа</option>
+              <option value="person">ФОП / фіз. особа</option>
+            </select>
+            <select id="filter-role" onchange="CRM.renderList()">
+              <option value="">Усі ролі</option>
+              <option value="customer">Замовники</option>
+              <option value="supplier">Підрядники</option>
+              <option value="both">Обидва</option>
+            </select>
+            <button class="btn bs bsm" type="button" onclick="CRM.exportExcel()">📊 Excel</button>
+          </div>
+        </div>
+        <div id="cli-list"></div>
+      </div>
+    </section>
+
+    <!-- PIPELINE -->
+    <section id="tab-pipeline" class="tp" style="display:none">
+      <div class="c"><div class="ch"><div class="ct">Воронка продажів</div><div class="tsm tmu">Перетягування статусів — через картку клієнта або кнопки ↓↑ у колонці</div></div>
+        <div id="pipeline-board" class="pipeline"></div>
+      </div>
+    </section>
+
+    <!-- ACTIVITY -->
+    <section id="tab-activity" class="tp" style="display:none">
+      <div class="c">
+        <div class="ch">
+          <div class="ct">Стрічка активностей</div>
+          <button class="btn bp bsm" type="button" onclick="CRM.openActivityForm()">➕ Запис</button>
+        </div>
+        <div id="activity-list"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- CLIENT FORM -->
+<div class="mo" id="cli-form-modal" onclick="if(event.target===this)CRM.closeForm()">
+  <div class="md md-wide">
+    <div class="md-h">
+      <div class="md-t" id="form-title">Новий клієнт</div>
+      <button class="md-x" type="button" onclick="CRM.closeForm()">×</button>
+    </div>
+    <div class="md-b">
+      <div class="form-sec">
+        <div class="form-sec-t">Основне</div>
+        <div class="crm-grid crm-grid-3">
+          <div class="ff"><label>Тип особи</label>
+            <select id="c-type">
+              <option value="company">Юридична особа</option>
+              <option value="person">ФОП / фізична особа</option>
+            </select>
+          </div>
+          <div class="ff"><label>Роль у співпраці</label>
+            <select id="c-role">
+              <option value="customer">Замовник (нам платять)</option>
+              <option value="supplier">Підрядник / постачальник (ми платимо)</option>
+              <option value="both">Обидва</option>
+            </select>
+          </div>
+          <div class="ff"><label>Назва / ПІБ <span class="rq">*</span></label><input id="c-name" placeholder="ТОВ «Замовник» або підрядник" autocomplete="off"></div>
+          <div class="ff"><label>ЄДРПОУ / ІПН</label><input id="c-edrpou" placeholder="12345678" class="mono"></div>
+          <div class="ff"><label>Статус у воронці</label>
+            <select id="c-status">
+              <option value="lead">🎯 Потенційний клієнт</option>
+              <option value="negotiation">💬 Переговори</option>
+              <option value="active">✅ Клієнт</option>
+              <option value="archive">📦 Архів</option>
+            </select>
+          </div>
+          <div class="ff"><label>Джерело</label>
+            <select id="c-source">
+              <option value="">— не вказано —</option>
+              <option value="referral">Рекомендація</option>
+              <option value="site">Сайт</option>
+              <option value="cold">Холодний контакт</option>
+              <option value="partner">Партнер</option>
+              <option value="tender">Тендер</option>
+              <option value="other">Інше</option>
+            </select>
+          </div>
+          <div class="ff"><label>Відповідальний</label><select id="c-manager"><option value="">— не вказано —</option></select></div>
+          <div class="ff"><label>Сайт</label><input id="c-website" placeholder="https://"></div>
+          <div class="ff"><label>Теги</label><input id="c-tags" placeholder="будівництво, Київ…"></div>
+        </div>
+      </div>
+      <div class="form-sec">
+        <div class="form-sec-t">Контакти</div>
+        <div class="crm-grid crm-grid-3">
+          <div class="ff"><label>Контактна особа</label><input id="c-contact" placeholder="ПІБ"></div>
+          <div class="ff"><label>Посада</label><input id="c-position" placeholder="Директор"></div>
+          <div class="ff"><label>Телефон</label><input id="c-phone" placeholder="+380…"></div>
+          <div class="ff"><label>Email</label><input id="c-email" placeholder="info@…"></div>
+          <div class="ff"><label>Місто</label><input id="c-city" placeholder="Київ"></div>
+          <div class="ff"><label>Адреса</label><input id="c-address" placeholder="вул., буд."></div>
+        </div>
+      </div>
+      <div class="form-sec">
+        <div class="form-sec-t">Додатково</div>
+        <div class="crm-grid crm-grid-1">
+          <div class="ff"><label>Примітка</label><textarea id="c-notes" rows="3" placeholder="Особливості співпраці, умови…"></textarea></div>
+        </div>
+      </div>
+      <div class="veh-actions">
+        <button class="btn bp" type="button" id="btn-save" onclick="CRM.save()">Зберегти клієнта</button>
+        <button class="btn bs" type="button" onclick="CRM.closeForm()">Скасувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL -->
+<div class="mo" id="cli-detail-modal" onclick="if(event.target===this)CRM.closeDetail()">
+  <div class="md md-wide">
+    <div class="md-h">
+      <div class="md-t" id="detail-title">Клієнт</div>
+      <button class="md-x" type="button" onclick="CRM.closeDetail()">×</button>
+    </div>
+    <div class="md-b" id="detail-body"></div>
+  </div>
+</div>
+
+<!-- ACTIVITY FORM -->
+<div class="mo" id="act-form-modal" onclick="if(event.target===this)CRM.closeActivityForm()">
+  <div class="md" style="max-width:520px">
+    <div class="md-h"><div class="md-t">Нова активність</div><button class="md-x" type="button" onclick="CRM.closeActivityForm()">×</button></div>
+    <div class="md-b">
+      <div class="crm-grid">
+        <div class="ff"><label>Клієнт <span class="rq">*</span></label><select id="a-client"><option value="">— оберіть —</option></select></div>
+        <div class="ff"><label>Тип</label>
+          <select id="a-type">
+            <option value="call">📞 Дзвінок</option>
+            <option value="meeting">🤝 Зустріч</option>
+            <option value="email">✉️ Лист</option>
+            <option value="note">📝 Примітка</option>
+            <option value="task">✅ Задача</option>
+          </select>
+        </div>
+        <div class="ff"><label>Дата</label><input type="date" id="a-date"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Опис <span class="rq">*</span></label><textarea id="a-text" rows="3"></textarea></div>
+      </div>
+      <div class="veh-actions" style="margin-top:14px">
+        <button class="btn bp" type="button" onclick="CRM.saveActivity()">Зберегти</button>
+        <button class="btn bs" type="button" onclick="CRM.closeActivityForm()">Скасувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="nexus-core.js"></script>
+<script src="crm.js"></script>
+<script src="nexus-assistant.js"></script>
+</body>
+</html>

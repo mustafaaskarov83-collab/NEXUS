@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS - Авто і паливо</title>
+<link rel="stylesheet" href="fleet.css">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>if(!window.XLSX){document.write('<script src="vendor/xlsx.full.min.js"><\/script>');}</script>
+<script>
+  (function(){
+    try {
+      var saved = localStorage.getItem('nexus_theme_v1') || 'auto';
+      document.documentElement.setAttribute('data-theme', saved);
+    } catch(e){}
+  })();
+</script>
+</head>
+<body>
+
+<div id="auth-ov" class="auth-ov">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-n">NEXUS ENGENEERING</div>
+      <div class="auth-brand-s">Авто і витрата палива</div>
+    </div>
+    <h2 class="auth-t">Потрібен вхід</h2>
+    <p class="auth-h">Спочатку увійдіть у систему через головну сторінку</p>
+    <a href="index.html" class="btn bp auth-sub" style="text-decoration:none">Перейти до входу</a>
+  </div>
+</div>
+
+<div id="app">
+  <header class="hd">
+    <div class="hd-in">
+      <div class="hd-br">
+        <a href="index.html" class="hd-home" title="На головну">←</a>
+        <span><b class="bn">NEXUS - Авто і паливо</b></span>
+      </div>
+      <div class="hd-r">
+        <button class="theme-btn" type="button" title="Змінити тему">🌗</button>
+        <button class="hd-u" onclick="Fleet.logout()" title="Вийти">
+          <div class="hd-av" id="av">?</div>
+          <div class="hd-ui">
+            <div class="hd-un" id="hun">—</div>
+            <div class="hd-ur" id="hur">—</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="nav">
+    <div class="nav-in">
+      <button class="nb active" data-tab="vehicles" type="button">🚗 Автопарк</button>
+      <button class="nb" data-tab="fuel" type="button">⛽ Витрата палива</button>
+      <button class="nb" data-tab="cards" type="button">💳 Паливні картки</button>
+      <button class="nb" data-tab="service" type="button">🔧 Сервіс</button>
+    </div>
+  </nav>
+
+  <main class="main" style="max-width:1400px;margin:0 auto;padding:20px 24px">
+    <div class="sg" id="stats"></div>
+    <div id="fleet-alerts"></div>
+
+    <div class="c" style="padding:12px 16px;margin-bottom:16px">
+      <div class="fg" style="align-items:flex-end;flex-wrap:wrap;gap:10px">
+        <div class="ff" style="margin:0;min-width:140px">
+          <label>Період з</label>
+          <input type="date" id="period-from" onchange="Fleet.applyPeriod()">
+        </div>
+        <div class="ff" style="margin:0;min-width:140px">
+          <label>по</label>
+          <input type="date" id="period-to" onchange="Fleet.applyPeriod()">
+        </div>
+        <button class="btn bs bsm" type="button" onclick="Fleet.setPeriodMonth()">Цей місяць</button>
+        <button class="btn bs bsm" type="button" onclick="Fleet.setPeriodAll()">Увесь час</button>
+        <div class="tsm tmu" id="period-label" style="margin-left:auto">Фільтр періоду: увесь час</div>
+      </div>
+    </div>
+
+
+    <!-- VEHICLES -->
+    <section id="tab-vehicles" class="tp active">
+      <div class="c" style="padding:14px 18px">
+        <div class="fg" style="justify-content:flex-end">
+          <button class="btn bp" type="button" onclick="Fleet.openVehicleForm()">➕ Додати автомобіль</button>
+        </div>
+      </div>
+
+      <div class="c m16">
+        <div class="ch">
+          <div class="ct">🚗 Автопарк <span class="bg bg-b" id="veh-count">0</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input id="veh-search" placeholder="Пошук за номером або назвою…" oninput="Fleet.renderVehicles()" style="min-width:240px">
+            <button class="btn bs bsm" type="button" onclick="Fleet.exportPeriodReport()">📊 Звіт за період</button>
+            <button class="btn bs bsm" type="button" onclick="Fleet.exportVehicles()">📊 Excel</button>
+          </div>
+        </div>
+        <div id="veh-list"></div>
+      </div>
+    </section>
+
+    <!-- FUEL -->
+    <section id="tab-fuel" class="tp" style="display:none">
+      <div class="c" style="padding:14px 18px">
+        <div class="fg" style="justify-content:flex-end;gap:8px;flex-wrap:wrap">
+          <button class="btn bs" type="button" onclick="document.getElementById('okko-file').click()">📥 Імпорт OKKO Excel</button>
+          <input type="file" id="okko-file" accept=".xlsx,.xls" style="display:none" onchange="Fleet.importOkko(event)">
+          <button class="btn bp" type="button" onclick="Fleet.openFuelForm()">⛽ Додати заправку</button>
+        </div>
+      </div>
+
+      <div class="c m16">
+        <div class="ch">
+          <div class="ct">📋 Журнал заправок <span class="bg bg-b" id="fuel-count">0</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input id="fuel-search" placeholder="Пошук за номером / приміткою…" oninput="Fleet.renderFuel()" style="min-width:220px">
+            <select id="fuel-filter-veh" onchange="Fleet.renderFuel()"><option value="">Усі авто</option></select>
+            <button class="btn bs bsm" type="button" onclick="Fleet.exportFuel()">📊 Excel</button>
+            <button class="btn bs bsm" type="button" onclick="Fleet.exportDriverFuelReport()">👤 Звіт по водіях</button>
+          </div>
+        </div>
+        <div id="fuel-list"></div>
+      </div>
+    </section>
+
+    <!-- CARDS -->
+    <section id="tab-cards" class="tp" style="display:none">
+      <div class="c" style="padding:14px 18px">
+        <div class="fg" style="justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div class="tsm tmu">Прив’яжіть номер паливної картки OKKO до співробітника та авто. При імпорті Excel заправки підтягнуться автоматично.</div>
+          <button class="btn bp" type="button" onclick="Fleet.openCardForm()">➕ Додати картку</button>
+        </div>
+      </div>
+      <div class="c m16">
+        <div class="ch">
+          <div class="ct">💳 Паливні картки <span class="bg bg-b" id="card-count">0</span></div>
+          <input id="card-search" placeholder="Пошук за номером / ПІБ…" oninput="Fleet.renderCards()" style="min-width:220px">
+        </div>
+        <div id="card-list"></div>
+      </div>
+    </section>
+
+
+    <!-- SERVICE -->
+    <section id="tab-service" class="tp" style="display:none">
+      <div class="c" style="padding:14px 18px">
+        <div class="fg" style="justify-content:flex-end">
+          <button class="btn bp" type="button" onclick="Fleet.openServiceForm()">➕ Додати сервіс</button>
+        </div>
+      </div>
+      <div class="c m16">
+        <div class="ch">
+          <div class="ct">🔧 Сервісне обслуговування <span class="bg bg-b" id="svc-count">0</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input id="svc-search" placeholder="Пошук…" oninput="Fleet.renderService()" style="min-width:180px">
+            <select id="svc-filter-veh" onchange="Fleet.renderService()"><option value="">Усі авто</option></select>
+            <select id="svc-filter-status" onchange="Fleet.renderService()">
+              <option value="">Усі статуси</option>
+              <option value="planned">Заплановано</option>
+              <option value="in_progress">В роботі</option>
+              <option value="done">Виконано</option>
+            </select>
+            <button class="btn bs bsm" type="button" onclick="Fleet.exportService()">📊 Excel (звіт)</button>
+          </div>
+        </div>
+        <div id="svc-list"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+
+<!-- VEHICLE FORM MODAL -->
+<div class="mo" id="veh-form-modal" onclick="if(event.target===this)Fleet.closeVehicleForm()">
+  <div class="md veh-md">
+    <div class="md-h">
+      <div class="md-t" id="veh-form-title">Додати автомобіль</div>
+      <button class="md-x" type="button" onclick="Fleet.closeVehicleForm()">×</button>
+    </div>
+    <div class="md-b" id="veh-form-body">
+
+      <div class="veh-sec">
+        <div class="veh-sec-t">Основні дані</div>
+        <div class="veh-grid">
+          <div class="ff"><label>Держ. номер <span class="rq">*</span></label><input id="v-plate" placeholder="АА1234ВВ" autocomplete="off"></div>
+          <div class="ff"><label>Марка <span class="rq">*</span></label><input id="v-make" placeholder="Toyota" autocomplete="off"></div>
+          <div class="ff"><label>Модель <span class="rq">*</span></label><input id="v-model" placeholder="Corolla" autocomplete="off"></div>
+          <div class="ff"><label>Рік випуску</label><input type="number" id="v-year" min="1980" max="2100" placeholder="2020"></div>
+        </div>
+        <div class="veh-grid">
+          <div class="ff"><label>Тип авто</label>
+            <select id="v-type">
+              <option value="passenger">🚗 Легковий</option>
+              <option value="cargo">🚚 Вантажний</option>
+              <option value="van">🚐 Фургон / мікроавтобус</option>
+              <option value="bus">🚌 Автобус</option>
+              <option value="special">🛠 Спецтехніка</option>
+              <option value="moto">🏍 Мото / квадро</option>
+              <option value="trailer">🚛 Причіп / напівпричіп</option>
+              <option value="other">Інше</option>
+            </select>
+          </div>
+          <div class="ff"><label>Тип палива</label>
+            <select id="v-fuel">
+              <option value="petrol">⛽ Бензин</option>
+              <option value="diesel">🛢 Дизель</option>
+              <option value="gas">🔥 Газ</option>
+              <option value="hybrid">🔋 Гібрид</option>
+              <option value="electric">⚡ Електро</option>
+            </select>
+          </div>
+          <div class="ff"><label>Статус</label>
+            <select id="v-status">
+              <option value="active">✅ В роботі</option>
+              <option value="repair">🔧 На ремонті</option>
+              <option value="idle">⏸ Простій</option>
+              <option value="sold">❌ Продано / списано</option>
+            </select>
+          </div>
+          <div class="ff"><label>Закріплено за</label><select id="v-emp"><option value="">— не закріплено —</option></select></div>
+        </div>
+      </div>
+
+      <div class="veh-sec">
+        <div class="veh-sec-t">Технічні параметри</div>
+        <div class="veh-grid">
+          <div class="ff"><label>VIN-код</label><input id="v-vin" placeholder="WVWZZZ1JZXW000001" maxlength="17" style="text-transform:uppercase;font-family:var(--mono)"></div>
+          <div class="ff"><label>Колір</label><input id="v-color" placeholder="Чорний, білий, сірий…"></div>
+          <div class="ff"><label>Об’єм двигуна, л</label><input type="number" id="v-engine" min="0" step="0.1" placeholder="1.6"></div>
+          <div class="ff"><label>Витрата, л/100 км</label><input type="number" id="v-consumption" min="0" step="0.1" placeholder="паспортна"></div>
+        </div>
+        <div class="veh-grid veh-grid-2">
+          <div class="ff"><label>Пробіг на момент обліку, км</label><input type="number" id="v-odometer" min="0" step="1" value="0"></div>
+          <div class="ff"><label>Дата постановки на облік</label><input type="date" id="v-reg-date"></div>
+        </div>
+      </div>
+
+      <div class="veh-sec">
+        <div class="veh-sec-t">Облік і страхування</div>
+        <div class="veh-grid">
+          <div class="ff"><label>Форма володіння</label>
+            <select id="v-ownership">
+              <option value="own">Власне</option>
+              <option value="leasing">Лізинг</option>
+              <option value="rent">Оренда</option>
+              <option value="other">Інше</option>
+            </select>
+          </div>
+          <div class="ff"><label>Інвентарний №</label><input id="v-inv" placeholder="присвоюється автоматично" readonly style="background:var(--g50);font-family:var(--mono);font-weight:600"></div>
+          <div class="ff"><label>Вартість, грн</label><input type="number" id="v-value" min="0" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="veh-grid">
+          <div class="ff"><label>Серія поліса</label><input id="v-policy-series" placeholder="напр. АВ" autocomplete="off"></div>
+          <div class="ff"><label>Номер поліса</label><input id="v-policy-number" placeholder="номер поліса" autocomplete="off"></div>
+          <div class="ff"><label>Поліс діє до</label><input type="date" id="v-insurance-to"></div>
+        </div>
+        <div class="veh-grid">
+          <div class="ff"><label>Зимова гума</label>
+            <select id="v-winter-tires">
+              <option value="no">❌ Немає</option>
+              <option value="yes">✅ Є</option>
+            </select>
+          </div>
+          <div class="ff"><label>Техогляд</label>
+            <select id="v-tech-inspection">
+              <option value="no">❌ Немає</option>
+              <option value="yes">✅ Є</option>
+            </select>
+          </div>
+          <div class="ff"><label>Техогляд діє до</label><input type="date" id="v-tech-until"></div>
+        </div>
+        <div class="veh-grid veh-grid-1">
+          <div class="ff"><label>Додатковий опис</label>
+            <textarea id="v-notes" rows="3" placeholder="Комплектація, технічний стан, особливі відмітки…"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="veh-actions">
+        <button class="btn bp" type="button" id="veh-btn-save" onclick="Fleet.saveVehicle()">Зберегти автомобіль</button>
+        <button class="btn bs" type="button" onclick="Fleet.closeVehicleForm()">Скасувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- FUEL FORM MODAL -->
+<div class="mo" id="fuel-form-modal" onclick="if(event.target===this)Fleet.closeFuelForm()">
+  <div class="md" style="max-width:720px">
+    <div class="md-h">
+      <div class="md-t" id="fuel-form-title">Додати заправку</div>
+      <button class="md-x" type="button" onclick="Fleet.closeFuelForm()">×</button>
+    </div>
+    <div class="md-b">
+      <div class="fr">
+        <div class="ff"><label>Автомобіль <span class="rq">*</span></label>
+          <select id="f-vehicle"><option value="">— без авто / пізніше —</option></select>
+        </div>
+        <div class="ff"><label>Дата <span class="rq">*</span></label><input type="date" id="f-date"></div>
+        <div class="ff ffn"><label>Літри <span class="rq">*</span></label><input type="number" id="f-liters" min="0.01" step="0.01" placeholder="40"></div>
+        <div class="ff ffn"><label>Сума, грн</label><input type="number" id="f-cost" min="0" step="0.01" value="0"></div>
+      </div>
+      <div class="fr">
+        <div class="ff ffn"><label>Пробіг на момент заправки, км</label><input type="number" id="f-odometer" min="0" step="1" placeholder="опційно"></div>
+        <div class="ff"><label>АЗС / примітка</label><input id="f-note" placeholder="WOG, OKKO…"></div>
+      </div>
+      <div class="fg m16">
+        <button class="btn bp" type="button" onclick="Fleet.saveFuel()">Зберегти заправку</button>
+        <button class="btn bs" type="button" onclick="Fleet.closeFuelForm()">Скасувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- CARD FORM MODAL -->
+<div class="mo" id="card-form-modal" onclick="if(event.target===this)Fleet.closeCardForm()">
+  <div class="md" style="max-width:640px">
+    <div class="md-h">
+      <div class="md-t" id="card-form-title">Додати паливну картку</div>
+      <button class="md-x" type="button" onclick="Fleet.closeCardForm()">×</button>
+    </div>
+    <div class="md-b">
+      <div class="fr">
+        <div class="ff"><label>Номер картки <span class="rq">*</span></label><input id="c-number" placeholder="7825390000315340" style="font-family:var(--mono)"></div>
+        <div class="ff"><label>Ім’я в звіті OKKO</label><input id="c-holder" placeholder="як у колонці «Картотримач»"></div>
+      </div>
+      <div class="fr">
+        <div class="ff"><label>Співробітник (водій) <span class="rq">*</span></label><select id="c-emp"><option value="">— оберіть водія —</option></select></div>
+        <div class="ff"><label>Основне авто водія</label><select id="c-veh"><option value="">— немає / змінне —</option></select></div>
+      </div>
+      <div class="tsm tmu" style="margin:-4px 0 12px">Картка завжди на водієві. «Основне авто» — за замовчуванням у заправках; якщо взяв іншу машину — змініть авто в журналі заправок.</div>
+      <div class="fr">
+        <div class="ff"><label>Примітка</label><input id="c-note" placeholder="опційно"></div>
+      </div>
+      <div class="fg m16">
+        <button class="btn bp" type="button" id="card-btn-save" onclick="Fleet.saveCard()">Зберегти картку</button>
+        <button class="btn bs" type="button" onclick="Fleet.closeCardForm()">Скасувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- SERVICE FORM MODAL -->
+<div class="mo" id="svc-form-modal" onclick="if(event.target===this)Fleet.closeServiceForm()">
+  <div class="md" style="max-width:920px">
+    <div class="md-h">
+      <div class="md-t" id="svc-form-title">Додати сервіс</div>
+      <button class="md-x" type="button" onclick="Fleet.closeServiceForm()">×</button>
+    </div>
+    <div class="md-b">
+      <div class="fr">
+        <div class="ff"><label>Автомобіль <span class="rq">*</span></label>
+          <select id="s-vehicle"><option value="">— оберіть авто —</option></select>
+        </div>
+        <div class="ff"><label>Дата <span class="rq">*</span></label><input type="date" id="s-date"></div>
+        <div class="ff"><label>Статус робіт</label>
+          <select id="s-status">
+            <option value="done">✅ Виконано</option>
+            <option value="planned">📅 Заплановано</option>
+            <option value="in_progress">🔧 В роботі</option>
+          </select>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="ff"><label>Тип робіт</label>
+          <select id="s-type">
+            <option value="to">ТО (техобслуговування)</option>
+            <option value="repair">Ремонт</option>
+            <option value="tires">Шини / диски</option>
+            <option value="oil">Заміна оливи</option>
+            <option value="brakes">Гальма</option>
+            <option value="diagnostics">Діагностика</option>
+            <option value="body">Кузов / фарбування</option>
+            <option value="other">Інше</option>
+          </select>
+        </div>
+        <div class="ff" style="flex:2"><label>Підстава (договір)</label>
+          <select id="s-contract"><option value="">— без договору —</option></select>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="ff"><label>Номер рахунку СТО</label><input id="s-invoice" placeholder="Напр. РХ-123/2026"></div>
+        <div class="ff"><label>СТО / виконавець (CRM)</label>
+          <select id="s-vendor-id" onchange="Fleet.onServiceVendorPick()">
+            <option value="">— підрядник з CRM —</option>
+          </select>
+          <input id="s-vendor" type="hidden">
+          <div class="tsm tmu" style="margin-top:4px">Додайте СТО в CRM як підрядника</div>
+        </div>
+        <div class="ff ffn"><label>Разом, грн</label><input type="number" id="s-cost" min="0" step="0.01" value="0" readonly style="font-weight:700;background:var(--g50)"></div>
+      </div>
+      <div style="margin:8px 0 6px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div style="font-weight:700;font-size:13.5px">Роботи та матеріали <span class="rq">*</span></div>
+        <button class="btn bs bsm" type="button" onclick="Fleet.addServiceLine()">➕ Додати рядок</button>
+      </div>
+      <div style="overflow-x:auto;border:1px solid var(--border);border-radius:12px">
+        <table class="dt" id="s-lines-table" style="margin:0">
+          <thead>
+            <tr>
+              <th style="min-width:90px">Тип</th>
+              <th style="min-width:220px">Найменування</th>
+              <th style="min-width:70px">Од.</th>
+              <th style="min-width:90px">К-сть</th>
+              <th style="min-width:100px">Ціна</th>
+              <th style="min-width:100px">Сума</th>
+              <th style="width:40px"></th>
+            </tr>
+          </thead>
+          <tbody id="s-lines-body"></tbody>
+        </table>
+      </div>
+      <div class="tsm tmu" style="margin-top:6px">Як у рахунку: назва → одиниця → кількість → ціна → сума рахується автоматично.</div>
+      <div class="fr" style="margin-top:12px">
+        <div class="ff" style="flex:1"><label>Загальний коментар</label>
+          <textarea id="s-desc" rows="2" placeholder="Опційно: короткий підсумок для бухгалтерії" style="width:100%;resize:vertical"></textarea>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="ff ffn"><label>Пробіг на момент, км</label><input type="number" id="s-odometer" min="0" step="1" placeholder="опційно"></div>
+        <div class="ff"><label>Наступний сервіс (дата)</label><input type="date" id="s-next-date"></div>
+        <div class="ff ffn"><label>Наступний сервіс (км)</label><input type="number" id="s-next-km" min="0" step="1" placeholder="опційно"></div>
+      </div>
+      <div class="fr">
+        <div class="ff"><label>Примітки</label><input id="s-note" placeholder="Додатково"></div>
+        <div class="ff"><label>Скан рахунку СТО</label>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="file" id="s-scan" accept="image/*,.pdf,application/pdf" style="display:none" onchange="Fleet.onInvoiceScanChange(event)">
+            <button class="btn bs bsm" type="button" onclick="document.getElementById('s-scan').click()">📎 Прикріпити</button>
+            <button class="btn bs bsm" type="button" onclick="Fleet.clearInvoiceScan()">Очистити</button>
+            <span class="tsm tmu" id="s-scan-label">Файл не обрано</span>
+          </div>
+        </div>
+      </div>
+      <div class="fg m16">
+        <button class="btn bp" type="button" id="svc-btn-save" onclick="Fleet.saveService()">Зберегти</button>
+        <button class="btn bs" type="button" onclick="Fleet.closeServiceForm()">Скасувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- SERVICE DETAIL -->
+<div class="mo" id="svc-detail-modal" onclick="if(event.target===this)Fleet.closeServiceDetail()">
+  <div class="md" style="max-width:720px">
+    <div class="md-h">
+      <div class="md-t" id="svc-detail-title">Деталі сервісу</div>
+      <button class="md-x" type="button" onclick="Fleet.closeServiceDetail()">×</button>
+    </div>
+    <div class="md-b" id="svc-detail-body"></div>
+  </div>
+</div>
+
+
+<!-- CARD LINK WIZARD -->
+<div class="mo" id="card-wizard-modal" onclick="if(event.target===this)Fleet.closeCardLinkWizard()">
+  <div class="md" style="max-width:900px">
+    <div class="md-h">
+      <div class="md-t">Майстер прив’язки паливних карток</div>
+      <button class="md-x" type="button" onclick="Fleet.closeCardLinkWizard()">×</button>
+    </div>
+    <div class="md-b">
+      <div id="card-wizard-body"></div>
+      <div class="fg m16">
+        <button class="btn bp" type="button" onclick="Fleet.saveCardLinkWizard()">Зберегти прив’язки</button>
+        <button class="btn bs" type="button" onclick="Fleet.closeCardLinkWizard()">Закрити</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="nexus-core.js"></script>
+<script src="fleet.js"></script>
+<script src="nexus-assistant.js"></script>
+</body>
+</html>

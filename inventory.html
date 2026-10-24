@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS - Інвентар</title>
+<link rel="stylesheet" href="inventory.css">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>if(!window.XLSX){document.write('<script src="vendor/xlsx.full.min.js"><\/script>');}</script>
+<script>
+  (function(){
+    try {
+      var saved = localStorage.getItem('nexus_theme_v1') || 'auto';
+      document.documentElement.setAttribute('data-theme', saved);
+    } catch(e){}
+  })();
+</script>
+</head>
+<body>
+
+<div id="auth-ov" class="auth-ov">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-n">NEXUS ENGENEERING</div>
+      <div class="auth-brand-s">Інвентар</div>
+    </div>
+    <h2 class="auth-t">Потрібен вхід</h2>
+    <p class="auth-h">Спочатку увійдіть у систему кадрового обліку</p>
+    <div class="auth-err" id="auth-err"></div>
+    <a href="hr.html" class="btn bp auth-sub" style="text-decoration:none">Перейти до входу</a>
+  </div>
+</div>
+
+<div id="app">
+  <header class="hd">
+    <div class="hd-in">
+      <div class="hd-br">
+        <a href="index.html" class="hd-home" title="На головну">←</a>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 7L9 18l-5-5"/>
+        </svg>
+        <span>
+          <b class="bn">NEXUS - Інвентар</b>
+          
+        </span>
+      </div>
+      <div class="hd-r">
+        <button class="theme-btn" type="button" title="Змінити тему">🌗</button>
+        <button class="hd-u" onclick="Inv.logout()" title="Вийти">
+          <div class="hd-av" id="av">?</div>
+          <div class="hd-ui"><div class="hd-un" id="hun">—</div><div class="hd-ur" id="hur">—</div></div>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="mn">
+
+    <!-- ЗВОДКА -->
+    <div class="sg" id="stats"></div>
+
+    <!-- КНОПКА ДОДАВАННЯ -->
+    <div class="c" style="padding:14px 18px">
+      <div class="fg" style="justify-content:flex-end">
+        <button class="btn bp" type="button" onclick="Inv.openForm()">➕ Додати предмет</button>
+      </div>
+    </div>
+
+    <!-- СПИСОК -->
+    <div class="c">
+      <div class="ch">
+        <div class="ct">📦 <span>Список інвентарю</span> <span class="bg bg-b" id="inv-count">0</span></div>
+        <div class="fg">
+          <input id="search" placeholder="Пошук за назвою або інв. №…" style="width:260px" oninput="Inv.filter()">
+          <select id="filter-cat" onchange="Inv.filter()" style="width:auto">
+            <option value="">Всі категорії</option>
+            <option value="tech">💻 Техніка</option>
+            <option value="furniture">🪑 Меблі</option>
+            <option value="tool">🔧 Інструменти</option>
+            <option value="office">📎 Офісне</option>
+            <option value="other">📦 Інше</option>
+          </select>
+          <select id="filter-status" onchange="Inv.filter()" style="width:auto">
+            <option value="">Всі статуси</option>
+            <option value="active">✅ В експлуатації</option>
+            <option value="repair">🔧 На ремонті</option>
+            <option value="storage">📦 На складі</option>
+            <option value="written">❌ Списано</option>
+          </select>
+        </div>
+      </div>
+      <div id="inv-list"></div>
+    </div>
+
+    <!-- ЕКСПОРТ -->
+    <div class="c">
+      <div class="ch"><div class="ct">📤 Експорт та друк</div></div>
+      <div class="fg">
+        <button class="btn bs" onclick="Inv.exportExcel()">📊 Експорт у Excel</button>
+        <button class="btn bs" onclick="Inv.exportJSON()">💾 Експорт JSON</button>
+        <button class="btn bs" onclick="document.getElementById('json-in').click()">📥 Імпорт JSON</button>
+        <input type="file" id="json-in" accept=".json" style="display:none" onchange="Inv.importJSON(event)">
+        <button class="btn bd" onclick="Inv.clearAll()" style="margin-left:auto">🗑️ Очистити все</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+
+<!-- FORM MODAL -->
+<div class="mo" id="inv-form-modal" onclick="if(event.target===this)Inv.closeForm()">
+  <div class="md" style="max-width:780px">
+    <div class="md-h">
+      <div class="md-t" id="form-title">Додати предмет</div>
+      <button class="md-x" type="button" onclick="Inv.closeForm()">×</button>
+    </div>
+    <div class="md-b" id="form-body">
+      <div class="fr">
+        <div class="ff">
+          <label>Категорія <span class="rq">*</span></label>
+          <select id="f-cat">
+            <option value="">— оберіть категорію —</option>
+            <option value="tech">💻 Техніка</option>
+            <option value="furniture">🪑 Меблі</option>
+            <option value="tool">🔧 Інструменти</option>
+            <option value="office">📎 Офісне</option>
+            <option value="other">📦 Інше</option>
+          </select>
+        </div>
+        <div class="ff" style="flex:2">
+          <label>Назва <span class="rq">*</span></label>
+          <input id="f-name" placeholder="Ноутбук Dell Latitude 5420">
+        </div>
+        <div class="ff ffn">
+          <label>Інв. № </label>
+          <input id="f-inv" placeholder="INV-001">
+        </div>
+      </div>
+      <div class="fr">
+        <div class="ff"><label>Модель / характеристика</label><input id="f-model" placeholder="i5, 16GB, 512SSD"></div>
+        <div class="ff"><label>Серійний номер</label><input id="f-serial" placeholder="SN-ABC123"></div>
+      </div>
+      <div class="fr">
+        <div class="ff ffn"><label>Вартість, грн</label><input type="number" id="f-cost" value="0" min="0" step="0.01"></div>
+        <div class="ff"><label>Дата придбання</label><input type="date" id="f-date"></div>
+        <div class="ff">
+          <label>Статус</label>
+          <select id="f-status">
+            <option value="active">✅ В експлуатації</option>
+            <option value="repair">🔧 На ремонті</option>
+            <option value="storage">📦 На складі</option>
+            <option value="written">❌ Списано</option>
+          </select>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="ff"><label>Проект</label><select id="f-inv-project"><option value="">— без проекту —</option></select></div>
+        <div class="ff"><label>Закріплено за</label><select id="f-emp"><option value="">— не закріплено —</option></select></div>
+        <div class="ff"><label>Місцезнаходження</label><input id="f-loc" placeholder="Офіс, каб. 5"></div>
+      </div>
+      <div class="fr">
+        <div class="ff"><label>Примітки</label><input id="f-notes" placeholder="Додаткова інформація"></div>
+      </div>
+      <div class="fg m16">
+        <button class="btn bp" type="button" onclick="Inv.save()" id="btn-save">Додати предмет</button>
+        <button class="btn bs" type="button" onclick="Inv.closeForm()">Скасувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="mo" id="detail-modal" onclick="if(event.target===this)Inv.closeDetail()">
+  <div class="md">
+    <div class="md-h"><div class="md-t" id="detail-title"></div>
+      <button class="md-x" onclick="Inv.closeDetail()">×</button></div>
+    <div class="md-b" id="detail-body"></div>
+  </div>
+</div>
+
+<script src="nexus-core.js"></script>
+  <script src="inventory.js"></script>
+<script src="nexus-assistant.js"></script>
+</body>
+</html>

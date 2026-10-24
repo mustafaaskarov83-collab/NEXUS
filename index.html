@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS - Головна</title>
+<link rel="stylesheet" href="portal.css">
+<script>
+  (function(){
+    try {
+      var saved = localStorage.getItem('nexus_theme_v1') || 'auto';
+      document.documentElement.setAttribute('data-theme', saved);
+    } catch(e){}
+  })();
+</script>
+</head>
+<body>
+
+<div id="portal-auth-ov" class="portal-auth-ov">
+  <div class="portal-auth-card">
+    <div class="portal-auth-brand">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12h6M9 16h6M9 8h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
+      <div>
+        <div class="portal-auth-brand-n">NEXUS ENGENEERING</div>
+        <div class="portal-auth-brand-s">Вхід до системи NEXUS</div>
+      </div>
+    </div>
+    <h2 class="portal-auth-t" id="portal-auth-t">Вхід до системи NEXUS</h2>
+    <p class="portal-auth-h" id="portal-auth-h">Введіть облікові дані</p>
+    <div class="portal-auth-err" id="portal-auth-err"></div>
+    <form id="portal-auth-form" onsubmit="event.preventDefault();Portal.submitAuth()">
+      <div class="portal-auth-f">
+        <label for="portal-au">Ім'я користувача</label>
+        <input id="portal-au" type="text" autocomplete="username" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="portal-auth-f">
+        <label for="portal-ap">Пароль</label>
+        <input id="portal-ap" type="password" autocomplete="current-password">
+      </div>
+      <div class="portal-auth-f" id="portal-conf-f" style="display:none">
+        <label for="portal-ac">Підтвердіть пароль</label>
+        <input id="portal-ac" type="password" autocomplete="new-password">
+      </div>
+      <button type="submit" class="portal-auth-btn" id="portal-auth-btn">Увійти</button>
+    </form>
+    <div class="portal-auth-foot">
+      <div class="portal-auth-v">NEXUS v5.0.4</div>
+    </div>
+  </div>
+</div>
+
+<div class="nexus-shell">
+  <!-- LEFT SIDEBAR: personal cabinet navigation -->
+  <aside class="nexus-sidebar" id="nexus-sidebar">
+    <div class="nexus-sidebar__brand">
+      <div class="nexus-sidebar__logo">N</div>
+      <div class="nexus-sidebar__brand-text">
+        <div class="nexus-sidebar__brand-name">NEXUS</div>
+        <div class="nexus-sidebar__brand-tag">Engineering</div>
+      </div>
+    </div>
+
+    <div class="nexus-sidebar__user" id="sidebar-user">
+      <div class="nexus-sidebar__avatar" id="sidebar-avatar">?</div>
+      <div class="nexus-sidebar__user-info">
+        <div class="nexus-sidebar__user-name" id="sidebar-user-name">—</div>
+        <div class="nexus-sidebar__user-role" id="sidebar-user-role">—</div>
+      </div>
+    </div>
+
+    <nav class="nexus-sidebar__nav" id="sidebar-nav">
+      <a class="nexus-nav-item nexus-nav-item--active" href="index.html">
+        <span class="nexus-nav-icon">🏠</span><span class="nexus-nav-label">Мій кабінет</span>
+        <span class="nexus-nav-badge" id="nav-badge-cabinet" hidden></span>
+      </a>
+      <div class="nexus-nav-section">Модулі</div>
+      <a class="nexus-nav-item" href="hr.html" data-auth="1" data-module="hr"><span class="nexus-nav-icon">👥</span><span class="nexus-nav-label">Кадровий облік</span></a>
+      <a class="nexus-nav-item" href="projects.html" data-auth="1" data-module="projects"><span class="nexus-nav-icon">📁</span><span class="nexus-nav-label">Проекти</span></a>
+      <a class="nexus-nav-item" href="tasks.html" data-auth="1" data-module="tasks"><span class="nexus-nav-icon">✅</span><span class="nexus-nav-label">Задачі</span><span class="nexus-nav-badge" id="nav-badge-tasks" hidden></span></a>
+      <a class="nexus-nav-item" href="calendar.html" data-auth="1" data-module="calendar"><span class="nexus-nav-icon">📅</span><span class="nexus-nav-label">Календар</span></a>
+      <a class="nexus-nav-item" href="mail.html" data-auth="1" data-module="mail"><span class="nexus-nav-icon">✉</span><span class="nexus-nav-label">Пошта</span><span class="nexus-nav-badge" id="nav-badge-mail" hidden></span></a>
+      <a class="nexus-nav-item" href="inventory.html" data-auth="1" data-module="inventory"><span class="nexus-nav-icon">📦</span><span class="nexus-nav-label">Інвентар</span><span class="nexus-nav-badge" id="nav-badge-inventory" hidden></span></a>
+      <a class="nexus-nav-item" href="fleet.html" data-auth="1" data-module="fleet"><span class="nexus-nav-icon">🚗</span><span class="nexus-nav-label">Авто і паливо</span><span class="nexus-nav-badge" id="nav-badge-fleet" hidden></span></a>
+      <a class="nexus-nav-item" href="warehouse.html" data-auth="1" data-module="warehouse"><span class="nexus-nav-icon">🏬</span><span class="nexus-nav-label">Склад</span></a>
+      <a class="nexus-nav-item" href="documents.html" data-auth="1" data-module="documents"><span class="nexus-nav-icon">📄</span><span class="nexus-nav-label">Документообіг</span></a>
+      <a class="nexus-nav-item" href="finance.html" data-auth="1" data-module="finance"><span class="nexus-nav-icon">💰</span><span class="nexus-nav-label">Фінанси</span></a>
+      <a class="nexus-nav-item" href="crm.html" data-auth="1" data-module="crm"><span class="nexus-nav-icon">🤝</span><span class="nexus-nav-label">CRM — Клієнти</span></a>
+      <a class="nexus-nav-item" href="dashboard.html" data-auth="1" data-module="dashboard"><span class="nexus-nav-icon">📊</span><span class="nexus-nav-label">Дашборд KPI</span></a>
+      <a class="nexus-nav-item" href="reports.html" data-auth="1" data-module="reports"><span class="nexus-nav-icon">📈</span><span class="nexus-nav-label">Звіти</span></a>
+      <a class="nexus-nav-item" href="audit.html" data-auth="1" data-module="audit"><span class="nexus-nav-icon">📋</span><span class="nexus-nav-label">Аудит / Логи</span></a>
+    </nav>
+
+    <div class="nexus-sidebar__foot">
+      <button type="button" class="nexus-sidebar__theme" id="sidebar-theme-btn" title="Змінити тему">🌗 Тема</button>
+      <button type="button" class="nexus-sidebar__logout" id="sidebar-logout-btn">🚪 Вийти</button>
+    </div>
+  </aside>
+
+  <div class="nexus-main">
+<header class="portal-header">
+  <div class="portal-header__inner">
+    <div class="portal-brand">
+      <button type="button" class="nexus-sidebar-toggle" id="sidebar-toggle" aria-label="Меню">☰</button>
+      <div class="portal-brand__logo">N</div>
+      <div class="portal-brand__text">
+        <div class="portal-brand__name">NEXUS — Мій кабінет</div>
+        <div class="portal-brand__tag">Особистий простір</div>
+      </div>
+    </div>
+    <div class="portal-header__right">
+      <div class="portal-clock" id="portal-clock">—</div>
+      <button class="portal-theme-btn" type="button" title="Змінити тему">🌗</button>
+      <button type="button" class="portal-notify-btn" id="portal-notify-btn" title="Сповіщення">
+        🔔<span class="portal-notify-count" id="portal-notify-count" hidden>0</span>
+      </button>
+      <div class="portal-user-wrap">
+        <button class="portal-user-btn" id="portal-user-btn" type="button">
+          <div class="portal-user__avatar" id="portal-user-avatar">?</div>
+          <div class="portal-user__info">
+            <div class="portal-user__name" id="portal-user-name">—</div>
+            <div class="portal-user__role" id="portal-user-role">—</div>
+          </div>
+        </button>
+        <div class="portal-user-menu" id="portal-user-menu" hidden>
+          <div class="portal-user-menu__head">
+            <div class="portal-user-menu__name" id="portal-menu-name">—</div>
+            <div class="portal-user-menu__role" id="portal-menu-role">—</div>
+          </div>
+          <button type="button" class="portal-user-menu__item" id="portal-menu-photo">📷 Змінити фото</button>
+          <input type="file" id="portal-photo-file" accept="image/*" hidden>
+          <button type="button" class="portal-user-menu__item" id="portal-menu-users">👥 Користувачі та доступ</button>
+          <button type="button" class="portal-user-menu__item" id="portal-menu-backup">💾 Завантажити бекап</button>
+          <button type="button" class="portal-user-menu__item" id="portal-menu-restore">📥 Відновити з бекапу</button>
+          <input type="file" id="portal-restore-file" accept=".json,application/json" hidden>
+          <button type="button" class="portal-user-menu__item portal-user-menu__item--danger" id="portal-menu-logout">🚪 Вийти</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- PERSONAL CABINET -->
+<section class="cabinet-hero">
+  <div class="cabinet-hero__left">
+    <div class="cabinet-eyebrow">Personal workspace</div>
+    <div class="portal-hero__greet" id="portal-greet">Доброго дня</div>
+    <h1 class="portal-hero__title" id="cabinet-title">Мій кабінет</h1>
+    <p class="portal-hero__subtitle" id="cabinet-subtitle">
+      Усе, що стосується вас у NEXUS: задачі, транспорт, інвентар, документи, проекти та сповіщення.
+    </p>
+  </div>
+  <div class="cabinet-hero__stats" id="cabinet-quick-stats"></div>
+</section>
+
+<section class="cabinet-grid" id="cabinet-personal" aria-label="Особисті дані">
+  <div class="cabinet-card" id="cab-tasks">
+    <div class="cabinet-card__head">
+      <span class="cabinet-card__title"><span class="cabinet-card__ico">✓</span> Мої задачі</span>
+      <a href="tasks.html" class="cabinet-card__link">Усі →</a>
+    </div>
+    <div class="cabinet-card__body" id="cab-tasks-body"><div class="cabinet-empty">Завантаження…</div></div>
+  </div>
+  <div class="cabinet-card" id="cab-fleet">
+    <div class="cabinet-card__head">
+      <span class="cabinet-card__title"><span class="cabinet-card__ico">◆</span> Авто і паливо</span>
+      <a href="fleet.html" class="cabinet-card__link">Автопарк →</a>
+    </div>
+    <div class="cabinet-card__body" id="cab-fleet-body"><div class="cabinet-empty">Завантаження…</div></div>
+  </div>
+  <div class="cabinet-card" id="cab-inventory">
+    <div class="cabinet-card__head">
+      <span class="cabinet-card__title"><span class="cabinet-card__ico">▣</span> Мій інвентар</span>
+      <a href="inventory.html" class="cabinet-card__link">Інвентар →</a>
+    </div>
+    <div class="cabinet-card__body" id="cab-inventory-body"><div class="cabinet-empty">Завантаження…</div></div>
+  </div>
+  <div class="cabinet-card" id="cab-docs">
+    <div class="cabinet-card__head">
+      <span class="cabinet-card__title"><span class="cabinet-card__ico">≡</span> Мої документи</span>
+      <a href="documents.html" class="cabinet-card__link">Документи →</a>
+    </div>
+    <div class="cabinet-card__body" id="cab-docs-body"><div class="cabinet-empty">Завантаження…</div></div>
+  </div>
+  <div class="cabinet-card" id="cab-projects">
+    <div class="cabinet-card__head">
+      <span class="cabinet-card__title"><span class="cabinet-card__ico">◇</span> Мої проекти</span>
+      <a href="projects.html" class="cabinet-card__link">Проекти →</a>
+    </div>
+    <div class="cabinet-card__body" id="cab-projects-body"><div class="cabinet-empty">Завантаження…</div></div>
+  </div>
+  <div class="cabinet-card" id="cab-calendar">
+    <div class="cabinet-card__head">
+      <span class="cabinet-card__title"><span class="cabinet-card__ico">📅</span> Календар</span>
+      <a href="calendar.html" class="cabinet-card__link">Відкрити →</a>
+    </div>
+    <div class="cabinet-card__body" id="cab-calendar-body"><div class="cabinet-empty">Завантаження…</div></div>
+  </div>
+  <div class="cabinet-card" id="cab-mail">
+    <div class="cabinet-card__head">
+      <span class="cabinet-card__title"><span class="cabinet-card__ico">✉</span> Пошта</span>
+      <a href="mail.html" class="cabinet-card__link">Вхідні →</a>
+    </div>
+    <div class="cabinet-card__body" id="cab-mail-body"><div class="cabinet-empty">Завантаження…</div></div>
+  </div>
+  <div class="cabinet-card" id="cab-notify">
+    <div class="cabinet-card__head">
+      <span class="cabinet-card__title"><span class="cabinet-card__ico">◉</span> Сповіщення</span>
+      <button type="button" class="cabinet-card__link" id="cab-notify-mark">Прочитати всі</button>
+    </div>
+    <div class="cabinet-card__body" id="cab-notify-body"><div class="cabinet-empty">Завантаження…</div></div>
+  </div>
+  <div class="cabinet-card cabinet-card--wide" id="cab-hr">
+    <div class="cabinet-card__head">
+      <span class="cabinet-card__title"><span class="cabinet-card__ico">◎</span> Кадрові дані</span>
+      <a href="hr.html" class="cabinet-card__link">HR →</a>
+    </div>
+    <div class="cabinet-card__body" id="cab-hr-body"><div class="cabinet-empty">Завантаження…</div></div>
+  </div>
+</section>
+
+<section class="portal-hero portal-hero--compact">
+  <div class="cabinet-eyebrow">Company modules</div>
+  <h2 class="portal-hero__title" style="font-size:1.35rem;margin:0">Усі модулі компанії</h2>
+  <p class="portal-hero__subtitle" style="margin-top:4px">
+    Повний доступ до розділів NEXUS
+  </p>
+</section>
+
+<section class="portal-quick-stats portal-main-links" aria-label="Основні розділи">
+  <a class="qstat" href="projects.html" data-auth="1" data-module="projects"><div class="qstat__icon purple">📁</div><div><div class="qstat__label">Проекти</div></div></a>
+  <a class="qstat" href="warehouse.html" data-auth="1" data-module="warehouse" aria-label="Склад"><div class="qstat__icon orange">🏬</div><div><div class="qstat__label">Склад</div></div></a>
+  <a class="qstat" href="finance.html" data-auth="1" data-module="finance"><div class="qstat__icon green">💰</div><div><div class="qstat__label">Фінанси</div></div></a>
+  <a class="qstat" href="#" aria-label="Закупівки"><div class="qstat__icon blue">🛒</div><div><div class="qstat__label">Закупівки</div></div></a>
+  <a class="qstat" href="inventory.html" data-auth="1" data-module="inventory"><div class="qstat__icon green">📦</div><div><div class="qstat__label">Інвентар</div></div></a>
+  <a class="qstat" href="fleet.html" data-auth="1" data-module="fleet"><div class="qstat__icon orange">🚗</div><div><div class="qstat__label">Авто і паливо</div></div></a>
+  <a class="qstat" href="#" aria-label="О компанії"><div class="qstat__icon purple">🏢</div><div><div class="qstat__label">О компанії</div></div></a>
+</section>
+
+<section class="portal-section">
+  <div class="portal-section__head">
+    <div class="portal-section__title">🏢 Операційні модулі</div>
+    <div class="portal-section__hint">Щоденна робота компанії</div>
+  </div>
+  <div class="portal-grid">
+
+    <a class="pmodule" href="hr.html" data-auth="1" data-module="hr">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--primary-bg)">👥</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">Кадровий облік</div>
+      <div class="pmodule__desc">Співробітники, відпустки, лікарняні, прикази, календар.</div>
+      <div class="pmodule__meta">
+        <span>Управління персоналом</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="pmodule" href="inventory.html" data-auth="1" data-module="inventory">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--success-bg)">📦</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">Інвентар</div>
+      <div class="pmodule__desc">Обладнання, техніка, меблі, інструменти. Хто за що відповідає.</div>
+      <div class="pmodule__meta">
+        <span>Основні засоби</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="pmodule" href="fleet.html" data-auth="1" data-module="fleet">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--warn-bg)">🚗</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">Авто і витрата палива</div>
+      <div class="pmodule__desc">Автопарк, держномери, пробіг, журнал заправок і витрати на паливо.</div>
+      <div class="pmodule__meta">
+        <span>Транспорт</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="pmodule" href="documents.html" data-auth="1" data-module="documents">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--warn-bg)">📄</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">Документообіг</div>
+      <div class="pmodule__desc">Договори, акти, рахунки, накази. З контролем сум і контрагентів.</div>
+      <div class="pmodule__meta">
+        <span>Діловодство</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="pmodule" href="projects.html" data-auth="1" data-module="projects">
+      <div class="pmodule__head"><div class="pmodule__icon" style="background:var(--purple-bg)">📁</div><span class="pmodule__badge pmodule__badge--new">Готово</span></div>
+      <div class="pmodule__title">Проекти</div><div class="pmodule__desc">Єдиний центр проектів: персонал, договори, інвентар, задачі, фінанси, статуси та суми.</div>
+      <div class="pmodule__meta"><span>Центральний модуль</span><span class="pmodule__arrow">→</span></div></a>
+    <a class="pmodule" href="tasks.html" data-auth="1" data-module="tasks">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--purple-bg)">✅</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">Задачі та проєкти</div>
+      <div class="pmodule__desc">Канбан-дошка, дедлайни, пріоритети, відповідальні.</div>
+      <div class="pmodule__meta">
+        <span>Управління проєктами</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="pmodule" href="calendar.html" data-auth="1" data-module="calendar">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--primary-bg)">📅</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">Календар</div>
+      <div class="pmodule__desc">Задачі, відпустки, лікарняні, сервіс авто, особисті події. Експорт ICS.</div>
+      <div class="pmodule__meta">
+        <span>Планування</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="pmodule" href="mail.html" data-auth="1" data-module="mail">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--success-bg)">✉</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">Пошта</div>
+      <div class="pmodule__desc">Внутрішні повідомлення між користувачами NEXUS і відкриття зовнішньої пошти (mailto).</div>
+      <div class="pmodule__meta">
+        <span>Комунікації</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="pmodule pmodule--soon" href="#">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--g100)">📚</div>
+        <span class="pmodule__badge pmodule__badge--soon">Скоро</span>
+      </div>
+      <div class="pmodule__title">База знань</div>
+      <div class="pmodule__desc">Інструкції, регламенти, FAQ, корисні статті.</div>
+      <div class="pmodule__meta">
+        <span>Wiki компанії</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<section class="portal-section">
+  <div class="portal-section__head">
+    <div class="portal-section__title">💰 Фінанси та комерція</div>
+    <div class="portal-section__hint">Гроші, клієнти, закупівлі</div>
+  </div>
+  <div class="portal-grid">
+
+    <a class="pmodule" href="finance.html" data-auth="1" data-module="finance">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--success-bg)">💵</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">Фінанси</div>
+      <div class="pmodule__desc">Доходи, витрати, баланс, рахунки та категорії операцій.</div>
+      <div class="pmodule__meta">
+        <span>Облік грошей</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="pmodule" href="crm.html" data-auth="1" data-module="crm">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--primary-bg)">🤝</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">CRM — Клієнти</div>
+      <div class="pmodule__desc">Воронка, картки клієнтів, активності, портфель прибуткових договорів.</div>
+      <div class="pmodule__meta">
+        <span>Відносини з клієнтами</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="pmodule" href="warehouse.html" data-auth="1" data-module="warehouse">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--warn-bg)">🏬</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">Склад</div>
+      <div class="pmodule__desc">Номенклатура, залишки, прихід/витрата, мінімальні запаси, Excel.</div>
+      <div class="pmodule__meta">
+        <span>Складський облік</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="pmodule pmodule--soon" href="#">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--warn-bg)">🛒</div>
+        <span class="pmodule__badge pmodule__badge--soon">Скоро</span>
+      </div>
+      <div class="pmodule__title">Закупівлі</div>
+      <div class="pmodule__desc">Постачальники, замовлення, прайси, історія закупівель.</div>
+      <div class="pmodule__meta">
+        <span>Постачання</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<section class="portal-section">
+  <div class="portal-section__head">
+    <div class="portal-section__title">📊 Аналітика та контроль</div>
+    <div class="portal-section__hint">Показники, звіти, історія</div>
+  </div>
+  <div class="portal-grid">
+
+    <a class="pmodule" href="dashboard.html" data-auth="1" data-module="dashboard">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--primary-bg)">📈</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">Дашборд KPI</div>
+      <div class="pmodule__desc">Графіки по кадрах, ФОТ, відпустках, лікарняних та інвентарю.</div>
+      <div class="pmodule__meta">
+        <span>Аналітика бізнесу</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="pmodule" href="reports.html" data-auth="1" data-module="reports">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--g100)">📉</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">Звіти</div>
+      <div class="pmodule__desc">20+ звітів: кадри, договори, фінанси, авто, CRM, проекти. Excel і період.</div>
+      <div class="pmodule__meta">
+        <span>Звітність</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="pmodule" href="audit.html" data-auth="1" data-module="audit">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--danger-bg)">🔍</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">Аудит / Логи</div>
+      <div class="pmodule__desc">Журнал дій: хто, що, коли. Фільтри, деталі, Excel. До 2000 подій.</div>
+      <div class="pmodule__meta">
+        <span>Безпека та контроль</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<section class="portal-section">
+  <div class="portal-section__head">
+    <div class="portal-section__title">⚙️ Система та налаштування</div>
+    <div class="portal-section__hint">Адміністрування</div>
+  </div>
+  <div class="portal-grid">
+
+    <a class="pmodule" href="hr.html#settings" data-auth="1" data-module="hr">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--g100)">👤</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">Користувачі</div>
+      <div class="pmodule__desc">Ролі, права доступу, додавання нових співробітників у систему.</div>
+      <div class="pmodule__meta">
+        <span>Управління доступом</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="pmodule" href="hr.html#settings" data-auth="1" data-module="hr">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--g100)">🏢</div>
+        <span class="pmodule__badge pmodule__badge--new">Готово</span>
+      </div>
+      <div class="pmodule__title">Реквізити компанії</div>
+      <div class="pmodule__desc">Назва, ЄДРПОУ, юридична адреса, керівник.</div>
+      <div class="pmodule__meta">
+        <span>Дані підприємства</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="pmodule pmodule--soon" href="#">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--g100)">💾</div>
+        <span class="pmodule__badge pmodule__badge--soon">Скоро</span>
+      </div>
+      <div class="pmodule__title">Резервні копії</div>
+      <div class="pmodule__desc">Автоматичне збереження даних, історія версій, відновлення.</div>
+      <div class="pmodule__meta">
+        <span>Бекапи</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<footer class="portal-footer">
+  <div id="portal-version">NEXUS ENGENEERING · Головна v5.0.4</div>
+  <div style="margin-top:4px;opacity:.7">Всі модулі в одному місці</div>
+</footer>
+
+  </div><!-- /.nexus-main -->
+</div><!-- /.nexus-shell -->
+
+<!-- USERS ACCESS MODAL -->
+<div class="mo" id="users-modal" onclick="if(event.target===this)Portal.closeUsersModal()">
+  <div class="md" style="max-width:920px">
+    <div class="md-h">
+      <div class="md-t">Користувачі та доступ до модулів</div>
+      <button class="md-x" type="button" onclick="Portal.closeUsersModal()">×</button>
+    </div>
+    <div class="md-b">
+      <div class="tsm tmu" style="margin-bottom:12px">Адміністратор бачить усі модулі. Іншим користувачам можна вибрати конкретні розділи.</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="btn bp" type="button" onclick="Portal.openUserForm()">➕ Новий користувач</button>
+      </div>
+      <div id="users-list"></div>
+      <div id="user-form-wrap" style="display:none;margin-top:18px;padding:16px;border:1px solid var(--border);border-radius:14px;background:var(--g50)">
+        <div style="font-weight:700;margin-bottom:12px" id="user-form-title">Новий користувач</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+          <div class="ff"><label>Логін *</label><input id="u-login" autocomplete="off"></div>
+          <div class="ff"><label>ПІБ</label><input id="u-name" autocomplete="off"></div>
+          <div class="ff"><label>Роль</label>
+            <select id="u-role" onchange="Portal.onUserRoleChange()">
+              <option value="manager">Менеджер</option>
+              <option value="viewer">Перегляд</option>
+              <option value="admin">Адміністратор</option>
+            </select>
+          </div>
+          <div class="ff"><label>Пароль <span id="u-pass-hint">*</span></label><input id="u-pass" type="password" autocomplete="new-password" placeholder="мін. 6 символів"></div>
+          <div class="ff" style="grid-column:1 / -1">
+            <label>Співробітник з кадрового обліку *</label>
+            <select id="u-employee" onchange="Portal.onEmployeeSelect()">
+              <option value="">— оберіть співробітника —</option>
+            </select>
+            <div class="tsm tmu" style="margin-top:6px">Користувач отримуватиме задачі, авто, інвентар і сповіщення саме цього співробітника.</div>
+          </div>
+        </div>
+        <div style="margin-top:14px;font-weight:700;font-size:13px">Доступ до модулів</div>
+        <div id="u-modules" class="u-mod-grid" style="margin-top:8px"></div>
+        <div class="fg" style="margin-top:14px;display:flex;gap:8px">
+          <button class="btn bp" type="button" onclick="Portal.saveUser()">Зберегти</button>
+          <button class="btn bs" type="button" onclick="Portal.cancelUserForm()">Скасувати</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="nexus-core.js"></script>
+<script src="portal.js"></script>
+<script src="nexus-assistant.js"></script>
+</body>
+</html>

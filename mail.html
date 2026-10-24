@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS — Пошта</title>
+<link rel="stylesheet" href="mail.css">
+<script>
+  (function(){
+    try {
+      var saved = localStorage.getItem('nexus_theme_v1') || 'auto';
+      document.documentElement.setAttribute('data-theme', saved);
+    } catch(e){}
+  })();
+</script>
+</head>
+<body>
+<div id="auth-ov" class="auth-ov">
+  <div class="auth-card">
+    <div class="auth-brand-n">NEXUS ENGENEERING</div>
+    <div class="auth-brand-s">Корпоративна пошта</div>
+    <h2 class="auth-t">Потрібен вхід</h2>
+    <p class="auth-h">Увійдіть через головну сторінку порталу</p>
+    <a href="index.html" class="btn bp" style="text-decoration:none">На головну</a>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header class="hd">
+    <div class="hd-in">
+      <div class="hd-br">
+        <a href="index.html" class="hd-home" title="На головну">←</a>
+        <span>
+          <b class="bn">NEXUS — Пошта</b>
+          <small class="bs">Внутрішні повідомлення та зовнішня пошта</small>
+        </span>
+      </div>
+      <div class="hd-actions">
+        <button type="button" class="btn bs" id="btn-theme">🌗</button>
+        <button type="button" class="btn bp" id="btn-compose">✉ Написати</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="mail-layout">
+    <nav class="mail-nav">
+      <button type="button" class="mail-folder active" data-folder="inbox">📥 Вхідні <span id="cnt-inbox" class="cnt"></span></button>
+      <button type="button" class="mail-folder" data-folder="sent">📤 Надіслані</button>
+      <button type="button" class="mail-folder" data-folder="system">🔔 Система <span id="cnt-system" class="cnt"></span></button>
+      <button type="button" class="mail-folder" data-folder="archive">📦 Архів</button>
+      <div class="mail-nav-hint">
+        Внутрішні листи між користувачами NEXUS. Зовнішню пошту можна відкрити через «mailto».
+      </div>
+    </nav>
+
+    <section class="mail-list-pane">
+      <div class="mail-search">
+        <input type="search" id="mail-q" placeholder="Пошук за темою, текстом, відправником…">
+      </div>
+      <div id="mail-list" class="mail-list"></div>
+    </section>
+
+    <section class="mail-read-pane" id="mail-read">
+      <div class="empty-read">Оберіть повідомлення</div>
+    </section>
+  </main>
+</div>
+
+<div class="mo" id="compose-modal" hidden>
+  <div class="md md-wide">
+    <div class="md-h">
+      <div class="md-t">Нове повідомлення</div>
+      <button type="button" class="md-x" id="compose-close">×</button>
+    </div>
+    <div class="md-b">
+      <div class="ff"><label>Кому (користувач NEXUS)</label>
+        <select id="c-to"><option value="">— оберіть —</option></select>
+      </div>
+      <div class="ff"><label>Або зовнішня email</label>
+        <input type="email" id="c-email" placeholder="name@company.com">
+      </div>
+      <div class="ff"><label>Тема *</label><input id="c-subject" maxlength="200"></div>
+      <div class="ff"><label>Текст *</label><textarea id="c-body" rows="8"></textarea></div>
+      <div class="fg">
+        <button type="button" class="btn bp" id="c-send-internal">Надіслати в NEXUS</button>
+        <button type="button" class="btn bs" id="c-send-mailto">Відкрити в поштовому клієнті</button>
+        <button type="button" class="btn bs" id="c-cancel">Скасувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="nexus-core.js"></script>
+<script src="mail.js"></script>
+</body>
+</html>

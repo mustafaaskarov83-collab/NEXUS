@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS — Аудит / Логи</title>
+<link rel="stylesheet" href="audit.css">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>if(!window.XLSX){document.write('<script src="vendor/xlsx.full.min.js"><\/script>');}</script>
+<script>(function(){try{document.documentElement.setAttribute('data-theme',localStorage.getItem('nexus_theme_v1')||'auto')}catch(e){}})();</script>
+</head>
+<body>
+<div id="auth-ov" class="auth-ov">
+  <div class="auth-card">
+    <div class="auth-brand"><div class="auth-brand-n">NEXUS ENGENEERING</div><div class="auth-brand-s">Аудит / Логи</div></div>
+    <h2 class="auth-t">Потрібен вхід</h2>
+    <p class="auth-h">Увійдіть через головну сторінку</p>
+    <a href="index.html" class="btn bp auth-sub" style="text-decoration:none">Перейти до входу</a>
+  </div>
+</div>
+
+<div id="app">
+  <header class="hd">
+    <div class="hd-in">
+      <div class="hd-br">
+        <a href="index.html" class="hd-home" title="На головну">←</a>
+        <span><b class="bn">NEXUS — Аудит / Логи</b></span>
+      </div>
+      <div class="hd-r">
+        <button class="theme-btn" type="button">🌗</button>
+        <button class="hd-u" type="button" onclick="Audit.logout()">
+          <div class="hd-av" id="av">?</div>
+          <div class="hd-ui"><div class="hd-un" id="hun">—</div><div class="hd-ur" id="hur">—</div></div>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="aud-main">
+    <div class="sg" id="stats"></div>
+
+    <div class="aud-toolbar">
+      <div class="ff" style="flex:1.4;min-width:200px">
+        <label>Пошук</label>
+        <input id="q" placeholder="дія, сутність, користувач, деталі…" oninput="Audit.render()">
+      </div>
+      <div class="ff">
+        <label>Тип дії</label>
+        <select id="f-action" onchange="Audit.render()">
+          <option value="">Усі дії</option>
+        </select>
+      </div>
+      <div class="ff">
+        <label>Сутність</label>
+        <select id="f-entity" onchange="Audit.render()">
+          <option value="">Усі сутності</option>
+        </select>
+      </div>
+      <div class="ff">
+        <label>Користувач</label>
+        <select id="f-user" onchange="Audit.render()">
+          <option value="">Усі</option>
+        </select>
+      </div>
+      <div class="ff">
+        <label>З</label>
+        <input type="date" id="f-from" onchange="Audit.render()">
+      </div>
+      <div class="ff">
+        <label>По</label>
+        <input type="date" id="f-to" onchange="Audit.render()">
+      </div>
+      <button class="btn bs" type="button" onclick="Audit.refresh()">🔄 Оновити</button>
+      <button class="btn bs" type="button" onclick="Audit.exportExcel()">📊 Excel</button>
+      <button class="btn bd" type="button" id="btn-clear" onclick="Audit.clearLogs()" style="display:none">Очистити логи</button>
+    </div>
+
+    <div class="c" style="padding:12px 16px;margin-bottom:12px">
+      <div class="tsm tmu">Журнал зберігає до <b>2000</b> останніх подій (NexusCore.audit). Тут видно хто, що і коли змінив у системі. Деталі — клік по рядку.</div>
+    </div>
+
+    <div class="aud-feed" id="feed"></div>
+  </main>
+</div>
+
+<div class="mo" id="detail-modal" onclick="if(event.target===this)Audit.closeDetail()">
+  <div class="md aud-detail-modal">
+    <div class="md-h">
+      <div class="md-t">Подія аудиту</div>
+      <button class="md-x" type="button" onclick="Audit.closeDetail()">×</button>
+    </div>
+    <div class="md-b" id="detail-body"></div>
+  </div>
+</div>
+
+<script src="nexus-core.js"></script>
+<script src="audit.js"></script>
+</body>
+</html>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS - Документообіг</title>
+<link rel="stylesheet" href="documents.css">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>if(!window.XLSX){document.write('<script src="vendor/xlsx.full.min.js"><\/script>');}</script>
+<script>
+  (function(){
+    try {
+      var saved = localStorage.getItem('nexus_theme_v1') || 'auto';
+      document.documentElement.setAttribute('data-theme', saved);
+    } catch(e){}
+  })();
+</script>
+</head>
+<body>
+
+<div id="auth-ov" class="auth-ov">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-n">NEXUS ENGENEERING</div>
+      <div class="auth-brand-s">Документообіг</div>
+    </div>
+    <h2 class="auth-t">Потрібен вхід</h2>
+    <p class="auth-h">Спочатку увійдіть у систему кадрового обліку</p>
+    <a href="hr.html" class="btn bp auth-sub" style="text-decoration:none">Перейти до входу</a>
+  </div>
+</div>
+
+<div id="app">
+  <header class="hd">
+    <div class="hd-in">
+      <div class="hd-br">
+        <a href="index.html" class="hd-home" title="На головну">←</a>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+        </svg>
+        <span>
+          <b class="bn">NEXUS - Документообіг</b>
+          
+        </span>
+      </div>
+      <div class="hd-r">
+        <button class="theme-btn" type="button" title="Змінити тему">🌗</button>
+        <button class="hd-u" onclick="Doc.logout()" title="Вийти">
+          <div class="hd-av" id="av">?</div>
+          <div class="hd-ui">
+            <div class="hd-un" id="hun">—</div>
+            <div class="hd-ur" id="hur">—</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="mn">
+
+    <!-- СТАТИСТИКА -->
+    <div class="sg" id="stats"></div>
+
+    <!-- КНОПКА ДОДАВАННЯ -->
+    <div class="c" style="padding:14px 18px">
+      <div class="fg" style="justify-content:flex-end">
+        <button class="btn bp" type="button" onclick="Doc.openForm()">➕ Додати документ</button>
+      </div>
+    </div>
+
+    <!-- МОДАЛКА ФОРМИ ДОКУМЕНТА -->
+    <div class="mo" id="doc-form-modal" onclick="if(event.target===this)Doc.closeForm()">
+      <div class="md" style="max-width:780px">
+        <div class="md-h">
+          <div class="md-t" id="form-title">Додати документ</div>
+          <button class="md-x" type="button" onclick="Doc.closeForm()">×</button>
+        </div>
+        <div class="md-b" id="form-body">
+
+        <div class="fr">
+          <div class="ff" style="max-width:360px">
+            <label>Тип документа <span class="rq">*</span></label>
+            <select id="f-type" onchange="Doc.typeChanged()">
+              <option value="contract">📝 Договір</option>
+              <option value="addendum">📎 Додаток до договору №</option>
+              <option value="act">📋 Акт</option>
+              <option value="invoice">💵 Рахунок</option>
+              <option value="order">📢 Наказ</option>
+              <option value="letter">✉️ Лист</option>
+              <option value="report">📊 Звіт</option>
+              <option value="other">📎 Інше</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="contract-form-fields">
+          <div class="fr">
+            <div class="ff" style="flex:2">
+              <label>Назва документу <span class="rq">*</span></label>
+              <input id="f-name" placeholder="Договір про надання послуг №123">
+            </div>
+            <div class="ff ffn">
+              <label>Номер</label>
+              <input id="f-num" placeholder="123/2026">
+            </div>
+          </div>
+          <div class="fr">
+            <div class="ff">
+              <label>Дата документа <span class="rq">*</span></label>
+              <input type="date" id="f-date">
+            </div>
+            <div class="ff">
+              <label>Діє до (необов'язково)</label>
+              <input type="date" id="f-until">
+            </div>
+            <div class="ff">
+              <label>Сума, грн</label>
+              <input type="number" id="f-amount" value="0" min="0" step="0.01">
+            </div>
+          </div>
+          <div class="fr" id="contract-kind-row">
+            <div class="ff">
+              <label>Вид договору <span class="rq">*</span></label>
+              <select id="f-contract-kind">
+                <option value="income">💰 Прибутковий (з замовником)</option>
+                <option value="expense">📉 Витратний (наші витрати)</option>
+              </select>
+            </div>
+            <div class="ff" style="flex:2">
+              <label class="tsm tmu" style="margin-top:22px;font-weight:500">Прибутковий — нам платять. Витратний — ми платимо (оренда, СТО, постачальник…).</label>
+            </div>
+          </div>
+          <div class="fr">
+            <div class="ff" style="flex:2">
+              <label>Контрагент (з CRM) <span class="rq">*</span></label>
+              <select id="f-client" onchange="Doc.onClientPick()">
+                <option value="">— оберіть з CRM —</option>
+              </select>
+              <div class="tsm tmu" style="margin-top:4px">База з модуля CRM. <a href="crm.html" target="_blank">Відкрити CRM</a></div>
+            </div>
+            <div class="ff">
+              <label>Назва (як у договорі)</label>
+              <input id="f-counter" placeholder="підтягується з CRM" readonly style="background:var(--g50)">
+            </div>
+            <div class="ff">
+              <label>ЄДРПОУ</label>
+              <input id="f-edrpou" placeholder="з CRM" readonly style="background:var(--g50)" class="tmn">
+            </div>
+            <div class="ff">
+              <label>Статус</label>
+              <select id="f-status">
+                <option value="draft">✏️ Чернетка</option>
+                <option value="active">🟢 Активний</option>
+                <option value="done">✅ Виконано</option>
+                <option value="archive">📦 Архів</option>
+                <option value="cancelled">❌ Скасовано</option>
+              </select>
+            </div>
+          </div>
+          <div class="fr">
+            <div class="ff" style="flex:2">
+              <label>Проект</label>
+              <select id="f-project" onchange="Doc.syncProject()">
+                <option value="">— без проекту —</option>
+              </select>
+            </div>
+            <div class="ff">
+              <label>Відповідальний</label>
+              <select id="f-emp"><option value="">— не вказано —</option></select>
+            </div>
+            <div class="ff">
+              <label>Посилання на файл (URL)</label>
+              <input id="f-link" placeholder="https://drive.google.com/...">
+            </div>
+          </div>
+          <div class="fr">
+            <div class="ff">
+              <label>Опис / примітки</label>
+              <input id="f-notes" placeholder="Додаткова інформація">
+            </div>
+          </div>
+        </div>
+
+        <div id="addendum-form-fields" style="display:none">
+          <div class="fr">
+            <div class="ff">
+              <label>Номер додатка <span class="rq">*</span></label>
+              <input id="f-addendum-num" placeholder="1">
+            </div>
+            <div class="ff" style="flex:2">
+              <label>До якого договору <span class="rq">*</span></label>
+              <select id="f-parent-contract" onchange="Doc.syncParentContract()">
+                <option value="">— оберіть договір —</option>
+              </select>
+            </div>
+          </div>
+          <div class="fr">
+            <div class="ff">
+              <label>Дата додатка <span class="rq">*</span></label>
+              <input type="date" id="f-addendum-date">
+            </div>
+            <div class="ff">
+              <label>Діє до (необов'язково)</label>
+              <input type="date" id="f-addendum-until">
+            </div>
+            <div class="ff">
+              <label>Сума, грн</label>
+              <input type="number" id="f-addendum-amount" value="0" min="0" step="0.01">
+            </div>
+          </div>
+          <div class="fr">
+            <div class="ff">
+              <label>Проект</label>
+              <input id="f-addendum-project" readonly placeholder="Буде успадковано від договору">
+            </div>
+            <div class="ff">
+              <label>Контрагент</label>
+              <input id="f-addendum-counter" readonly placeholder="Буде успадковано від договору">
+            </div>
+            <div class="ff">
+              <label>Статус</label>
+              <select id="f-addendum-status">
+                <option value="draft">✏️ Чернетка</option>
+                <option value="active">🟢 Активний</option>
+                <option value="done">✅ Виконано</option>
+                <option value="archive">📦 Архів</option>
+                <option value="cancelled">❌ Скасовано</option>
+              </select>
+            </div>
+          </div>
+          <div class="fr">
+            <div class="ff">
+              <label>Відповідальний</label>
+              <select id="f-addendum-emp"><option value="">— не вказано —</option></select>
+            </div>
+            <div class="ff" style="flex:2">
+              <label>Посилання на файл (URL)</label>
+              <input id="f-addendum-link" placeholder="https://drive.google.com/...">
+            </div>
+          </div>
+          <div class="fr">
+            <div class="ff">
+              <label>Опис / примітки</label>
+              <input id="f-addendum-notes" placeholder="Додаткова інформація">
+            </div>
+          </div>
+        </div>
+
+        <div class="fg m16">
+          <button class="btn bp" onclick="Doc.save()" id="btn-save">Додати документ</button>
+          <button class="btn bs" onclick="Doc.closeForm()" id="btn-reset">Скасувати</button>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- СПИСОК -->
+    <div class="c">
+      <div class="ch">
+        <div class="ct">📄 <span>Список документів</span> <span class="bg bg-b" id="doc-count">0</span></div>
+        <div class="fg">
+          <input id="search" placeholder="Пошук..." style="width:200px" oninput="Doc.filter()">
+          <select id="filter-type" onchange="Doc.filter()" style="width:auto">
+            <option value="">Всі типи</option>
+            <option value="contract">📝 Договір</option>
+            <option value="addendum">📎 Додаток до договору №</option>
+            <option value="act">📋 Акт</option>
+            <option value="invoice">💵 Рахунок</option>
+            <option value="order">📢 Наказ</option>
+            <option value="letter">✉️ Лист</option>
+            <option value="report">📊 Звіт</option>
+            <option value="other">📎 Інше</option>
+          </select>
+          <select id="filter-contract-kind" onchange="Doc.filter()" style="width:auto" title="Вид договору">
+            <option value="">Всі договори</option>
+            <option value="income">💰 Прибуткові</option>
+            <option value="expense">📉 Витратні</option>
+          </select>
+          <select id="filter-status" onchange="Doc.filter()" style="width:auto">
+            <option value="">Всі статуси</option>
+            <option value="draft">✏️ Чернетка</option>
+            <option value="active">🟢 Активний</option>
+            <option value="done">✅ Виконано</option>
+            <option value="archive">📦 Архів</option>
+            <option value="cancelled">❌ Скасовано</option>
+          </select>
+        </div>
+      </div>
+      <div id="doc-list"></div>
+    </div>
+
+    <!-- ЭКСПОРТ -->
+    <div class="c">
+      <div class="ch"><div class="ct">📤 Експорт та друк</div></div>
+      <div class="fg">
+        <button class="btn bs" onclick="Doc.exportExcel()">📊 Експорт у Excel</button>
+        <button class="btn bs" onclick="Doc.exportJSON()">💾 Експорт JSON</button>
+        <button class="btn bs" onclick="document.getElementById('json-in').click()">📥 Імпорт JSON</button>
+        <input type="file" id="json-in" accept=".json" style="display:none" onchange="Doc.importJSON(event)">
+        <button class="btn bd" onclick="Doc.clearAll()" style="margin-left:auto">🗑️ Очистити все</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="mo" id="detail-modal" onclick="if(event.target===this)Doc.closeDetail()">
+  <div class="md">
+    <div class="md-h"><div class="md-t" id="detail-title"></div>
+      <button class="md-x" onclick="Doc.closeDetail()">×</button></div>
+    <div class="md-b" id="detail-body"></div>
+  </div>
+</div>
+
+<script src="nexus-core.js"></script>
+  <script src="documents.js"></script>
+<script src="nexus-assistant.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!doctype html><html lang="uk" data-theme="auto"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NEXUS - Проекти</title><link rel="stylesheet" href="projects.css"><script>(function(){try{document.documentElement.setAttribute('data-theme',localStorage.getItem('nexus_theme_v1')||'auto')}catch(e){}})();</script><script src="nexus-core.js"></script><script src="projects.js" defer></script></head><body><div id="app"><header class="hd"><div class="hd-in"><div class="brand"><a href="index.html">←</a><b>NEXUS - Проекти</b></div><div class="user"><button class="theme-btn">🌗</button><div id="av" class="avatar">?</div><div><b id="hun">—</b><small id="hur">—</small></div><button onclick="localStorage.removeItem('nexus_session_v1');location.href='index.html'">Вийти</button></div></div></header><main class="main"><div class="stats" id="stats"></div><section class="panel" style="padding:14px 18px"><div style="display:flex;justify-content:flex-end;align-items:center"><button class="btn primary" id="btn-toggle-form" type="button" onclick="Projects.openForm()">➕ Новий проект</button></div></section>
+<div id="project-form-modal" class="modal" onclick="if(event.target===this)Projects.closeForm()"><div class="modal-box" style="max-width:720px"><div class="modal-head"><h2 id="form-title">Новий проект</h2><button type="button" onclick="Projects.closeForm()">×</button></div><div id="form-body"><div class="grid"><label>Код проекту *<input id="f-code" type="text" placeholder="Код проекту" required></label><label>Назва проекту *<input id="f-name" type="text" placeholder="Назва проекту" required></label><label>Договір *<select id="f-contract" onchange="Projects.contractChanged()"><option value="">— оберіть договір —</option></select></label><label>Сума договору<input id="f-amount" type="number" readonly value="0"></label><label>Замовник (контрагент)<input id="f-customer" readonly placeholder="Підтягується з договору"></label><label>Керівник проекту<select id="f-manager"><option value="">— не вказано —</option></select></label><label>Дата початку договору<input id="f-start" type="date" readonly></label><label>Дата завершення договору<input id="f-end" type="date" readonly></label><label>Валюта договору<input id="f-currency" value="UAH" readonly></label><label>Статус<select id="f-status"><option value="planning">Планування</option><option value="active">Активний</option><option value="paused">Призупинено</option><option value="done">Завершено</option><option value="cancelled">Скасовано</option></select></label></div>
+<div id="addendum-block" style="margin:12px 0;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+  <button type="button" id="addendum-toggle" class="btn secondary" style="width:100%;justify-content:space-between;border-radius:0;border:0" onclick="Projects.toggleAddendum()">
+    <span>📎 Додаток до договору <small style="opacity:.7">(опційно)</small></span>
+    <span id="addendum-toggle-icon">▾</span>
+  </button>
+  <div id="addendum-body" class="hidden" style="padding:14px 16px;border-top:1px solid var(--border)">
+    <div class="grid">
+      <label>Додаток до договору<select id="f-addendum" onchange="Projects.addendumChanged()"><option value="">— без додатка —</option></select></label>
+      <label>Сума додатку<input id="f-addendum-amount" type="number" readonly value="0"></label>
+      <label>Дата додатку<input id="f-addendum-date" type="date" readonly></label>
+      <label>Діє до<input id="f-addendum-until" type="date" readonly></label>
+    </div>
+    <p id="addendum-hint" style="margin:8px 0 0;color:var(--muted);font-size:13px">Спочатку оберіть договір — тоді з’являться додатки саме до нього.</p>
+  </div>
+</div>
+<div class="grid" style="margin-top:12px">
+  <label>Сума проекту рахується як *
+    <select id="f-amount-source" onchange="Projects.recalcProjectAmount()">
+      <option value="contract">Сума договору</option>
+      <option value="addendum">Сума додатку</option>
+      <option value="sum">Сума договору + сума додатку</option>
+    </select>
+  </label>
+  <label>Сума проекту
+    <input id="f-project-amount" type="number" readonly value="0">
+  </label>
+</div>
+<label>Опис проекту<textarea id="f-description" rows="3" placeholder="Мета, обсяг робіт, ключова інформація..."></textarea></label><div class="actions"><button class="btn primary" id="btn-save" onclick="Projects.save()">Створити проект</button><button class="btn secondary" id="btn-reset" onclick="Projects.closeForm()">Скасувати</button></div></div></div></div><section class="panel"><div class="panel-head"><div><h2>📁 Проекти <span class="badge" id="count">0</span></h2></div><div class="filters"><input id="search" placeholder="🔍 Пошук проекту..." oninput="Projects.render()"><select id="filter-status" onchange="Projects.render()"><option value="">Всі статуси</option><option value="planning">Планування</option><option value="active">Активні</option><option value="paused">Призупинені</option><option value="done">Завершені</option><option value="cancelled">Скасовані</option></select></div></div><div id="project-list" class="projects"></div></section></main></div><div id="detail-modal" class="modal" onclick="if(event.target===this)Projects.close()"><div class="modal-box"><div class="modal-head"><h2 id="detail-title"></h2><button onclick="Projects.close()">×</button></div><div id="detail-body"></div></div></div><script src="nexus-assistant.js"></script>
+</body></html>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS — Склад</title>
+<link rel="stylesheet" href="warehouse.css">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>if(!window.XLSX){document.write('<script src="vendor/xlsx.full.min.js"><\/script>');}</script>
+<script>(function(){try{document.documentElement.setAttribute('data-theme',localStorage.getItem('nexus_theme_v1')||'auto')}catch(e){}})();</script>
+</head>
+<body>
+<div id="auth-ov" class="auth-ov">
+  <div class="auth-card">
+    <div class="auth-brand"><div class="auth-brand-n">NEXUS ENGENEERING</div><div class="auth-brand-s">Склад</div></div>
+    <h2 class="auth-t">Потрібен вхід</h2>
+    <p class="auth-h">Увійдіть через головну сторінку</p>
+    <a href="index.html" class="btn bp auth-sub" style="text-decoration:none">Перейти до входу</a>
+  </div>
+</div>
+
+<div id="app">
+  <header class="hd">
+    <div class="hd-in">
+      <div class="hd-br">
+        <a href="index.html" class="hd-home" title="На головну">←</a>
+        <span><b class="bn">NEXUS — Склад</b></span>
+      </div>
+      <div class="hd-r">
+        <button class="theme-btn" type="button">🌗</button>
+        <button class="hd-u" type="button" onclick="WH.logout()">
+          <div class="hd-av" id="av">?</div>
+          <div class="hd-ui"><div class="hd-un" id="hun">—</div><div class="hd-ur" id="hur">—</div></div>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="nav">
+    <div class="nav-in">
+      <button class="nb active" data-tab="stock" type="button" onclick="WH.tab('stock')">📦 Залишки</button>
+      <button class="nb" data-tab="items" type="button" onclick="WH.tab('items')">📋 Номенклатура</button>
+      <button class="nb" data-tab="moves" type="button" onclick="WH.tab('moves')">🔄 Рух</button>
+      <button class="nb" data-tab="orders" type="button" onclick="WH.tab('orders')">🛒 Замовлення</button>
+      <button class="nb" data-tab="warehouses" type="button" onclick="WH.tab('warehouses')">🏬 Склади</button>
+    </div>
+  </nav>
+
+  <main class="wh-main">
+    <div class="sg" id="stats"></div>
+    <div id="alerts"></div>
+
+    <section id="tab-stock" class="tp">
+      <div class="c">
+        <div class="ch">
+          <div class="ct">Залишки на складі <span class="bg bg-b" id="stock-count">0</span></div>
+          <div class="fg">
+            <select id="stock-wh" onchange="WH.renderStock()"><option value="">Усі склади</option></select>
+            <input id="stock-q" placeholder="Пошук…" oninput="WH.renderStock()">
+            <select id="stock-cat" onchange="WH.renderStock()"><option value="">Усі категорії</option></select>
+            <label class="tsm" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="stock-low-only" onchange="WH.renderStock()"> лише нижче мінімуму</label>
+            <button class="btn bs bsm" type="button" onclick="WH.exportStock()">📊 Excel</button>
+            <button class="btn bp bsm" type="button" onclick="WH.openMove('in')">➕ Прихід</button>
+            <button class="btn bs bsm" type="button" onclick="WH.openMove('out')">➖ Витрата</button>
+          </div>
+        </div>
+        <div id="stock-list"></div>
+      </div>
+    </section>
+
+    <section id="tab-items" class="tp" style="display:none">
+      <div class="c" style="padding:14px;margin-bottom:12px">
+        <button class="btn bp" type="button" onclick="WH.openItem()">➕ Додати позицію</button>
+      </div>
+      <div class="c">
+        <div class="ch">
+          <div class="ct">Номенклатура <span class="bg bg-b" id="item-count">0</span></div>
+          <div class="fg">
+            <input id="item-q" placeholder="Назва, артикул…" oninput="WH.renderItems()">
+            <select id="item-cat" onchange="WH.renderItems()"><option value="">Усі категорії</option></select>
+            <button class="btn bs bsm" type="button" onclick="WH.exportItems()">📊 Excel</button>
+          </div>
+        </div>
+        <div id="item-list"></div>
+      </div>
+    </section>
+
+    <section id="tab-moves" class="tp" style="display:none">
+      <div class="c" style="padding:14px;margin-bottom:12px">
+        <div class="fg" style="gap:8px;flex-wrap:wrap">
+          <button class="btn bp" type="button" onclick="WH.openMove('in')">➕ Прихід</button>
+          <button class="btn bs" type="button" onclick="WH.openMove('out')">➖ Витрата</button>
+          <button class="btn bs" type="button" onclick="WH.openMove('adjust')">⚖️ Інвентаризація</button>
+        </div>
+      </div>
+      <div class="c">
+        <div class="ch">
+          <div class="ct">Журнал руху <span class="bg bg-b" id="move-count">0</span></div>
+          <div class="fg">
+            <input type="date" id="move-from" onchange="WH.renderMoves()">
+            <input type="date" id="move-to" onchange="WH.renderMoves()">
+            <select id="move-type" onchange="WH.renderMoves()">
+              <option value="">Усі типи</option>
+              <option value="in">Прихід</option>
+              <option value="out">Витрата</option>
+              <option value="adjust">Інвентаризація</option>
+            </select>
+            <input id="move-q" placeholder="Пошук…" oninput="WH.renderMoves()">
+            <button class="btn bs bsm" type="button" onclick="WH.exportMoves()">📊 Excel</button>
+          </div>
+        </div>
+        <div id="move-list"></div>
+      </div>
+    </section>
+
+    <section id="tab-warehouses" class="tp" style="display:none">
+      <div class="c" style="padding:14px;margin-bottom:12px">
+        <button class="btn bp" type="button" onclick="WH.openWarehouse()">➕ Додати склад</button>
+        <div class="tsm tmu" style="margin-top:8px">Склади в різних містах. Прихід і витрата завжди прив’язані до конкретного складу.</div>
+      </div>
+      <div class="c">
+        <div class="ch"><div class="ct">Список складів <span class="bg bg-b" id="wh-count">0</span></div></div>
+        <div id="wh-list"></div>
+      </div>
+    </section>
+
+    <section id="tab-orders" class="tp" style="display:none">
+      <div class="c" style="padding:14px;margin-bottom:12px">
+        <button class="btn bp" type="button" onclick="WH.openOrder()">➕ Нове замовлення</button>
+      </div>
+      <div class="c">
+        <div class="ch">
+          <div class="ct">Замовлення матеріалів <span class="bg bg-b" id="order-count">0</span></div>
+          <div class="fg">
+            <select id="order-status" onchange="WH.renderOrders()">
+              <option value="">Усі статуси</option>
+              <option value="draft">Чернетка</option>
+              <option value="pending_approval">На узгодженні</option>
+              <option value="approved">Узгоджено</option>
+              <option value="ordered">Замовлено</option>
+              <option value="partial">Частково отримано</option>
+              <option value="received">Отримано</option>
+              <option value="cancelled">Скасовано</option>
+            </select>
+            <input id="order-q" placeholder="Пошук…" oninput="WH.renderOrders()">
+            <button class="btn bs bsm" type="button" onclick="WH.exportOrders()">📊 Excel</button>
+          </div>
+        </div>
+        <div id="order-list"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ITEM FORM -->
+<div class="mo" id="item-modal" onclick="if(event.target===this)WH.closeItem()">
+  <div class="md">
+    <div class="md-h"><div class="md-t" id="item-form-title">Нова позиція</div><button class="md-x" type="button" onclick="WH.closeItem()">×</button></div>
+    <div class="md-b">
+      <div class="wh-grid">
+        <div class="ff" style="grid-column:1/-1"><label>Назва <span class="rq">*</span></label><input id="i-name" placeholder="Напр. Кабель ВВГ 3×2.5"></div>
+        <div class="ff"><label>Артикул</label><input id="i-sku" class="tmn" placeholder="ART-001"></div>
+        <div class="ff"><label>Одиниця</label>
+          <select id="i-unit">
+            <option value="шт">шт</option><option value="кг">кг</option><option value="м">м</option>
+            <option value="л">л</option><option value="уп">уп</option><option value="компл">компл</option>
+          </select>
+        </div>
+        <div class="ff"><label>Категорія</label>
+          <select id="i-cat">
+            <option value="materials">Матеріали</option>
+            <option value="consumables">Витратні</option>
+            <option value="tools">Інструмент (склад)</option>
+            <option value="spare">Запчастини</option>
+            <option value="other">Інше</option>
+          </select>
+        </div>
+        <div class="ff"><label>Мін. залишок</label><input type="number" id="i-min" min="0" step="0.01" value="0"></div>
+        <div class="ff"><label>Ціна за од., ₴</label><input type="number" id="i-price" min="0" step="0.01" value="0"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Постачальник (CRM)</label><select id="i-supplier"><option value="">— не вказано —</option></select></div>
+        <div class="ff" style="grid-column:1/-1"><label>Примітка</label><textarea id="i-notes" rows="2"></textarea></div>
+      </div>
+      <div class="veh-actions">
+        <button class="btn bp" type="button" onclick="WH.saveItem()">Зберегти</button>
+        <button class="btn bs" type="button" onclick="WH.closeItem()">Скасувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MOVE FORM -->
+<div class="mo" id="move-modal" onclick="if(event.target===this)WH.closeMove()">
+  <div class="md md-wide">
+    <div class="md-h"><div class="md-t" id="move-form-title">Рух</div><button class="md-x" type="button" onclick="WH.closeMove()">×</button></div>
+    <div class="md-b">
+      <div class="wh-grid">
+        <div class="ff"><label>Тип операції</label>
+          <select id="m-type" onchange="WH.onMoveType()">
+            <option value="in">➕ Прихід на склад</option>
+            <option value="out">➖ Видача зі складу</option>
+            <option value="adjust">⚖️ Інвентаризація</option>
+          </select>
+        </div>
+        <div class="ff"><label>Склад <span class="rq">*</span></label>
+          <select id="m-warehouse"><option value="">— оберіть склад —</option></select>
+        </div>
+        <div class="ff" style="grid-column:1/-1"><label>Позиція (що) <span class="rq">*</span></label>
+          <select id="m-item"><option value="">— оберіть —</option></select>
+        </div>
+        <div class="ff"><label id="m-qty-label">Кількість <span class="rq">*</span></label>
+          <input type="number" id="m-qty" min="0" step="0.01" value="1">
+        </div>
+        <div class="ff"><label>Дата</label><input type="date" id="m-date"></div>
+        <div class="ff"><label>№ документа</label><input id="m-doc" placeholder="Накладна / вимога"></div>
+
+        <div class="ff" id="m-supplier-wrap" style="grid-column:1/-1"><label>Постачальник (CRM)</label>
+          <select id="m-supplier"><option value="">—</option></select>
+        </div>
+
+        <!-- OUT fields -->
+        <div id="m-out-block" style="display:none;grid-column:1/-1">
+          <div style="font-weight:800;margin:4px 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted)">Куди / на що видаємо</div>
+          <div class="wh-grid">
+            <div class="ff"><label>Відділ (з кадрів)</label>
+              <select id="m-dept" onchange="WH.onDeptChange()">
+                <option value="">— усі / не вказано —</option>
+              </select>
+            </div>
+            <div class="ff"><label>Код сайту</label><input id="m-site" placeholder="SITE-…" class="tmn"></div>
+            <div class="ff" style="grid-column:1/-1"><label>Проект</label><select id="m-project"><option value="">— не вказано —</option></select></div>
+          </div>
+          <div style="font-weight:800;margin:14px 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted)">Хто забирає</div>
+          <div class="wh-grid">
+            <div class="ff"><label>Тип отримувача</label>
+              <select id="m-recv-type" onchange="WH.onRecvType()">
+                <option value="employee">Співробітник</option>
+                <option value="contractor">Підрядник (CRM)</option>
+              </select>
+            </div>
+            <div class="ff" id="m-recv-emp-wrap"><label>Співробітник</label>
+              <select id="m-recv-emp"><option value="">—</option></select>
+            </div>
+            <div class="ff" id="m-recv-crm-wrap" style="display:none"><label>Підрядник</label>
+              <select id="m-recv-crm"><option value="">—</option></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="ff" style="grid-column:1/-1"><label>Примітка</label><textarea id="m-note" rows="2"></textarea></div>
+      </div>
+      <div class="veh-actions">
+        <button class="btn bp" type="button" onclick="WH.saveMove()">Зберегти</button>
+        <button class="btn bs" type="button" onclick="WH.closeMove()">Скасувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WAREHOUSE FORM -->
+<div class="mo" id="wh-modal" onclick="if(event.target===this)WH.closeWarehouse()">
+  <div class="md">
+    <div class="md-h"><div class="md-t" id="wh-form-title">Новий склад</div><button class="md-x" type="button" onclick="WH.closeWarehouse()">×</button></div>
+    <div class="md-b">
+      <div class="wh-grid">
+        <div class="ff" style="grid-column:1/-1"><label>Назва складу <span class="rq">*</span></label><input id="w-name" placeholder="Склад Київ-1"></div>
+        <div class="ff"><label>Місто <span class="rq">*</span></label><input id="w-city" placeholder="Київ"></div>
+        <div class="ff"><label>Адреса</label><input id="w-address" placeholder="вул. …"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Примітка</label><textarea id="w-notes" rows="2"></textarea></div>
+      </div>
+      <div class="veh-actions">
+        <button class="btn bp" type="button" onclick="WH.saveWarehouse()">Зберегти</button>
+        <button class="btn bs" type="button" onclick="WH.closeWarehouse()">Скасувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER FORM -->
+<div class="mo" id="order-modal" onclick="if(event.target===this)WH.closeOrder()">
+  <div class="md md-wide">
+    <div class="md-h"><div class="md-t" id="order-form-title">Нове замовлення</div><button class="md-x" type="button" onclick="WH.closeOrder()">×</button></div>
+    <div class="md-b">
+      <div class="wh-grid">
+        <div class="ff"><label>Дата</label><input type="date" id="o-date"></div>
+        <div class="ff"><label>Склад оприбуткування <span class="rq">*</span></label>
+          <select id="o-warehouse"><option value="">— склад —</option></select>
+        </div>
+        <div class="ff"><label>Статус</label>
+          <select id="o-status">
+            <option value="draft">Чернетка</option>
+            <option value="pending_approval">На узгодженні</option>
+            <option value="approved">Узгоджено (можна замовляти)</option>
+            <option value="ordered">Замовлено у постачальника</option>
+          </select>
+          <div class="tsm tmu" style="margin-top:4px">Замовити у постачальника можна лише після 3 підтверджень.</div>
+        </div>
+        <div class="ff" style="grid-column:1/-1"><label>Постачальник (CRM) <span class="rq">*</span></label>
+          <select id="o-supplier"><option value="">— оберіть —</option></select>
+        </div>
+        <div class="ff"><label>№ замовлення / рахунку</label><input id="o-num" placeholder="ЗМ-001"></div>
+        <div class="ff"><label>Очікувана поставка</label><input type="date" id="o-eta"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Проект (для менеджера проєкту)</label>
+          <select id="o-project"><option value="">— не вказано —</option></select>
+        </div>
+        <div class="ff" style="grid-column:1/-1"><label>Примітка</label><textarea id="o-note" rows="2"></textarea></div>
+      </div>
+      <div id="o-approvals-box" style="margin:14px 0;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--g50)">
+        <div style="font-weight:800;margin-bottom:8px">Узгодження замовлення та цін</div>
+        <div class="tsm tmu" style="margin-bottom:10px">Потрібні підтвердження: менеджер проєкту, директор фірми, фінансовий директор. Без них статус «Замовлено» недоступний.</div>
+        <div id="o-approvals-status" class="tsm">Збережіть замовлення, щоб фіксувати узгодження.</div>
+      </div>
+      <div style="margin:14px 0 8px;font-weight:800">Позиції замовлення (назва · к-сть · ціна)</div>
+      <div id="o-lines"></div>
+      <button class="btn bs bsm" type="button" onclick="WH.addOrderLine()" style="margin-top:8px">+ Рядок</button>
+      <div class="veh-actions">
+        <button class="btn bp" type="button" onclick="WH.saveOrder()">Зберегти замовлення</button>
+        <button class="btn bs" type="button" onclick="WH.closeOrder()">Скасувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="nexus-core.js"></script>
+<script src="warehouse.js"></script>
+<script src="nexus-assistant.js"></script>
+</body>
+</html>

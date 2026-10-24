@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS — Звіти</title>
+<link rel="stylesheet" href="reports.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<script>if(!window.Chart){document.write('<script src="vendor/chart.umd.min.js"><\/script>');}</script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>if(!window.XLSX){document.write('<script src="vendor/xlsx.full.min.js"><\/script>');}</script>
+<script>(function(){try{document.documentElement.setAttribute('data-theme',localStorage.getItem('nexus_theme_v1')||'auto')}catch(e){}})();</script>
+</head>
+<body>
+<div id="auth-ov" class="auth-ov">
+  <div class="auth-card">
+    <div class="auth-brand"><div class="auth-brand-n">NEXUS ENGENEERING</div><div class="auth-brand-s">Звіти</div></div>
+    <h2 class="auth-t">Потрібен вхід</h2>
+    <p class="auth-h">Увійдіть через головну сторінку</p>
+    <a href="index.html" class="btn bp auth-sub" style="text-decoration:none">Перейти до входу</a>
+  </div>
+</div>
+
+<div id="app">
+  <header class="hd">
+    <div class="hd-in">
+      <div class="hd-br">
+        <a href="index.html" class="hd-home" title="На головну">←</a>
+        <span><b class="bn">NEXUS — Звіти</b></span>
+      </div>
+      <div class="hd-r">
+        <button class="theme-btn" type="button">🌗</button>
+        <button class="hd-u" type="button" onclick="Reports.logout()">
+          <div class="hd-av" id="av">?</div>
+          <div class="hd-ui"><div class="hd-un" id="hun">—</div><div class="hd-ur" id="hur">—</div></div>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="rep-main">
+    <div class="sg" id="stats"></div>
+    <div class="rep-layout">
+      <aside class="rep-nav" id="rep-nav"></aside>
+      <section class="rep-panel">
+        <div class="rep-title" id="rep-title">Оберіть звіт</div>
+        <div class="rep-desc" id="rep-desc">Каталог звітів ліворуч. Усі дані з модулів NEXUS за обраний період.</div>
+        <div class="rep-filters" id="rep-filters"></div>
+        <div class="rep-meta" id="rep-meta"></div>
+        <div class="fg" style="margin-bottom:12px;gap:8px">
+          <button class="btn bp" type="button" id="btn-run" onclick="Reports.run()">▶ Сформувати</button>
+          <button class="btn bs" type="button" onclick="Reports.exportExcel()">📊 Excel</button>
+          <button class="btn bs" type="button" onclick="Reports.print()">🖨 Друк</button>
+        </div>
+        <div class="rep-chart-wrap" id="rep-chart-wrap" style="display:none">
+          <div class="rep-chart-card">
+            <div class="rep-chart-title" id="rep-chart-title">Візуалізація</div>
+            <div class="rep-chart-box"><canvas id="rep-chart"></canvas></div>
+          </div>
+        </div>
+        <div class="rep-table-wrap" id="rep-out"><div class="rep-empty">Оберіть звіт і натисніть «Сформувати»</div></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="nexus-core.js"></script>
+<script src="reports.js"></script>
+<script src="nexus-assistant.js"></script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS - Фінанси</title>
+<link rel="stylesheet" href="finance.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<script>if(!window.Chart){document.write('<script src="vendor/chart.umd.min.js"><\/script>');}</script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>if(!window.XLSX){document.write('<script src="vendor/xlsx.full.min.js"><\/script>');}</script>
+<script>
+  (function(){
+    try {
+      var saved = localStorage.getItem('nexus_theme_v1') || 'auto';
+      document.documentElement.setAttribute('data-theme', saved);
+    } catch(e){}
+  })();
+</script>
+</head>
+<body>
+
+<div id="auth-ov" class="auth-ov">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-n">NEXUS ENGENEERING</div>
+      <div class="auth-brand-s">Фінанси</div>
+    </div>
+    <h2 class="auth-t">Потрібен вхід</h2>
+    <p class="auth-h">Спочатку увійдіть у систему кадрового обліку</p>
+    <a href="hr.html" class="btn bp auth-sub" style="text-decoration:none">Перейти до входу</a>
+  </div>
+</div>
+
+<div id="app">
+  <header class="hd">
+    <div class="hd-in">
+      <div class="hd-br">
+        <a href="index.html" class="hd-home" title="На головну">←</a>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+        </svg>
+        <span>
+          <b class="bn">NEXUS - Фінанси</b>
+          
+        </span>
+      </div>
+      <div class="hd-r">
+        <div class="date-range">
+          <button class="range-btn" data-range="month" onclick="Fin.setRange('month')">Місяць</button>
+          <button class="range-btn active" data-range="quarter" onclick="Fin.setRange('quarter')">Квартал</button>
+          <button class="range-btn" data-range="year" onclick="Fin.setRange('year')">Рік</button>
+          <button class="range-btn" data-range="all" onclick="Fin.setRange('all')">Все</button>
+        </div>
+        <button class="theme-btn" type="button" title="Змінити тему">🌗</button>
+        <button class="hd-u" onclick="Fin.logout()" title="Вийти">
+          <div class="hd-av" id="av">?</div>
+          <div class="hd-ui">
+            <div class="hd-un" id="hun">—</div>
+            <div class="hd-ur" id="hur">—</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="mn">
+
+    <!-- СТАТИСТИКА -->
+    <div class="fin-stats" id="stats"></div>
+
+    <div class="c">
+      <div class="ch">
+        <div class="ct">📈 <span>Доходи і витрати по місяцях</span></div>
+      </div>
+      <div class="fin-chart-box"><canvas id="fin-chart"></canvas></div>
+    </div>
+
+    <!-- ФОРМА ДОБАВЛЕНИЯ -->
+    <div class="c">
+      <div class="ch">
+        <div class="ct">➕ <span id="form-title">Нова операція</span></div>
+        <button class="btn bs bsm" onclick="Fin.toggleForm()" id="form-toggle">Згорнути</button>
+      </div>
+      <div id="form-body">
+        <div class="fr">
+          <div class="ff ffn">
+            <label>Тип <span class="rq">*</span></label>
+            <select id="f-type" onchange="Fin.onTypeChange()">
+              <option value="expense">💸 Витрата</option>
+              <option value="income">💰 Дохід</option>
+            </select>
+          </div>
+          <div class="ff">
+            <label>Сума, грн <span class="rq">*</span></label>
+            <input type="number" id="f-amount" value="0" min="0" step="0.01" placeholder="1000">
+          </div>
+          <div class="ff">
+            <label>Дата <span class="rq">*</span></label>
+            <input type="date" id="f-date">
+          </div>
+        </div>
+        <div class="fr">
+          <div class="ff">
+            <label>Категорія <span class="rq">*</span></label>
+            <select id="f-category"></select>
+          </div>
+          <div class="ff">
+            <label>Рахунок</label>
+            <select id="f-account">
+              <option value="cash">💵 Готівка</option>
+              <option value="bank">🏦 Банк</option>
+              <option value="card">💳 Картка</option>
+            </select>
+          </div>
+          <div class="ff">
+            <label>Контрагент</label>
+            <select id="f-client" onchange="Fin.onClientPick()">
+              <option value="">— з CRM —</option>
+            </select>
+            <input id="f-counter" type="hidden">
+            <div class="tsm tmu" style="margin-top:4px">Контрагент з модуля CRM</div>
+          </div>
+        </div>
+        <div class="fr">
+          <div class="ff"><label>Проект</label><select id="fin-project"><option value="">— без проекту —</option></select></div>
+          <div class="ff">
+            <label>Опис</label>
+            <input id="f-desc" placeholder="За що / кому / деталі">
+          </div>
+          <div class="ff ffn">
+            <label>Посилання</label>
+            <input id="f-link" placeholder="URL чека / накладної">
+          </div>
+        </div>
+        <div class="fg m16">
+          <button class="btn bp" onclick="Fin.save()" id="btn-save">Додати операцію</button>
+          <button class="btn bs" onclick="Fin.reset()" id="btn-reset" style="display:none">Скасувати</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- СПИСОК -->
+    <div class="c">
+      <div class="ch">
+        <div class="ct">
+          📋 <span>Операції</span>
+          <span class="bg bg-b" id="ops-count">0</span>
+        </div>
+        <div class="fg">
+          <input id="search" placeholder="🔍 Пошук..." style="width:180px" oninput="Fin.filter()">
+          <select id="filter-type" onchange="Fin.filter()" style="width:auto">
+            <option value="">Всі типи</option>
+            <option value="income">💰 Доходи</option>
+            <option value="expense">💸 Витрати</option>
+          </select>
+          <select id="filter-cat" onchange="Fin.filter()" style="width:auto">
+            <option value="">Всі категорії</option>
+          </select>
+          <select id="filter-acc" onchange="Fin.filter()" style="width:auto">
+            <option value="">Всі рахунки</option>
+            <option value="cash">💵 Готівка</option>
+            <option value="bank">🏦 Банк</option>
+            <option value="card">💳 Картка</option>
+          </select>
+        </div>
+      </div>
+      <div id="ops-list"></div>
+    </div>
+
+    <!-- НАСТРОЙКИ КАТЕГОРИЙ + ЭКСПОРТ -->
+    <div class="grid-2">
+      <div class="c">
+        <div class="ch">
+          <div class="ct">🏷️ Категорії</div>
+          <button class="btn bs bsm" onclick="Fin.openCatManager()">Керувати</button>
+        </div>
+        <div id="cat-preview"></div>
+      </div>
+
+      <div class="c">
+        <div class="ch">
+          <div class="ct">📤 Експорт та резервні копії</div>
+        </div>
+        <div class="fg">
+          <button class="btn bs" onclick="Fin.exportExcel()">📊 Excel</button>
+          <button class="btn bs" onclick="Fin.exportJSON()">💾 JSON</button>
+          <button class="btn bs" onclick="document.getElementById('json-in').click()">📥 Імпорт</button>
+          <input type="file" id="json-in" accept=".json" style="display:none" onchange="Fin.importJSON(event)">
+          <button class="btn bd" onclick="Fin.clearAll()" style="margin-left:auto">🗑️ Очистити</button>
+        </div>
+        <div class="tsm tmu m16" style="font-size:12px">
+          💡 Дані зберігаються локально. Робіть резервні копії щотижня.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- МОДАЛКА ДЕТАЛЕЙ -->
+<div class="mo" id="detail-modal" onclick="if(event.target===this)Fin.closeDetail()">
+  <div class="md">
+    <div class="md-h"><div class="md-t" id="detail-title"></div>
+      <button class="md-x" onclick="Fin.closeDetail()">×</button></div>
+    <div class="md-b" id="detail-body"></div>
+  </div>
+</div>
+
+<!-- МОДАЛКА КАТЕГОРИЙ -->
+<div class="mo" id="cat-modal" onclick="if(event.target===this)Fin.closeCatManager()">
+  <div class="md">
+    <div class="md-h"><div class="md-t">🏷️ Керування категоріями</div>
+      <button class="md-x" onclick="Fin.closeCatManager()">×</button></div>
+    <div class="md-b" id="cat-body"></div>
+  </div>
+</div>
+
+<script src="nexus-core.js"></script>
+  <script src="finance.js"></script>
+<script src="nexus-assistant.js"></script>
+</body>
+</html>

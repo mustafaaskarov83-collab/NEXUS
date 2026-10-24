@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS — Календар</title>
+<link rel="stylesheet" href="calendar.css">
+<script>
+  (function(){
+    try {
+      var saved = localStorage.getItem('nexus_theme_v1') || 'auto';
+      document.documentElement.setAttribute('data-theme', saved);
+    } catch(e){}
+  })();
+</script>
+</head>
+<body>
+<div id="auth-ov" class="auth-ov">
+  <div class="auth-card">
+    <div class="auth-brand-n">NEXUS ENGENEERING</div>
+    <div class="auth-brand-s">Календар</div>
+    <h2 class="auth-t">Потрібен вхід</h2>
+    <p class="auth-h">Увійдіть через головну сторінку порталу</p>
+    <a href="index.html" class="btn bp" style="text-decoration:none">На головну</a>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header class="hd">
+    <div class="hd-in">
+      <div class="hd-br">
+        <a href="index.html" class="hd-home" title="На головну">←</a>
+        <span>
+          <b class="bn">NEXUS — Календар</b>
+          <small class="bs">Особистий і корпоративний розклад</small>
+        </span>
+      </div>
+      <div class="hd-actions">
+        <button type="button" class="btn bs" id="btn-ics">⬇ ICS</button>
+        <button type="button" class="btn bs" id="btn-theme">🌗</button>
+        <button type="button" class="btn bp" id="btn-add">+ Подія</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="cal-toolbar">
+      <div class="cal-nav">
+        <button type="button" class="btn bs" id="cal-prev">‹</button>
+        <button type="button" class="btn bs" id="cal-today">Сьогодні</button>
+        <button type="button" class="btn bs" id="cal-next">›</button>
+        <h2 class="cal-title" id="cal-title">—</h2>
+      </div>
+      <div class="cal-legend">
+        <span class="lg lg-task">Задачі</span>
+        <span class="lg lg-leave">Відпустки</span>
+        <span class="lg lg-sick">Лікарняні</span>
+        <span class="lg lg-service">Сервіс</span>
+        <span class="lg lg-custom">Мої події</span>
+      </div>
+    </div>
+
+    <div class="cal-layout">
+      <div class="cal-month" id="cal-grid"></div>
+      <aside class="cal-side">
+        <div class="side-card">
+          <div class="side-h">Події дня <span id="side-date">—</span></div>
+          <div id="side-list" class="side-list"><div class="empty">Оберіть день</div></div>
+        </div>
+        <div class="side-card">
+          <div class="side-h">Найближчі 14 днів</div>
+          <div id="upcoming-list" class="side-list"></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<div class="mo" id="event-modal" hidden>
+  <div class="md">
+    <div class="md-h">
+      <div class="md-t" id="event-modal-title">Нова подія</div>
+      <button type="button" class="md-x" id="event-close">×</button>
+    </div>
+    <div class="md-b">
+      <div class="ff"><label>Назва *</label><input id="ev-title" maxlength="120"></div>
+      <div class="ff-row">
+        <div class="ff"><label>Дата початку *</label><input type="date" id="ev-start"></div>
+        <div class="ff"><label>Дата кінця</label><input type="date" id="ev-end"></div>
+      </div>
+      <div class="ff"><label>Опис</label><textarea id="ev-note" rows="3"></textarea></div>
+      <div class="ff"><label>Нагадування (дні до)</label>
+        <select id="ev-remind"><option value="">Без нагадування</option><option value="0">У день події</option><option value="1">За 1 день</option><option value="3">За 3 дні</option><option value="7">За 7 днів</option></select>
+      </div>
+      <div class="fg">
+        <button type="button" class="btn bp" id="ev-save">Зберегти</button>
+        <button type="button" class="btn bs" id="ev-cancel">Скасувати</button>
+        <button type="button" class="btn bd" id="ev-delete" hidden>Видалити</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="nexus-core.js"></script>
+<script src="calendar.js"></script>
+</body>
+</html>

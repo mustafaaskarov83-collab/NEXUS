@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS - Дашборд KPI</title>
+<link rel="stylesheet" href="dashboard.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<script>if(!window.Chart){document.write('<script src="vendor/chart.umd.min.js"><\/script>');}</script>
+<script>
+  (function(){
+    try {
+      var saved = localStorage.getItem('nexus_theme_v1') || 'auto';
+      document.documentElement.setAttribute('data-theme', saved);
+    } catch(e){}
+  })();
+</script>
+</head>
+<body>
+
+<div id="auth-ov" class="auth-ov">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-n">NEXUS ENGENEERING</div>
+      <div class="auth-brand-s">Дашборд KPI</div>
+    </div>
+    <h2 class="auth-t">Потрібен вхід</h2>
+    <p class="auth-h">Спочатку увійдіть у систему кадрового обліку</p>
+    <a href="hr.html" class="btn bp auth-sub" style="text-decoration:none">Перейти до входу</a>
+  </div>
+</div>
+
+<div id="app">
+  <header class="hd">
+    <div class="hd-in">
+      <div class="hd-br">
+        <a href="index.html" class="hd-home" title="На головну">←</a>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 4-8"/>
+        </svg>
+        <span>
+          <b class="bn">NEXUS - Дашборд KPI</b>
+          
+        </span>
+      </div>
+      <div class="hd-r">
+        <div class="date-range">
+          <button class="range-btn" data-range="month" onclick="Dash.setRange('month')">Місяць</button>
+          <button class="range-btn active" data-range="quarter" onclick="Dash.setRange('quarter')">Квартал</button>
+          <button class="range-btn" data-range="year" onclick="Dash.setRange('year')">Рік</button>
+          <button class="range-btn" data-range="all" onclick="Dash.setRange('all')">Все</button>
+        </div>
+        <button class="theme-btn" type="button" title="Змінити тему">🌗</button>
+        <button class="hd-u" onclick="Dash.logout()" title="Вийти">
+          <div class="hd-av" id="av">?</div>
+          <div class="hd-ui">
+            <div class="hd-un" id="hun">—</div>
+            <div class="hd-ur" id="hur">—</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="mn">
+
+    <!-- ОСНОВНЫЕ KPI -->
+    <div class="kpi-row" id="kpi-main">
+      <div class="kpi kpi--blue">
+        <div class="kpi__icon">👥</div>
+        <div class="kpi__body">
+          <div class="kpi__value" id="kpi-emp">0</div>
+          <div class="kpi__label">Співробітників</div>
+        </div>
+      </div>
+      <div class="kpi kpi--green">
+        <div class="kpi__icon">💰</div>
+        <div class="kpi__body">
+          <div class="kpi__value" id="kpi-payroll">0 ₴</div>
+          <div class="kpi__label">ФОТ на місяць</div>
+        </div>
+      </div>
+      <div class="kpi kpi--orange">
+        <div class="kpi__icon">🌴</div>
+        <div class="kpi__body">
+          <div class="kpi__value" id="kpi-vac">0</div>
+          <div class="kpi__label">У відпустці зараз</div>
+        </div>
+      </div>
+      <div class="kpi kpi--purple">
+        <div class="kpi__icon">📦</div>
+        <div class="kpi__body">
+          <div class="kpi__value" id="kpi-inv">0</div>
+          <div class="kpi__label">Одиниць інвентарю</div>
+        </div>
+      </div>
+      <div class="kpi kpi--red">
+        <div class="kpi__icon">🏥</div>
+        <div class="kpi__body">
+          <div class="kpi__value" id="kpi-sick">0</div>
+          <div class="kpi__label">На лікарняному</div>
+        </div>
+      </div>
+      <div class="kpi kpi--cyan">
+        <div class="kpi__icon">💎</div>
+        <div class="kpi__body">
+          <div class="kpi__value" id="kpi-cost">0 ₴</div>
+          <div class="kpi__label">Вартість інвентарю</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- РЯД 1: сотрудники + ФОТ по месяцам -->
+    <div class="grid-2">
+      <div class="c">
+        <div class="ch">
+          <div class="ct">👥 Співробітники за категоріями</div>
+        </div>
+        <div class="chart-box">
+          <canvas id="chart-emp-cat"></canvas>
+        </div>
+      </div>
+      <div class="c">
+        <div class="ch">
+          <div class="ct">💰 ФОТ за місяцями</div>
+          <div class="cs" id="payroll-period">—</div>
+        </div>
+        <div class="chart-box">
+          <canvas id="chart-payroll"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- РЯД 2: отпуска + больничные -->
+    <div class="grid-2">
+      <div class="c">
+        <div class="ch">
+          <div class="ct">🌴 Дні відпусток за місяцями</div>
+        </div>
+        <div class="chart-box">
+          <canvas id="chart-vac"></canvas>
+        </div>
+      </div>
+      <div class="c">
+        <div class="ch">
+          <div class="ct">🏥 Дні лікарняних за місяцями</div>
+        </div>
+        <div class="chart-box">
+          <canvas id="chart-sick"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- РЯД 3: инвентарь -->
+    <div class="grid-2">
+      <div class="c">
+        <div class="ch">
+          <div class="ct">📦 Інвентар за категоріями</div>
+        </div>
+        <div class="chart-box">
+          <canvas id="chart-inv-cat"></canvas>
+        </div>
+      </div>
+      <div class="c">
+        <div class="ch">
+          <div class="ct">🔧 Інвентар за статусом</div>
+        </div>
+        <div class="chart-box">
+          <canvas id="chart-inv-status"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- РЯД 4: топ сотрудников по выплатам -->
+    <div class="c">
+      <div class="ch">
+        <div class="ct">🏆 Топ співробітників за середньою зарплатою</div>
+        <div class="cs">За весь час</div>
+      </div>
+      <div id="top-employees"></div>
+    </div>
+
+    <!-- РЯД 5: анализ данных -->
+    <div class="grid-2">
+      <div class="c">
+        <div class="ch">
+          <div class="ct">📊 Покриття даних</div>
+          <div class="cs">Скільки інформації внесено</div>
+        </div>
+        <div id="data-quality"></div>
+      </div>
+      <div class="c">
+        <div class="ch">
+          <div class="ct">🔔 Потребує уваги</div>
+        </div>
+        <div id="alerts"></div>
+      </div>
+    </div>
+
+    <!-- РЯД 6: сводка -->
+    <div class="c">
+      <div class="ch">
+        <div class="ct">📋 Загальна зведеність</div>
+        <div class="cs" id="summary-date">—</div>
+      </div>
+      <div class="summary-grid" id="summary"></div>
+    </div>
+
+  </main>
+</div>
+
+<script src="nexus-core.js"></script>
+<script src="dashboard.js"></script>
+<script src="nexus-assistant.js"></script>
+</body>
+</html>
