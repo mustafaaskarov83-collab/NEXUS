@@ -71,6 +71,7 @@ const Doc = (() => {
 
   /* --- Права доступу: роль «Перегляд» (viewer) не змінює дані --- */
   function canEdit() {
+    if (window.NexusCore && typeof NexusCore.canEdit === 'function') return NexusCore.canEdit('documents');
     const u = getCurrentUser();
     return !!u && u.role !== 'viewer';
   }

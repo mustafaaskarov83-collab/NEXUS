@@ -159,6 +159,47 @@ const Dash = (() => {
     return months;
   }
 
+
+  function renderExtraModuleKPIs(host) {
+    if (!host) return;
+    let finIn = 0, finOut = 0, tasksOpen = 0, fleetSum = 0, fleetN = 0, fleetCost = 0;
+    try {
+      const f = JSON.parse(localStorage.getItem('nexus_finance_v1') || '{}');
+      (f.ops || f.operations || []).forEach(o => {
+        const a = Number(o.amount) || 0;
+        if (o.type === 'income') finIn += a; else if (o.type === 'expense') finOut += a;
+      });
+    } catch (e) {}
+    try {
+      const t = JSON.parse(localStorage.getItem('nexus_tasks_v1') || '{}');
+      (t.tasks || []).forEach(x => { if (x && x.status !== 'done' && x.status !== 'closed') tasksOpen++; });
+    } catch (e) {}
+    try {
+      const p = JSON.parse(localStorage.getItem('nexus_projects_v1') || '{}');
+      (p.projects || []).forEach(x => {
+        if (!x || x.status === 'cancelled') return;
+        projN++;
+        projSum += Number(x.amount || x.projectAmount || 0) || 0;
+      });
+    } catch (e) {}
+    try {
+      const fl = JSON.parse(localStorage.getItem('nexus_fleet_v1') || '{}');
+      (fl.vehicles || []).forEach(v => { fleetCost += Number(v.cost || v.price || 0) || 0; });
+      (fl.fuel || fl.refuels || []).forEach(r => { fleetCost += Number(r.amount || r.cost || 0) || 0; });
+    } catch (e) {}
+    const fmt = n => Number(n || 0).toLocaleString('uk-UA', { maximumFractionDigits: 0 });
+    const card = (label, val, sub) =>
+      '<div class="kpi"><div class="kpi__label">' + label + '</div><div class="kpi__value">' + val + '</div>' +
+      (sub ? '<div class="kpi__sub">' + sub + '</div>' : '') + '</div>';
+    host.insertAdjacentHTML('beforeend',
+      card('Доходи (фін.)', fmt(finIn) + ' ₴', 'усі операції') +
+      card('Витрати (фін.)', fmt(finOut) + ' ₴', 'усі операції') +
+      card('Проекти', String(projN), fmt(projSum) + ' ₴') +
+      card('Відкриті задачі', String(tasksOpen), '') +
+      card('Авто / паливо', fmt(fleetCost) + ' ₴', 'орієнтовно')
+    );
+  }
+
   function renderKPIs() {
     const hr = loadHR();
     const inv = loadInv();
@@ -625,6 +666,7 @@ const Dash = (() => {
 
   function render() {
     renderKPIs();
+    try { const h = document.getElementById("kpi-grid") || document.getElementById("kpis") || document.querySelector(".kpi-grid, .kpis, #stats"); if (h) renderExtraModuleKPIs(h); } catch (e) {}
     destroyCharts();
     renderCharts();
     renderTop();

@@ -42,3 +42,9 @@
 - Завантаження фото профілю (меню користувача → «Змінити фото», до 800 КБ, зберігається в `nexus_users_v1`).
 - Лічильники відкритих задач / авто / інвентарю / непрочитаних сповіщень у sidebar і шапці.
 - Усі існуючі модулі та картки порталу збережено без видалень.
+
+
+## 6.1.0 — merged (GitHub 5.0.1 + chat logic, no Mercedes theme)
+- Base: public GitHub main (hardening 5.0.1).
+- Added: storage/backup UX, onboarding, finance documentId, core canEdit/hashPassword, dashboard extra KPIs.
+- Not included: nexus-theme.css / Mercedes visual redesign.

@@ -421,10 +421,34 @@ const Fin = (() => {
     document.getElementById('f-desc').value = '';
     document.getElementById('f-link').value = '';
     if (window.NexusCore) NexusCore.fillProjectSelect(document.getElementById('fin-project'), '');
+    fillDocumentSelect('');
     fillCategorySelect('expense');
     document.getElementById('form-title').textContent = 'Нова операція';
     document.getElementById('btn-save').textContent = 'Додати операцію';
     document.getElementById('btn-reset').style.display = 'none';
+  }
+
+
+  function fillDocumentSelect(selected) {
+    const sel = document.getElementById('fin-document');
+    if (!sel) return;
+    let docs = [];
+    try {
+      const raw = localStorage.getItem('nexus_documents_v1');
+      const db = raw ? JSON.parse(raw) : { docs: [] };
+      docs = Array.isArray(db.docs) ? db.docs.filter(d => d && d.id) : [];
+    } catch (e) {}
+    docs = docs.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    const cur = selected != null ? selected : sel.value;
+    sel.innerHTML = '<option value="">— без документа —</option>' + docs.map(d => {
+      const label = (d.type === 'contract' ? 'Договір' : (d.type || 'Док')) +
+        (d.num ? ' №' + d.num : '') +
+        (d.name ? ' — ' + d.name : '') +
+        (d.amount ? ' (' + Number(d.amount).toLocaleString('uk-UA') + ' ₴)' : '');
+      return '<option value="' + String(d.id).replace(/"/g, '') + '">' +
+        String(label).replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</option>';
+    }).join('');
+    if (cur) sel.value = cur;
   }
 
   function save() {
@@ -457,6 +481,7 @@ const Fin = (() => {
       desc: document.getElementById('f-desc').value.trim(),
       link: document.getElementById('f-link').value.trim(),
       projectId: document.getElementById('fin-project')?.value || '',
+      documentId: document.getElementById('fin-document')?.value || '',
       updatedAt: new Date().toISOString().slice(0,10)
     };
 
@@ -502,6 +527,7 @@ const Fin = (() => {
     document.getElementById('f-desc').value = op.desc || '';
     document.getElementById('f-link').value = op.link || '';
     if (window.NexusCore) NexusCore.fillProjectSelect(document.getElementById('fin-project'), op.projectId || '');
+    fillDocumentSelect(op.documentId || '');
 
     document.getElementById('form-title').textContent = 'Редагувати операцію';
     document.getElementById('btn-save').textContent = 'Зберегти';
@@ -627,6 +653,7 @@ const Fin = (() => {
     renderCatManager();
     fillCategoryFilter();
     if (window.NexusCore) NexusCore.fillProjectSelect(document.getElementById('fin-project'), '');
+    fillDocumentSelect('');
     renderCatPreview();
   }
 
@@ -643,6 +670,7 @@ const Fin = (() => {
     renderCatManager();
     fillCategoryFilter();
     if (window.NexusCore) NexusCore.fillProjectSelect(document.getElementById('fin-project'), '');
+    fillDocumentSelect('');
     renderCatPreview();
   }
 
@@ -721,6 +749,7 @@ const Fin = (() => {
     reset();
     fillCategoryFilter();
     if (window.NexusCore) NexusCore.fillProjectSelect(document.getElementById('fin-project'), '');
+    fillDocumentSelect('');
     renderCatPreview();
     render();
     setInterval(fillCategoryFilter, 15000);

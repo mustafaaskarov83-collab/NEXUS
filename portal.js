@@ -6,7 +6,7 @@
 const Portal = (() => {
 
   /* Версія проєкту (портал). Для HR-ядра — APP_VERSION в app.js */
-  const PORTAL_VERSION = '5.0.4';
+  const PORTAL_VERSION = '6.1.0';
 
   const USERS_KEY = 'nexus_users_v1';
   const SESSION_KEY = 'nexus_session_v1';
@@ -508,6 +508,65 @@ const Portal = (() => {
         restoreFile.value = '';
       };
     }
+  }
+
+
+  function renderOnboarding() {
+    const box = document.getElementById('nexus-onboarding');
+    if (!box) return;
+    const user = getCurrentUser();
+    if (!user) { box.hidden = true; return; }
+    if (sessionStorage.getItem('nexus_onboarding_hide') === '1') { box.hidden = true; return; }
+
+    function loadJson(key, fb) {
+      try {
+        if (window.NexusCore && NexusCore.read) return NexusCore.read(key, fb);
+        const r = localStorage.getItem(key);
+        return r ? JSON.parse(r) : fb;
+      } catch (e) { return fb; }
+    }
+    const hr = loadJson('nexus_hr_ua_v2', { employees: [] });
+    const emps = Array.isArray(hr.employees) ? hr.employees : [];
+    const docs = loadJson('nexus_documents_v1', { docs: [] });
+    const docList = Array.isArray(docs.docs) ? docs.docs : [];
+    const proj = loadJson('nexus_projects_v1', { projects: [] });
+    const projects = Array.isArray(proj.projects) ? proj.projects : [];
+    let linked = false;
+    try { linked = !!findLinkedEmployee(user); } catch (e) {}
+
+    const steps = [
+      { ok: emps.length > 0, html: '<a href="hr.html">Додайте співробітників</a> у кадровому обліку' },
+      { ok: linked, html: '<a href="hr.html#settings">Прив’яжіть користувача</a> до картки співробітника' },
+      { ok: projects.length > 0, html: '<a href="projects.html">Створіть проект</a>' },
+      { ok: docList.some(d => d.type === 'contract'), html: '<a href="documents.html">Додайте договір</a> і прив’яжіть до проекту' },
+      { ok: !!(window.NexusCore && NexusCore.getLastBackupAt && NexusCore.getLastBackupAt()), html: 'Зробіть <b>повний бекап</b> (кнопка нижче або Ctrl+Shift+B)' }
+    ];
+    if (steps.every(s => s.ok)) { box.hidden = true; return; }
+    box.hidden = false;
+    const list = document.getElementById('onboarding-list');
+    if (list) {
+      list.innerHTML = steps.map(s =>
+        '<li class="' + (s.ok ? 'done' : '') + '">' + (s.ok ? '✓ ' : '') + s.html + '</li>'
+      ).join('');
+    }
+    const st = document.getElementById('onboarding-storage');
+    if (st && window.NexusCore && NexusCore.getStorageStats) {
+      const s = NexusCore.getStorageStats();
+      let msg = 'Сховище: ~' + s.mb + ' МБ (' + s.pct + '% від типового ліміту)';
+      if (s.warning) msg += ' — бажано зробити бекап';
+      st.textContent = msg;
+      st.style.color = s.critical ? '#ef4444' : s.warning ? '#d97706' : '';
+    }
+    const hideBtn = document.getElementById('onboarding-hide');
+    if (hideBtn) hideBtn.onclick = () => {
+      sessionStorage.setItem('nexus_onboarding_hide', '1');
+      box.hidden = true;
+    };
+    const bak = document.getElementById('onboarding-backup');
+    if (bak) bak.onclick = () => {
+      if (window.NexusCore && NexusCore.exportAll) NexusCore.exportAll();
+      setTimeout(renderOnboarding, 400);
+    };
   }
 
   function init() {

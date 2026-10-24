@@ -136,6 +136,7 @@ body.nexus-shell-on {
 }
 .nx-shell-ico { width: 18px; text-align: center; flex-shrink: 0; font-size: 13px; opacity: .92; }
 .nx-shell-lbl { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nx-shell-meta { font-size: 10px; color: #6b7c94; padding: 2px 10px 6px; line-height: 1.35; }
 .nx-shell-foot {
   padding: 6px 6px 10px; border-top: 1px solid rgba(255,255,255,.05);
   display: flex; flex-direction: column; gap: 0;
@@ -530,11 +531,35 @@ body.nexus-shell-on {
       '</div>' +
       '<nav class="nx-shell-nav">' + navHtml + '</nav>' +
       '<div class="nx-shell-foot">' +
+        '<div class="nx-shell-meta" id="nx-shell-meta" title="Ctrl+Shift+B — повний бекап"></div>' +
+        '<button type="button" id="nx-shell-backup" title="Повний бекап (Ctrl+Shift+B)">💾 Бекап</button>' +
         '<button type="button" id="nx-shell-theme">🌗 Тема</button>' +
         '<button type="button" class="nx-shell-out" id="nx-shell-logout">🚪 Вийти</button>' +
       '</div>';
 
     return aside;
+  }
+
+  function refreshShellMeta() {
+    const el = document.getElementById('nx-shell-meta');
+    if (!el) return;
+    let line = 'v' + ((window.NexusCore && NexusCore.VERSION) || '6.1');
+    try {
+      if (window.NexusCore && NexusCore.getStorageStats) {
+        const st = NexusCore.getStorageStats();
+        line += ' · ' + st.mb + ' МБ (' + st.pct + '%)';
+        if (st.critical) el.style.color = '#f87171';
+        else if (st.warning) el.style.color = '#fbbf24';
+        else el.style.color = '#6b7c94';
+      }
+      if (window.NexusCore && NexusCore.daysSinceBackup) {
+        const d = NexusCore.daysSinceBackup();
+        if (d === null) line += ' · бекап: немає';
+        else if (d === 0) line += ' · бекап: сьогодні';
+        else line += ' · бекап: ' + d + ' дн.';
+      }
+    } catch (_) {}
+    el.textContent = line;
   }
 
   function escapeHtml(s) {
@@ -600,6 +625,16 @@ body.nexus-shell-on {
   window.NexusNavigate = navigateWithTransition;
 
   function bindActions() {
+    const backupBtn = document.getElementById('nx-shell-backup');
+    if (backupBtn) {
+      backupBtn.onclick = () => {
+        if (window.NexusCore && NexusCore.exportAll) NexusCore.exportAll();
+        else alert('Ядро NEXUS не завантажено');
+        setTimeout(refreshShellMeta, 300);
+      };
+    }
+    window.addEventListener('nexus-backup-done', refreshShellMeta);
+    refreshShellMeta();
     const themeBtn = document.getElementById('nx-shell-theme');
     if (themeBtn) {
       themeBtn.onclick = () => {

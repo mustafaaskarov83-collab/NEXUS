@@ -1,30 +1,73 @@
-/* NEXUS ENGENEERING — NEXUS CORE v5.0.1
- * Shared client foundation for the current offline-first build.
+/* NEXUS ENGENEERING — NEXUS CORE v6.1.0 (merged)
+ * Base: GitHub 5.0.1 (XSS/quota/UUID/observer) + chat logic 6.x without Mercedes theme.
  * Provides: session/auth helpers, RBAC, audit log, notifications, safe storage,
  * global error capture, backup/restore helpers and read-only enforcement.
- * 
- * v5.0.1 improvements:
- * - Added HTML sanitization (XSS protection)
- * - Added localStorage quota error handling
- * - Fixed MutationObserver memory leak
- * - Improved ID generation with crypto.randomUUID()
- * - Added validation helpers
- * 
+ *
+ * v5.0.1: HTML sanitization, quota handling, MutationObserver fix, crypto.randomUUID, validation
+ * v6.1.0: canEdit/denyEdit/hashPassword, storage stats, last-backup tracking
+ *
  * NOTE: localStorage authentication remains a local/offline mode; for real
  * multi-user deployment this layer should be backed by the server API.
  */
 (() => {
   'use strict';
 
-  const VERSION = '5.0.1';
+  const VERSION = '6.1.0';
   const KEYS = Object.freeze({
     users: 'nexus_users_v1',
     session: 'nexus_session_v1',
     audit: 'nexus_audit_v1',
     notifications: 'nexus_notifications_v1',
     theme: 'nexus_theme_v1',
-    meta: 'nexus_core_meta_v1'
+    meta: 'nexus_core_meta_v1',
+    lastBackup: 'nexus_last_backup_v1'
   });
+
+  function getStorageStats() {
+    let bytes = 0, keys = 0;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith('nexus_')) continue;
+        keys++;
+        const v = localStorage.getItem(k) || '';
+        bytes += k.length + v.length;
+      }
+    } catch (_) {}
+    const approxBytes = bytes * 2;
+    const limit = 5 * 1024 * 1024;
+    const pct = Math.min(100, Math.round((approxBytes / limit) * 1000) / 10);
+    return {
+      keys, bytes: approxBytes,
+      kb: Math.round(approxBytes / 102.4) / 10,
+      mb: Math.round(approxBytes / 10485.76) / 100,
+      pct, limit,
+      warning: pct >= 70, critical: pct >= 90
+    };
+  }
+
+  function getLastBackupAt() {
+    try {
+      const raw = localStorage.getItem(KEYS.lastBackup);
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      return p && p.at ? p.at : null;
+    } catch (_) { return null; }
+  }
+
+  function markBackupDone() {
+    try {
+      localStorage.setItem(KEYS.lastBackup, JSON.stringify({ at: now(), version: VERSION }));
+    } catch (_) {}
+  }
+
+  function daysSinceBackup() {
+    const at = getLastBackupAt();
+    if (!at) return null;
+    const t = Date.parse(at);
+    if (!t) return null;
+    return Math.floor((Date.now() - t) / 86400000);
+  }
 
   const MODULES = Object.freeze({
     hr: 'hr.html', dashboard: 'dashboard.html', documents: 'documents.html',
@@ -244,6 +287,34 @@
     return hasPermission(`${module}.write`, user);
   }
 
+  function canEdit(moduleId, user=getCurrentUser()) {
+    if (!user) return false;
+    if (user.role === 'viewer') return false;
+    if (user.role === 'admin') return true;
+    if (moduleId) return canWrite(moduleId, user);
+    return user.role === 'manager' || user.role === 'admin';
+  }
+
+  function denyEdit(msg) {
+    const text = msg || 'Недостатньо прав: роль «Перегляд» не дозволяє змінювати дані.';
+    try { notify(text, 'error'); } catch (_) { alert(text); }
+    return false;
+  }
+
+  /** Same hash as portal/app (pwd + salt + nexus_v3) */
+  function hashPassword(pwd, salt) {
+    const s = String(pwd) + '::' + String(salt) + '::nexus_v3';
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (let i = 0; i < s.length; i++) {
+      const c = s.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 2654435761);
+      h2 = Math.imul(h2 ^ c, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
+  }
+
   function getProjects() {
     const db = read('nexus_projects_v1', {projects:[]});
     return Array.isArray(db.projects) ? db.projects : [];
@@ -322,7 +393,9 @@
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     audit('backup.export', 'system', {keys:Object.keys(data).length});
+    markBackupDone();
     notify('Резервну копію NEXUS створено', 'success');
+    try { window.dispatchEvent(new CustomEvent('nexus-backup-done')); } catch (_) {}
   }
 
   function importAll(file) {
@@ -449,13 +522,15 @@
   }
 
   window.NexusCore = Object.freeze({
-    VERSION, KEYS, MODULES, MODULE_DEFS, PERMISSIONS, 
+    VERSION, KEYS, MODULES, MODULE_DEFS, PERMISSIONS,
     read, write, id, now, getCurrentUser,
-    hasPermission, canWrite, hasModuleAccess, requireModule, 
+    hasPermission, canWrite, canEdit, denyEdit, hashPassword,
+    hasModuleAccess, requireModule,
     defaultModulesForRole, normalizeModules, fileToModuleId,
-    getCrmClients, getCrmClient, crmClientLabel, fillCrmSelect, applyCrmClientToFields, 
-    getAuditLog, getProjects, projectLabel, fillProjectSelect, 
-    audit, notify, exportAll, importAll, enforceReadOnly
+    getCrmClients, getCrmClient, crmClientLabel, fillCrmSelect, applyCrmClientToFields,
+    getAuditLog, getProjects, projectLabel, fillProjectSelect,
+    audit, notify, exportAll, importAll, enforceReadOnly,
+    getStorageStats, getLastBackupAt, markBackupDone, daysSinceBackup
   });
   init();
 })();
