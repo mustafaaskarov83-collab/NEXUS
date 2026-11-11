@@ -6,7 +6,7 @@
 const Portal = (() => {
 
   /* Версія проєкту (портал). Для HR-ядра — APP_VERSION в app.js */
-  const PORTAL_VERSION = '6.1.0';
+  const PORTAL_VERSION = '6.1.8';
 
   const USERS_KEY = 'nexus_users_v1';
   const SESSION_KEY = 'nexus_session_v1';
@@ -952,6 +952,7 @@ const Portal = (() => {
   }
 
   function renderCabinet() {
+    try { if (window.CabRequests) CabRequests.render(); } catch (e) {}
     const user = getCurrentUser();
     if (!user) return;
     const emp = findLinkedEmployee(user);

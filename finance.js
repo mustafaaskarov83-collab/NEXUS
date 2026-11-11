@@ -80,6 +80,7 @@ const Fin = (() => {
 
   /* --- Права доступу: роль «Перегляд» (viewer) не змінює дані --- */
   function canEdit() {
+    if (window.NexusCore && typeof NexusCore.canEdit === 'function') return NexusCore.canEdit('finance');
     const u = getCurrentUser();
     return !!u && u.role !== 'viewer';
   }
@@ -257,7 +258,7 @@ const Fin = (() => {
 
     const el = document.getElementById('ops-list');
     if (!list.length) {
-      el.innerHTML = '<div class="tm">Операцій не знайдено. Додайте першу.</div>';
+      el.innerHTML = '<div class="nx-empty"><strong>Операцій не знайдено</strong>Додайте перший дохід або витрату, або змініть фільтри.</div>';
       return;
     }
 

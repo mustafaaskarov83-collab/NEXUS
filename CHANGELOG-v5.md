@@ -48,3 +48,64 @@
 - Base: public GitHub main (hardening 5.0.1).
 - Added: storage/backup UX, onboarding, finance documentId, core canEdit/hashPassword, dashboard extra KPIs.
 - Not included: nexus-theme.css / Mercedes visual redesign.
+
+
+## 6.1.1 — offline polish
+- Unified canEdit via NexusCore in main modules
+- Restore backup auto-reloads page
+- Empty-state CSS helper
+
+
+## 6.1.2 — empty states + calendar banner
+- nx-empty for documents / projects / finance lists
+- Calendar shows banner when user has no employeeId link
+
+## 6.4.9 — NEXUS AI v0.2 (гібридний помічник)
+
+- Замінено офлайн-помічник на **NEXUS AI v0.2**
+- Підключення до локальної **Ollama** (`localhost:11434`) зі стрімінгом
+- Markdown-відповіді (marked + DOMPurify з CDN, з fallback)
+- Збереження історії діалогу в localStorage
+- Вибір моделі, новий діалог, стоп генерації
+- Перемикач **AI / KB**: якщо Ollama недоступна — працює стара офлайн-база підказок
+- UI: floating-кнопка + панель у стилі NEXUS (змінні `--nx-*` / `--bg-card`)
+- Файли: `nexus-assistant.js`, `nexus-assistant.css` (зворотна сумісність: ті самі підключення в HTML)
+
+
+## 6.4.10 — NEXUS AI v0.2 branding + knowledge
+
+- Усі згадки стороннього runtime прибрано з UI: скрізь **NEXUS AI v0.2**
+- Розширений system prompt: модулі HR, Fleet, Inventory, Documents, Projects, Tasks, Finance, ролі, бекап, типові сценарії
+- AI розуміє контекст поточної сторінки (PAGE) і дає кроки по інтерфейсу NEXUS
+- Технічне підключення до локального AI-ядра без згадок у інтерфейсі
+
+
+## 6.4.11 — Живі дані NEXUS у промпті AI
+
+- Перед кожним запитом до NEXUS AI v0.2 збирається знімок localStorage
+- У контекст потрапляють: користувачі/сесія, кадри, інвентар, автопарк, паливо, картки, сервіс, документи, проекти, задачі, фінанси, CRM, склад, календар
+- Модель зобов’язана відповідати по фактичних даних і не вигадувати записи
+- Обмеження розміру контексту ~14k символів (обрізка з повідомленням)
+
+
+## 6.4.12 — Повний доступ AI до даних NEXUS
+
+- Знімок даних без лімітів по кількості записів (усі співробітники, авто, заправки, задачі тощо)
+- Усі ключі localStorage з префіксом nexus_*
+- Паролі/хеші приховані
+- Ліміт контексту піднято до ~120000 символів (обрізка лише якщо перевищено ліміт моделі)
+
+
+## 6.4.16 — Повний system prompt про NEXUS
+
+- У промпт NEXUS AI v0.2 додано повний опис системи: портал, ролі, бекап, усі модулі, ключі localStorage, заявки, авто/паливо, відмінність «заправка» vs «заявка»
+- Правила відповіді по живих даних без відмов «немає доступу»
+
+
+## 6.4.17 — AI створює заявки на відпустку
+
+- `CabRequests.createVacationRequest({ dateFrom, dateTo, submit, forceApprove })`
+- NEXUS AI розпізнає фрази на кшталт «створи заявку на відпустку з … до …» і створює запис у `nexus_hr_request_submissions_v1`
+- `submit: true` → статус `pending_pm` (погодження PM, далі директор)
+- Повне схвалення PM+директор автоматично лише з `forceApprove` від admin (не за замовчуванням)
+

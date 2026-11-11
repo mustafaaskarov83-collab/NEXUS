@@ -1,30 +1,39 @@
 # NEXUS ENGENEERING — HR / ERP портал
 
-**Версія: 6.1.0 (merged)** — база GitHub 5.0.1 + логіка з чату 6.x **без** теми Mercedes.
+**Версія: 6.1.2** — offline polish (без сервера).
 
-## Що всередині
+## Що нового в 6.1.2
+- Єдиний `canEdit` через `NexusCore` у documents / projects / finance / fleet / tasks / crm / inventory
+- Після «Відновити з бекапу» сторінка перезавантажується автоматично
+- Стилі порожніх списків (`.nx-empty`)
 
-- **Збережено з GitHub 5.0.1:** XSS-sanitization, localStorage quota, crypto.randomUUID, fix MutationObserver, поле проекту в документах, fin-chart, звʼязок contractId у проектах.
-- **Додано з логіки 6.x:**
-  - `NexusCore.canEdit` / `denyEdit` / `hashPassword`
-  - індикатор сховища + дата бекапу + кнопка «Бекап» у sidebar
-  - онбординг «Швидкий старт» на кабінеті
-  - фінанси → поле «Договір / документ» (`documentId`)
-  - розширені KPI на дашборді (finance / projects / tasks / fleet)
-  - єдина версія **6.1.0**
-
-## Модулі
-
-Портал, кадри, проекти, задачі, календар, пошта, інвентар, авто, склад, документи, фінанси, CRM, дашборд, звіти, аудит.
+## 6.1.0 merged
+- База GitHub 5.0.1 (XSS, quota, UUID) + логіка чату: онбординг, бекап UX, finance↔документ, KPI
+- Без теми Mercedes
 
 ## Запуск
+Відкрийте `index.html`. Бекап: **Ctrl+Shift+B** або кнопка в меню. Відновлення: меню користувача → «Відновити з бекапу».
 
-Відкрийте `index.html` у браузері. Глобальний бекап: **Ctrl+Shift+B**.
+## Важливо
+Дані в `localStorage` — окремо для кожного браузера. Спільна робота з різних браузерів/ПК потребує сервера (поки немає).
 
-## Обмеження
 
-Offline-first на `localStorage`. Для спільної роботи кількох людей потрібен сервер (API + PostgreSQL).
+## 6.1.2
+- Порожні списки (документи, проекти, фінанси) у стилі nx-empty
+- Календар: банер, якщо користувач не привʼязаний до співробітника
 
-## Дизайн
 
-Ця збірка **без** `nexus-theme.css` (Mercedes). Візуал — як на GitHub 5.0.x.
+## 6.1.3 — HR Заявки (DOCX)
+- Вкладка «Заявки» поруч із «Співробітники»
+- Завантаження шаблонів .docx у localStorage
+- Заповнення ПІБ з картки співробітника (або профілю користувача)
+- Плейсхолдери: {{ПІБ}}, {{Прізвище}}, {{Ім'я}}, {{ПоБатькові}}
+
+## 6.2.0 — Professional UI
+- Odoo-inspired design system (`nexus-odoo-ui.css`)
+- Control panel (breadcrumbs, search, primary actions) on modules
+- SVG icons in sidebar (instead of emoji)
+- Unified list tables (`.nx-table` / wrap)
+- Form view layout helpers (`.nx-form`, sheet, statusbar)
+- Shared helpers: `nexus-ui.js`
+

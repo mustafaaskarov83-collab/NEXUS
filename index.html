@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NEXUS - Головна</title>
 <link rel="stylesheet" href="portal.css">
+<link rel="stylesheet" href="nexus-odoo-ui.css">
 <script>
   (function(){
     try {
@@ -44,7 +45,7 @@
       <button type="submit" class="portal-auth-btn" id="portal-auth-btn">Увійти</button>
     </form>
     <div class="portal-auth-foot">
-      <div class="portal-auth-v">NEXUS v6.1.0</div>
+      <div class="portal-auth-v">NEXUS v6.2.0</div>
     </div>
   </div>
 </div>
@@ -173,6 +174,19 @@
     </div>
     <div class="cabinet-card__body" id="cab-tasks-body"><div class="cabinet-empty">Завантаження…</div></div>
   </div>
+
+  <div class="cabinet-card" id="cab-requests">
+    <div class="cabinet-card__head">
+      <span class="cabinet-card__title"><span class="cabinet-card__ico">📄</span> Мої заявки</span>
+      <button type="button" class="cabinet-card__link" id="cab-req-open-all" onclick="location.href='requests.html'" style="border:0;background:none;cursor:pointer;font:inherit;color:inherit">Усі →</button>
+    </div>
+    <div class="cabinet-card__body" id="cab-requests-body"><div class="cabinet-empty">Завантаження…</div></div>
+    <div class="cabinet-card__foot" style="padding:10px 14px 14px;display:flex;flex-wrap:wrap;gap:8px">
+      <button type="button" class="btn bp bsm" id="cab-req-new">➕ Нова заявка</button>
+      <button type="button" class="btn bs bsm" id="cab-req-inbox" style="display:none">📥 На погодження</button>
+    </div>
+  </div>
+
   <div class="cabinet-card" id="cab-fleet">
     <div class="cabinet-card__head">
       <span class="cabinet-card__title"><span class="cabinet-card__ico">◆</span> Авто і паливо</span>
@@ -387,6 +401,20 @@
       </div>
     </a>
 
+    
+    <a class="pmodule" href="requests.html" data-auth="1">
+      <div class="pmodule__head">
+        <div class="pmodule__icon" style="background:var(--primary-bg)">📄</div>
+        <span class="pmodule__badge pmodule__badge--new">Нове</span>
+      </div>
+      <div class="pmodule__title">Заявки та погодження</div>
+      <div class="pmodule__desc">Подача заявки, черга PM і директора, реєстр схвалених і відхилених.</div>
+      <div class="pmodule__meta">
+        <span>Кабінет · HR</span>
+        <span class="pmodule__arrow">→</span>
+      </div>
+    </a>
+
     <a class="pmodule" href="crm.html" data-auth="1" data-module="crm">
       <div class="pmodule__head">
         <div class="pmodule__icon" style="background:var(--primary-bg)">🤝</div>
@@ -528,7 +556,7 @@
 </section>
 
 <footer class="portal-footer">
-  <div id="portal-version">NEXUS ENGENEERING · Головна v6.1.0</div>
+  <div id="portal-version">NEXUS ENGENEERING · Головна v6.2.0 · Professional UI</div>
   <div style="margin-top:4px;opacity:.7">Всі модулі в одному місці</div>
 </footer>
 
@@ -580,8 +608,42 @@
   </div>
 </div>
 
+
+<!-- Мої заявки: створення / перегляд / погодження -->
+<div class="mo" id="cab-req-modal" onclick="if(event.target===this)CabRequests.closeModal()" style="display:none">
+  <div class="md" style="max-width:720px;width:94%;max-height:90vh;overflow:auto">
+    <div class="md-h">
+      <div class="md-t" id="cab-req-modal-title">Заявка</div>
+      <button type="button" class="md-x" onclick="CabRequests.closeModal()">×</button>
+    </div>
+    <div class="md-b" id="cab-req-modal-body"></div>
+  </div>
+</div>
+
 <script src="nexus-core.js"></script>
 <script src="portal.js"></script>
+<script src="cabinet-requests.js"></script>
 <script src="nexus-assistant.js"></script>
+
+<script>
+(function(){
+  function upgradePortalIcons(){
+    if(window.NexusUI && NexusUI.upgradeShellIcons){ NexusUI.upgradeShellIcons(); return; }
+    var map = {
+      '🏠':'home','👥':'users','📁':'folder','✅':'check','📅':'calendar','✉':'mail',
+      '📦':'box','🚗':'car','🏬':'warehouse','📄':'file','💰':'money','🤝':'users2',
+      '📊':'chart','📈':'report','📋':'audit'
+    };
+    // wait for NexusUI
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var t = setInterval(function(){
+      if(window.NexusUI){ NexusUI.upgradeShellIcons(); clearInterval(t); }
+    }, 50);
+    setTimeout(function(){ clearInterval(t); }, 3000);
+  });
+})();
+</script>
+
 </body>
 </html>

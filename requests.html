@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS — Заявки та погодження</title>
+<link rel="stylesheet" href="portal.css">
+<link rel="stylesheet" href="nexus-odoo-ui.css">
+<script>
+  (function(){
+    try {
+      var saved = localStorage.getItem('nexus_theme_v1') || 'auto';
+      document.documentElement.setAttribute('data-theme', saved);
+    } catch(e){}
+  })();
+</script>
+<style>
+  .req-page { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+  .req-page h1 { font-size: 1.45rem; margin: 0 0 6px; }
+  .req-page .sub { color: var(--text-muted,#64748b); font-size: 13.5px; margin-bottom: 18px; }
+  .req-filters { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; align-items:center; }
+  .req-filters button {
+    border:1px solid var(--border,#e2e8f0); background:var(--panel,#fff);
+    border-radius:999px; padding:6px 12px; font-size:12.5px; cursor:pointer;
+  }
+  .req-filters button.active { background:#0f172a; color:#fff; border-color:#0f172a; }
+  .req-filters .count { opacity:.75; margin-left:4px; }
+  .req-toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .req-table { width:100%; border-collapse:collapse; font-size:13px; background:var(--panel,#fff);
+    border:1px solid var(--border,#e2e8f0); border-radius:12px; overflow:hidden; }
+  .req-table th, .req-table td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border,#e2e8f0); }
+  .req-table th { background:rgba(15,23,42,.04); font-weight:650; font-size:12px; color:#475569; }
+  .req-table tr:last-child td { border-bottom:0; }
+  .req-table tr.row-click { cursor:pointer; }
+  .req-table tr.row-click:hover td { background:rgba(30,64,175,.04); }
+  .req-empty { text-align:center; padding:36px 16px; color:#64748b; }
+  .cab-req-status { display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:650; }
+  .cab-req-status--draft { background:#f1f5f9;color:#475569; }
+  .cab-req-status--pm { background:#fef3c7;color:#92400e; }
+  .cab-req-status--dir { background:#dbeafe;color:#1e40af; }
+  .cab-req-status--ok { background:#dcfce7;color:#166534; }
+  .cab-req-status--no { background:#fee2e2;color:#991b1b; }
+  #cab-req-modal { position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.45);
+    display:none;align-items:center;justify-content:center;padding:16px; }
+  #cab-req-modal.open { display:flex !important; }
+  #cab-req-modal .md { background:var(--panel,#fff); border-radius:12px; border:1px solid var(--border,#e2e8f0);
+    max-width:720px;width:94%;max-height:90vh;overflow:auto; box-shadow:0 20px 50px rgba(0,0,0,.2); }
+  #cab-req-modal .md-h { display:flex;align-items:center;justify-content:space-between;padding:14px 16px;
+    border-bottom:1px solid var(--border,#e2e8f0); }
+  #cab-req-modal .md-t { font-weight:700; }
+  #cab-req-modal .md-x { border:0;background:transparent;font-size:22px;cursor:pointer;color:#64748b; }
+  #cab-req-modal .md-b { padding:16px; }
+  .req-hint {
+    padding:12px 14px; border-radius:10px; border:1px solid #bfdbfe; background:#eff6ff;
+    font-size:13px; line-height:1.45; margin-bottom:16px; color:#1e3a8a;
+  }
+</style>
+</head>
+<body>
+<header class="portal-header">
+  <div class="portal-header__inner">
+    <div class="portal-brand">
+      <a href="index.html" class="portal-brand__logo" style="text-decoration:none;color:inherit">N</a>
+      <div class="portal-brand__text">
+        <div class="portal-brand__name">NEXUS — Заявки</div>
+        <div class="portal-brand__tag">Погодження та реєстр</div>
+      </div>
+    </div>
+    <div class="portal-header__right">
+      <a href="index.html" class="btn bs bsm" style="text-decoration:none">← Кабінет</a>
+    </div>
+  </div>
+</header>
+
+<main class="req-page">
+  <h1>📄 Заявки та погодження</h1>
+  <p class="sub">Співробітник подає заявку → project manager → директор. Друк лише після повного схвалення.</p>
+
+  <div class="req-hint" id="req-role-hint"></div>
+
+  <div class="req-toolbar">
+    <button type="button" class="btn bp bsm" id="req-page-new">➕ Нова заявка</button>
+    <button type="button" class="btn bs bsm" id="req-page-refresh">Оновити список</button>
+  </div>
+
+  <div class="req-filters" id="req-filters">
+    <button type="button" data-filter="inbox" class="active">На погодженні <span class="count" id="c-inbox">0</span></button>
+    <button type="button" data-filter="mine">Мої <span class="count" id="c-mine">0</span></button>
+    <button type="button" data-filter="all">Усі <span class="count" id="c-all">0</span></button>
+    <button type="button" data-filter="pending">В роботі <span class="count" id="c-pending">0</span></button>
+    <button type="button" data-filter="approved">Схвалені <span class="count" id="c-ok">0</span></button>
+    <button type="button" data-filter="rejected">Відхилені <span class="count" id="c-no">0</span></button>
+  </div>
+
+  <div id="req-list-host">
+    <div class="req-empty">Завантаження…</div>
+  </div>
+</main>
+
+<div id="cab-req-modal" onclick="if(event.target===this)CabRequests.closeModal()">
+  <div class="md">
+    <div class="md-h">
+      <div class="md-t" id="cab-req-modal-title">Заявка</div>
+      <button type="button" class="md-x" onclick="CabRequests.closeModal()">×</button>
+    </div>
+    <div class="md-b" id="cab-req-modal-body"></div>
+  </div>
+</div>
+
+<script src="nexus-core.js"></script>
+<script src="cabinet-requests.js"></script>
+<script src="requests-page.js"></script>
+</body>
+</html>

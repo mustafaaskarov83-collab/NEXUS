@@ -4,13 +4,13 @@
 
 /* Светлая тема (по умолчанию) */
 :root {
-  --primary:#1e40af; --primary-l:#3b82f6; --primary-d:#1e3a8a; --primary-bg:#eff6ff;
+  --primary:#1f6feb; --primary-l:#3b82f6; --primary-d:#154ba3; --primary-bg:#eff6ff;
   --success:#059669; --success-bg:#ecfdf5;
   --warn:#d97706; --warn-bg:#fffbeb;
   --danger:#dc2626; --danger-bg:#fef2f2;
   --g50:#f8fafc; --g100:#f1f5f9; --g200:#e2e8f0; --g300:#cbd5e1;
   --g500:#64748b; --g700:#334155; --g900:#0f172a;
-  --bg-page:#f1f5f9; --bg-card:#ffffff; --bg-input:#ffffff;
+  --bg-page:#f4f5f8; --bg-card:#ffffff; --bg-input:#ffffff;
   --text:#0f172a; --text-muted:#64748b; --text-label:#334155;
   --border:#e2e8f0; --border-light:#f1f5f9;
   --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
@@ -699,3 +699,143 @@ input, select, textarea {
 .bg { font-size: 10.5px !important; padding: 2px 7px !important; }
 .auth-card { padding: 24px 22px 18px !important; max-width: 400px !important; }
 .auth-t { font-size: 18px !important; }
+
+
+/* HR Заявки */
+.req-grid { display: flex; flex-direction: column; gap: 10px; }
+.req-card {
+  display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;
+  padding: 12px 14px; border-radius: 10px;
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--panel, #fff);
+}
+.req-card__icon { font-size: 22px; line-height: 1; }
+.req-card__body { flex: 1; min-width: 160px; }
+.req-card__title { font-weight: 650; font-size: 14px; }
+.req-card__meta { font-size: 12px; color: var(--text-muted, #64748b); margin-top: 4px; }
+.req-card__actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+
+.req-layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 280px) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 800px) {
+  .req-layout { grid-template-columns: 1fr; }
+}
+.req-list-item {
+  display: block; width: 100%; text-align: left;
+  padding: 10px 12px; margin-bottom: 6px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px; background: var(--panel, #fff);
+  cursor: pointer; font-size: 13px; line-height: 1.35;
+}
+.req-list-item:hover { border-color: #94a3b8; }
+.req-list-item.active {
+  border-color: #1e40af;
+  box-shadow: 0 0 0 1px #1e40af;
+  background: rgba(30, 64, 175, 0.04);
+}
+.req-list-item__name { font-weight: 650; }
+.req-list-item__meta { font-size: 11px; color: var(--text-muted, #64748b); margin-top: 3px; }
+
+.cab-req-status { display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:650; }
+.cab-req-status--draft { background:#f1f5f9;color:#475569; }
+.cab-req-status--pm { background:#fef3c7;color:#92400e; }
+.cab-req-status--dir { background:#dbeafe;color:#1e40af; }
+.cab-req-status--ok { background:#dcfce7;color:#166534; }
+.cab-req-status--no { background:#fee2e2;color:#991b1b; }
+.req-subtab.active { background:#0f172a !important; color:#fff !important; border-color:#0f172a !important; }
+#cab-req-modal.open, #cab-req-modal[style*="flex"] { display:flex !important; }
+
+
+/* ===== NEXUS EMP CARD SIZE v6.4.8 — 50% width, height by content ===== */
+#emp-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10050 !important;
+  display: none !important;
+  padding: 32px 16px !important;
+  background: rgba(15, 23, 42, 0.45) !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+}
+#emp-modal.open {
+  display: flex !important;
+}
+#emp-modal .emp-md,
+#emp-modal .md.emp-md,
+#emp-modal > .md {
+  width: 50vw !important;
+  max-width: calc(100vw - 32px) !important;
+  min-width: 320px !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  margin: 0 auto 32px auto !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  box-shadow: 0 20px 50px rgba(0,0,0,.22) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+#emp-modal .emp-md-h,
+#emp-modal .md-h {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-shrink: 0 !important;
+  padding: 12px 16px !important;
+  background: #f8f9fb !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 5 !important;
+}
+#emp-modal .emp-md-h-actions {
+  display: flex !important;
+  gap: 8px !important;
+  flex-shrink: 0 !important;
+}
+#emp-modal .emp-md-h-actions .btn,
+#emp-modal .md-x,
+#emp-modal .emp-md-foot .btn {
+  display: inline-flex !important;
+  visibility: visible !important;
+  cursor: pointer !important;
+}
+#emp-modal .md-x {
+  width: 36px !important;
+  height: 36px !important;
+  font-size: 22px !important;
+  border: 1px solid #dee2e6 !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+#emp-modal .emp-md-b,
+#emp-modal .md-b {
+  flex: 0 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+#emp-modal .emp-md-foot {
+  display: flex !important;
+  flex-shrink: 0 !important;
+  justify-content: flex-end !important;
+  padding: 10px 16px !important;
+  border-top: 1px solid #e5e7eb !important;
+  background: #f8f9fb !important;
+}
+#emp-modal .ecard { max-width: 100% !important; }
+#emp-modal .ecard-grid { grid-template-columns: 1fr 1fr !important; }

@@ -31,6 +31,25 @@
     { id: 'audit', href: 'audit.html', icon: '📋', label: 'Аудит / Логи' }
   ];
 
+  const SHELL_SVG = {
+    '🏠': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V9.5"/></svg>',
+    '👥': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>',
+    '📁': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>',
+    '✅': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>',
+    '📅': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>',
+    '✉': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1z"/><path d="M4 7l8 6 8-6"/></svg>',
+    '📦': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3.5 8.5L12 13l8.5-4.5M12 13v9"/></svg>',
+    '🚗': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h-1a1 1 0 01-1-1v-3.5L5 7h14l2 5.5V16a1 1 0 01-1 1h-1"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/><path d="M5 12h14"/></svg>',
+    '🏬': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21V12h6v9"/></svg>',
+    '📄': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>',
+    '💰': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>',
+    '🤝': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>',
+    '📊': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16"/><path d="M8 17V10M12 17V7M16 17v-4"/></svg>',
+    '📈': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12l4 4v12a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M14 4v4h4M8 13h8M8 17h5"/></svg>',
+    '📋': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>'
+  };
+
+
   function currentUser() {
     if (window.NexusCore && NexusCore.getCurrentUser) return NexusCore.getCurrentUser();
     try {
@@ -56,29 +75,53 @@
   }
 
   function injectStyles() {
+    // Load shared Odoo-inspired design system first
+    if (!document.getElementById('nexus-odoo-ui-css')) {
+      const link = document.createElement('link');
+      link.id = 'nexus-odoo-ui-css';
+      link.rel = 'stylesheet';
+      link.href = 'nexus-odoo-ui.css';
+      document.head.appendChild(link);
+    }
     if (document.getElementById('nexus-shell-css')) return;
     const css = document.createElement('style');
     css.id = 'nexus-shell-css';
     css.textContent = `
-/* NEXUS persistent shell — compact premium */
+/* NEXUS persistent shell — Odoo-inspired professional */
 html.nexus-shell-on, body.nexus-shell-on { min-height: 100vh; }
 body.nexus-shell-on {
   margin: 0;
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: stretch;
+  display: block !important;
+  background: var(--nx-bg, #f8f9fb) !important;
+  overflow-x: hidden !important;
+}
+body.nexus-shell-on > #auth-ov,
+body.nexus-shell-on > .auth-ov {
+  position: fixed !important;
+  z-index: 10000;
+}
+body.nexus-shell-on > #nexus-shell-main {
+  margin-left: 236px !important;
+  padding-left: 0 !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
 }
 #nexus-sidebar.nexus-shell-sidebar {
-  width: 220px;
-  min-width: 220px;
+  width: 236px;
+  min-width: 236px;
   flex-shrink: 0;
-  background: #0a0f18;
-  border-right: 1px solid rgba(255,255,255,.05);
+  background: #0f1419;
+  border-right: 1px solid rgba(255,255,255,.06);
   display: flex;
   flex-direction: column;
-  position: sticky;
+  position: fixed;
+  left: 0;
   top: 0;
   height: 100vh;
+  overflow-x: hidden;
   overflow-y: auto;
   z-index: 9000;
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -92,11 +135,11 @@ body.nexus-shell-on {
   padding: 14px 12px 8px;
 }
 .nx-shell-logo {
-  width: 30px; height: 30px; border-radius: 8px;
-  background: linear-gradient(145deg, #1a6bb5, #0a355c);
-  color: #fff; font-weight: 800; font-size: 13px;
+  width: 32px; height: 32px; border-radius: 8px;
+  background: #714B67;
+  color: #fff; font-weight: 700; font-size: 14px;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 8px rgba(15,76,129,.3);
+  box-shadow: none;
 }
 .nx-shell-brand-n { font-weight: 700; font-size: 12.5px; letter-spacing: -.02em; }
 .nx-shell-brand-t { font-size: 10px; color: #6b7c94; margin-top: 0; }
@@ -129,12 +172,13 @@ body.nexus-shell-on {
 }
 .nx-shell-item:hover { background: rgba(255,255,255,.05); color: #e8eef6; }
 .nx-shell-item.is-active {
-  background: rgba(26,107,181,.28);
+  background: rgba(113,75,103,.35);
   color: #fff; font-weight: 600;
-  box-shadow: inset 3px 0 0 #3b82f6;
-  border-radius: 8px 8px 8px 8px;
+  box-shadow: inset 3px 0 0 #714B67;
+  border-radius: 6px;
 }
-.nx-shell-ico { width: 18px; text-align: center; flex-shrink: 0; font-size: 13px; opacity: .92; }
+.nx-shell-ico { width: 18px; height: 18px; text-align: center; flex-shrink: 0; font-size: 13px; opacity: .92; display:inline-flex; align-items:center; justify-content:center; }
+.nx-shell-ico svg { width: 18px; height: 18px; display:block; }
 .nx-shell-lbl { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nx-shell-meta { font-size: 10px; color: #6b7c94; padding: 2px 10px 6px; line-height: 1.35; }
 .nx-shell-foot {
@@ -149,12 +193,18 @@ body.nexus-shell-on {
 .nx-shell-foot button:hover { background: rgba(255,255,255,.05); color: #e8eef6; }
 .nx-shell-foot .nx-shell-out:hover { color: #f87171; }
 #nexus-shell-main {
-  flex: 1;
+  background: #f4f5f8;
+  flex: 1 1 auto;
   min-width: 0;
+  width: auto;
+  max-width: none;
+  margin: 0 0 0 236px !important;
+  padding: 0 !important;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  overflow-x: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
   animation: nxMainIn .38s cubic-bezier(.22,1,.36,1) both;
 }
 @keyframes nxMainIn {
@@ -511,8 +561,11 @@ body.nexus-shell-on {
       }
       if (user && item.id !== 'cabinet' && !hasAccess(item.id, user)) return;
       const active = item.id === act || item.href === PAGE;
+      const icoHtml = SHELL_SVG[item.icon]
+        ? '<span class="nx-shell-ico nx-ico nx-ico--nav">' + SHELL_SVG[item.icon] + '</span>'
+        : '<span class="nx-shell-ico">' + item.icon + '</span>';
       navHtml += '<a class="nx-shell-item' + (active ? ' is-active' : '') + '" href="' + item.href + '">' +
-        '<span class="nx-shell-ico">' + item.icon + '</span>' +
+        icoHtml +
         '<span class="nx-shell-lbl">' + item.label + '</span></a>';
     });
 

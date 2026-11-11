@@ -594,7 +594,7 @@ const Doc = (() => {
     document.getElementById('doc-count').textContent = list.length;
 
     if (!list.length) {
-      el.innerHTML = '<div class="tm">' + (q || ft || fs || (document.getElementById('filter-contract-kind')?.value) ? 'Нічого не знайдено за фільтрами' : 'Документів ще немає. Додайте перший.') + '</div>';
+      el.innerHTML = '<div class="nx-empty"><strong>' + (q || ft || fs || (document.getElementById('filter-contract-kind')?.value) ? 'Нічого не знайдено' : 'Документів ще немає') + '</strong>' + (q || ft || fs || (document.getElementById('filter-contract-kind')?.value) ? 'Змініть фільтри або пошук.' : 'Додайте перший договір або акт кнопкою вище.') + '</div>';
       return;
     }
 

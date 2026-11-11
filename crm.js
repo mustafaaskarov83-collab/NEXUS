@@ -83,6 +83,7 @@ const CRM = (() => {
     } catch (e) { return null; }
   }
   function canEdit() {
+    if (window.NexusCore && typeof NexusCore.canEdit === 'function') return NexusCore.canEdit('crm');
     const u = getCurrentUser();
     return !!(u && u.role !== 'viewer');
   }

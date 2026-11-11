@@ -3,7 +3,7 @@
    Версія проєкту визначається в ОДНОМУ місці — константі APP_VERSION.
    ═══════════════════════════════════════════════════════════════════════ */
 
-const APP_VERSION='6.1.0';
+const APP_VERSION='6.1.8';
 
 const LANG = {
 uk:{brand:'Кадровий облік',
@@ -577,6 +577,45 @@ function loadDB(){
 function save(){try{localStorage.setItem(STORAGE,JSON.stringify(db))}catch{alert(t('aErrSave'))}}
 
 /* --- Трудовий договір (опційно, зворотно сумісно) --- */
+
+function parseContractSeq(num){
+  if(!num) return 0;
+  const s=String(num).trim();
+  // take last group of digits
+  const m=s.match(/(\d+)\s*$/);
+  if(!m) return 0;
+  return parseInt(m[1],10)||0;
+}
+function contractNumberPrefix(){
+  // keep company-style prefix if already used, else ТД-
+  const nums=(db.employees||[]).map(e=> (e.contract&&e.contract.number)||'').filter(Boolean);
+  for(const n of nums){
+    const m=String(n).match(/^(.*?)(\d+)\s*$/);
+    if(m && m[1]!==undefined) return m[1];
+  }
+  return 'ТД-';
+}
+function nextContractNumber(){
+  let max=0;
+  (db.employees||[]).forEach(e=>{
+    const n=(e.contract&&e.contract.number)||'';
+    const seq=parseContractSeq(n);
+    if(seq>max) max=seq;
+  });
+  const next=max+1;
+  const prefix=contractNumberPrefix();
+  // pad to at least 3 digits if prefix is ТД- or similar short prefix
+  const pad = next < 1000 ? 3 : String(next).length;
+  return prefix + String(next).padStart(pad,'0');
+}
+function ensureContractNumber(e){
+  const c=ensureContract(e);
+  if(!c.number || !String(c.number).trim()){
+    c.number=nextContractNumber();
+  }
+  return c.number;
+}
+
 function ensureContract(e){
   if(!e.contract||typeof e.contract!=='object'){
     e.contract={number:'',type:'indefinite',signedAt:'',endAt:'',note:'',fullText:'',scan:null};
@@ -861,6 +900,7 @@ function initTabs(){
     if(b.dataset.tab==='calc')refreshSel();
     if(b.dataset.tab==='dashboard')renderDash();
     if(b.dataset.tab==='settings'){Auth.refreshUI();renderCompany()}
+    if(b.dataset.tab==='requests'&&window.HrRequests)try{HrRequests.render()}catch(e){}
   }));
 }
 
@@ -984,6 +1024,25 @@ function closeDepartmentForm(){
   cancelDepartmentEdit();
   const m=$('#dep-modal'); if(m) m.classList.remove('open');
 }
+
+function bindCreateEmpNotebook(){
+  const root=document.getElementById('emp-create-notebook');
+  if(!root)return;
+  const tabs=[...root.querySelectorAll('[data-create-tab]')];
+  const pages=[...root.querySelectorAll('[data-create-page]')];
+  tabs.forEach(tab=>{
+    tab.onclick=function(ev){
+      ev.preventDefault();
+      const id=tab.getAttribute('data-create-tab');
+      tabs.forEach(x=>x.classList.toggle('is-active', x===tab));
+      pages.forEach(p=>{
+        const on=p.getAttribute('data-create-page')===id;
+        p.classList.toggle('is-active', on);
+        p.style.display=on?'block':'none';
+      });
+    };
+  });
+}
 function openEmployeeForm(){
   if(!reqEdit())return;
   // clear form fields
@@ -991,7 +1050,7 @@ function openEmployeeForm(){
   const el=$('#el'); if(el) el.value='24';
   const ee=$('#ee'); if(ee) ee.value='0';
   const ec=$('#ec'); if(ec) ec.value='standard';
-  if($('#e-ctr-num'))$('#e-ctr-num').value='';
+  if($('#e-ctr-num'))$('#e-ctr-num').value=nextContractNumber();
   if($('#e-ctr-signed'))$('#e-ctr-signed').value='';
   if($('#e-ctr-end'))$('#e-ctr-end').value='';
   const mt=$('#emp-form-mt'); if(mt) mt.textContent='Додати співробітника';
@@ -1001,6 +1060,7 @@ function openEmployeeForm(){
   const ed=$('#ed'); if(ed) ed.value='';
   const ps=$('#e-projects'); if(ps) Array.from(ps.options).forEach(o=>o.selected=false);
   const m=$('#emp-form-modal'); if(m) m.classList.add('open');
+  setTimeout(bindCreateEmpNotebook, 0);
   setTimeout(()=>{const n=$('#en'); if(n) n.focus();},80);
 }
 function closeEmployeeForm(){
@@ -1012,12 +1072,16 @@ function addEmp(){
   const n=$('#en').value.trim(),h=$('#eh').value,departmentId=$('#ed').value;
   if(!n||!h){alert(t('aFill'));return}
   if(!departmentId){alert('Оберіть відділ для співробітника.');return}
-  const ctrNum=($('#e-ctr-num')&&$('#e-ctr-num').value||'').trim();
+  let ctrNum=($('#e-ctr-num')&&$('#e-ctr-num').value||'').trim();
+  if(!ctrNum) ctrNum=nextContractNumber();
+  const takenCtr=(n)=> (db.employees||[]).some(x=>x.contract && String(x.contract.number||'').trim()===n);
+  while(takenCtr(ctrNum)) ctrNum=nextContractNumber();
   const ctrSigned=($('#e-ctr-signed')&&$('#e-ctr-signed').value)||h||'';
   const ctrEnd=($('#e-ctr-end')&&$('#e-ctr-end').value)||'';
   const ctrType=ctrEnd?'fixed':'indefinite';
+  const newId=uid();
   db.employees.push({
-    id:uid(),fullName:n,position:$('#ep').value.trim(),departmentId,
+    id:newId,fullName:n,position:$('#ep').value.trim(),departmentId,
     hireDate:h,birthDate:$('#eb').value||'',
     baseLeaveDays:Number($('#el').value)||LAW.MIN,
     insuranceYears:Number($('#ee').value)||calcInsuranceYears(h),
@@ -1034,6 +1098,8 @@ function addEmp(){
   $('#ee').value='0';$('#ee-hint').textContent='';$('#ed').value=''; if($('#e-projects')) Array.from($('#e-projects').options).forEach(o=>o.selected=false);
   if($('#e-ctr-num'))$('#e-ctr-num').value='';if($('#e-ctr-signed'))$('#e-ctr-signed').value='';if($('#e-ctr-end'))$('#e-ctr-end').value='';
   renderDepartments();renderEmp();refreshSel();renderDash();
+  // відкрити повну картку з усіма вкладками
+  setTimeout(()=>openEmp(newId), 50);
 }
 function delEmp(id){
   if(!reqEdit())return;
@@ -1064,7 +1130,7 @@ function renderEmp(q){
     const cc=comp(e);
     const st=cc.length?`<span class="bg bg-r">${t('stViol')}</span>`:left>20?`<span class="bg bg-o">${t('stAcc')}</span>`:`<span class="bg bg-g">${t('stOk')}</span>`;
     const dep=(db.departments||[]).find(d=>d.id===e.departmentId);
-    h+=`<tr><td><b>${escH(e.fullName)}</b></td><td>${escH(e.position||'—')}</td><td>${dep?`<span class="bg bg-b">${escH(dep.code)} — ${escH(dep.name)}</span>`:'<span class="bg bg-o">Не призначено</span>'}</td>
+    h+=`<tr class="emp-row" style="cursor:pointer" onclick="if(!event.target.closest('button'))App.openEmp('${e.id}')"><td><b>${escH(e.fullName)}</b></td><td>${escH(e.position||'—')}</td><td>${dep?`<span class="bg bg-b">${escH(dep.code)} — ${escH(dep.name)}</span>`:'<span class="bg bg-o">Не призначено</span>'}</td>
       <td>${reservationBadge(e)}</td>
       <td>${(e.projectIds||[]).length}</td><td>${fD(e.hireDate)}</td>
       <td>${contractBadge(e)}</td>
@@ -1072,17 +1138,32 @@ function renderEmp(q){
       <td><span class="bg ${left>0?'bg-g':'bg-gr'}">${left.toFixed(2)}</span></td>
       <td>${st}</td>
       <td style="text-align:right;white-space:nowrap">
-        <button class="btn bs bxs" onclick="App.openEmp('${e.id}')">${t('tCard')}</button>
+        <button class="btn bp bxs" onclick="event.stopPropagation();App.openEmp('${e.id}')">${t('tCard')}</button>
         ${ce?`<button class="btn bd bxs" onclick="App.delEmp('${e.id}')">×</button>`:''}
       </td></tr>`;
   });
   h+='</tbody></table>';el.innerHTML=h;
 }
 
-function openEmp(id){curEmpId=id;renderModal();$('#emp-modal').classList.add('open')}
+function openEmp(id){
+  curEmpId=id;
+  try { renderModal(); } catch (err) { console.error('renderModal', err); alert('Помилка картки: '+err.message); }
+  const m=document.getElementById('emp-modal');
+  if(m){
+    m.classList.add('open');
+    m.style.display='flex';
+    m.setAttribute('aria-hidden','false');
+  }
+}
 function closeModal(){
-  $('#emp-modal').classList.remove('open');
-  curEmpId=null;renderEmp();refreshSel();renderDash();
+  const m=document.getElementById('emp-modal');
+  if(m){
+    m.classList.remove('open');
+    m.style.display='none';
+    m.setAttribute('aria-hidden','true');
+  }
+  curEmpId=null;
+  try { renderEmp(); refreshSel(); renderDash(); } catch(_){}
 }
 
 function saveEmployeeDepartment(){
@@ -1132,8 +1213,13 @@ function saveEmployeeContract(){
   if(type==='fixed'&&!end){alert(t('aDates'));return}
   if(end&&signed&&end<signed){alert(t('aDates'));return}
   const prev=ensureContract(e);
+  let num=($('#ctr-num')?.value||'').trim();
+  if(!num) num=nextContractNumber();
+  // уникнути дублікатів номера в інших співробітників
+  const taken=(n)=> (db.employees||[]).some(x=>x.id!==e.id && x.contract && String(x.contract.number||'').trim()===n);
+  while(taken(num)) num=nextContractNumber();
   e.contract={
-    number:($('#ctr-num')?.value||'').trim(),
+    number:num,
     type,
     signedAt:signed||e.hireDate||'',
     endAt:end,
@@ -1319,12 +1405,40 @@ function removeContractScan(){
   renderModal();
 }
 
+
+function bindEmpNotebook(){
+  const root = document.getElementById('emp-notebook') || document.querySelector('.ecard-tabs');
+  if(!root) return;
+  const sheet = root.closest('.ecard') || document.getElementById('emp-mb');
+  const tabs = [...root.querySelectorAll('.ecard-tab, .o-notebook__tab')];
+  const pages = [...(sheet || document).querySelectorAll('.ecard-pane, .o-notebook__page')];
+  tabs.forEach(tab => {
+    tab.onclick = function(ev){
+      ev.preventDefault();
+      const id = tab.getAttribute('data-emp-tab');
+      tabs.forEach(x => x.classList.toggle('is-on', x === tab));
+      tabs.forEach(x => x.classList.toggle('is-active', x === tab));
+      pages.forEach(p => {
+        const on = p.getAttribute('data-emp-page') === id;
+        p.classList.toggle('is-on', on);
+        p.classList.toggle('is-active', on);
+        p.style.display = on ? 'block' : 'none';
+      });
+    };
+  });
+  pages.forEach(p => {
+    const on = p.classList.contains('is-on') || p.classList.contains('is-active');
+    p.style.display = on ? 'block' : 'none';
+  });
+}
+
 function renderModal(){
   const e=db.employees.find(x=>x.id===curEmpId);if(!e)return;
   const er=earned(e),us=used(e),left=er-us;
   const cc=comp(e);const cur=t('cur');const canE=Auth.can('edit');
   const stazh=Number(e.insuranceYears)||calcInsuranceYears(e.hireDate);
   $('#emp-mt').textContent=e.fullName;
+  try{ const h=$('#emp-mt'); if(h && !h.dataset.nb){ h.dataset.nb='1'; } }catch(_){}
 
   const lh=(e.leaves||[]).length
     ?(e.leaves||[]).slice().sort((a,b)=>b.start.localeCompare(a.start)).map(l=>`
@@ -1380,143 +1494,151 @@ function renderModal(){
     :`<div class="tm">${t('sickNoRec')}</div>`;
 
   $('#emp-mb').innerHTML=`
-    <div class="sg mb16">
-      <div class="sc"><div class="scl">${t('mHired')}</div>
-        <div class="scv scv-b" style="font-size:15px">${fD(e.hireDate)}</div></div>
-      <div class="sc"><div class="scl">${t('mLeave')}</div>
-        <div class="scv" style="font-size:15px">${e.baseLeaveDays} ${t('mPerY')}</div></div>
-      <div class="sc"><div class="scl">${t('sickStazh')}</div>
-        <div class="scv scv-b" style="font-size:15px">${stazh} ${t('sickYearShort')} · ${stazhPercent(stazh)}%</div></div>
-      <div class="sc"><div class="scl">${t('mEarn')}</div><div class="scv scv-b">${er.toFixed(2)}</div></div>
-      <div class="sc"><div class="scl">${t('mUsed')}</div><div class="scv scv-o">${us.toFixed(2)}</div></div>
-      <div class="sc"><div class="scl">${t('mLeft')}</div>
-        <div class="scv ${left>0?'scv-g':'scv-o'}">${left.toFixed(2)}</div></div>
-    </div>
-    <div class="c mb16" style="padding:14px;background:var(--g50);border:1px solid var(--g200);border-radius:10px">
-      <div style="font-weight:700;margin-bottom:8px">👤 ${t('ctrPos')} / 🏢 Відділ</div>
-      <div class="fr" style="gap:10px">
-        <div class="ff" style="flex:1"><label>${t('ctrPos')}</label>
-          <input type="text" id="emp-position" value="${escH(e.position||'')}" placeholder="Менеджер" ${canE?'':'disabled'}></div>
-        <div class="ff" style="flex:1"><label>Відділ</label>
-          <select id="emp-department" style="width:100%" ${canE?'':'disabled'}></select></div>
+<div class="ecard">
+  <div class="ecard-kpis">
+    <div class="ecard-kpi"><span>Прийнято</span><b title="${escH(fD(e.hireDate))}">${fD(e.hireDate)}</b></div>
+    <div class="ecard-kpi"><span>Відпустка / рік</span><b>${e.baseLeaveDays}&nbsp;дн.</b></div>
+    <div class="ecard-kpi"><span>Нараховано</span><b class="c-blue">${er.toFixed(1)}</b></div>
+    <div class="ecard-kpi"><span>Використано</span><b class="c-orange">${us.toFixed(1)}</b></div>
+    <div class="ecard-kpi"><span>Залишок</span><b class="${left>0?'c-green':'c-orange'}">${left.toFixed(1)}</b></div>
+    <div class="ecard-kpi"><span>Стаж</span><b>${stazh}&nbsp;р.&nbsp;·&nbsp;${stazhPercent(stazh)}%</b></div>
+  </div>
+
+  <div class="ecard-tabs" id="emp-notebook">
+    <button type="button" class="ecard-tab is-on" data-emp-tab="main">Основне</button>
+    <button type="button" class="ecard-tab" data-emp-tab="contract">Договір</button>
+    <button type="button" class="ecard-tab" data-emp-tab="projects">Проекти</button>
+    <button type="button" class="ecard-tab" data-emp-tab="leaves">Відпустки</button>
+    <button type="button" class="ecard-tab" data-emp-tab="sick">Лікарняні</button>
+    <button type="button" class="ecard-tab" data-emp-tab="pay">Виплати</button>
+    <button type="button" class="ecard-tab" data-emp-tab="periods">Періоди</button>
+    <button type="button" class="ecard-tab" data-emp-tab="reserve">Бронювання</button>
+  </div>
+
+  <div class="ecard-body">
+    <div class="ecard-pane is-on" data-emp-page="main">
+      <div class="ecard-grid">
+        <label>Посада<input type="text" id="emp-position" value="${escH(e.position||'')}" placeholder="Менеджер" ${canE?'':'disabled'}></label>
+        <label>Відділ<select id="emp-department" ${canE?'':'disabled'}></select></label>
+        <label>Дата прийняття<input type="date" value="${escH(e.hireDate||'')}" disabled></label>
+        <label>Дата народження<input type="date" value="${escH(e.birthDate||'')}" disabled></label>
+        <label>Категорія<input type="text" value="${escH(e.category||'standard')}" disabled></label>
+        <label>Базова відпустка<input type="number" value="${e.baseLeaveDays||24}" disabled></label>
       </div>
-      ${canE?`<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px">
-        <button class="btn bp bsm" type="button" onclick="App.saveEmployeePosition()">${t('ctrPosSave')}</button>
-        <button class="btn bs bsm" type="button" onclick="App.saveEmployeeDepartment()">Зберегти відділ</button>
-      </div>`:'<div class="tsm tmu" style="margin-top:8px">Тільки перегляд</div>'}
+      ${canE?`<div class="ecard-actions">
+        <button class="btn bp" type="button" onclick="App.saveEmployeePosition()">Зберегти посаду</button>
+        <button class="btn bs" type="button" onclick="App.saveEmployeeDepartment()">Зберегти відділ</button>
+      </div>`:'<p class="ecard-hint">Тільки перегляд</p>'}
+      ${cc.length
+        ? `<div class="ecard-alert warn"><b>Увага</b><ul>${cc.map(c=>'<li>'+c+'</li>').join('')}</ul></div>`
+        : `<div class="ecard-alert ok">Перевірок без зауважень</div>`}
     </div>
-    <div class="c mb16" style="padding:14px;background:var(--g50);border:1px solid var(--g200);border-radius:10px">
-      <div style="font-weight:700;margin-bottom:8px">📁 Проекти співробітника</div>
-      <select id="emp-projects" multiple size="4" style="width:100%">${(window.NexusCore?NexusCore.getProjects():[]).filter(p=>p.status!=='cancelled').map(p=>`<option value="${p.id}" ${(Array.isArray(e.projectIds)?e.projectIds:(e.projectId?[e.projectId]:[])).includes(p.id)?'selected':''}>${p.code} — ${p.name}</option>`).join('')}</select>
-      ${canE?`<div style="margin-top:8px"><button class="btn bp bsm" onclick="App.saveEmployeeProjects()">Зберегти проекти</button></div>`:'<div class="tsm tmu">Тільки перегляд</div>'}
-    </div>
-    ${(()=>{
-      const c=ensureContract(e);const st=contractStatus(e);
-      return `<div class="c mb16" style="padding:14px;background:var(--g50);border:1px solid var(--g200);border-radius:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-        <div style="font-weight:700">${t('ctrT')}</div>
-        ${contractBadge(e)}
-      </div>
-      <div class="fr" style="gap:10px">
-        <div class="ff"><label>${t('ctrNum')}</label>
-          <input type="text" id="ctr-num" value="${escH(c.number||'')}" placeholder="ТД-001" ${canE?'':'disabled'}></div>
-        <div class="ff"><label>${t('ctrType')}</label>
+
+    <div class="ecard-pane" data-emp-page="contract">
+      ${(()=>{
+        const c=ensureContract(e); const st=contractStatus(e);
+        return `
+      <div class="ecard-row-top">${contractBadge(e)}</div>
+      <div class="ecard-grid">
+        <label>${t('ctrNum')}
+          <input type="text" id="ctr-num" value="${escH(c.number && String(c.number).trim() ? c.number : nextContractNumber())}" placeholder="авто" ${canE?'':'disabled'}>
+          <span class="ecard-hint" style="font-weight:400">Номер формується автоматично (ТД-001, ТД-002…)</span>
+        </label>
+        <label>${t('ctrType')}
           <select id="ctr-type" ${canE?'':'disabled'} onchange="App.onContractTypeChange()">
             <option value="indefinite" ${c.type!=='fixed'?'selected':''}>${t('ctrIndef')}</option>
             <option value="fixed" ${c.type==='fixed'?'selected':''}>${t('ctrFixed')}</option>
-          </select></div>
-        <div class="ff"><label>${t('ctrSigned')}</label>
-          <input type="date" id="ctr-signed" value="${escH(c.signedAt||e.hireDate||'')}" ${canE?'':'disabled'}></div>
-        <div class="ff" id="ctr-end-wrap" style="${c.type==='fixed'||c.endAt?'':'opacity:.55'}">
-          <label>${t('ctrEnd')}</label>
-          <input type="date" id="ctr-end" value="${escH(c.endAt||'')}" ${canE?'':'disabled'}></div>
+          </select>
+        </label>
+        <label>${t('ctrSigned')}<input type="date" id="ctr-signed" value="${escH(c.signedAt||e.hireDate||'')}" ${canE?'':'disabled'}></label>
+        <label id="ctr-end-wrap" style="${c.type==='fixed'||c.endAt?'':'opacity:.5'}">${t('ctrEnd')}
+          <input type="date" id="ctr-end" value="${escH(c.endAt||'')}" ${canE?'':'disabled'}>
+        </label>
+        <label class="full">${t('ctrNote')}<input type="text" id="ctr-note" value="${escH(c.note||'')}" placeholder="—" ${canE?'':'disabled'}></label>
       </div>
-      <div class="ff" style="margin-top:8px"><label>${t('ctrNote')}</label>
-        <input type="text" id="ctr-note" value="${escH(c.note||'')}" placeholder="—" ${canE?'':'disabled'}></div>
-      <div class="tsm tmu" style="margin-top:6px">${t('ctrHint')}</div>
-      ${st.key==='soon'?`<div class="cc cc-w" style="margin-top:10px">⚠️ ${t('ctrSoon')}: ${t('ctrDaysLeft',{n:st.days})} (${fD(c.endAt)})</div>`:''}
-      ${st.key==='expired'?`<div class="cc cc-w" style="margin-top:10px">⛔ ${t('ctrExpired')}: ${fD(c.endAt)}</div>`:''}
-      <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-        <button class="btn bs bsm" type="button" onclick="App.printContract('${e.id}')">${t('ctrPreview')}</button>
-        ${canE?`<button class="btn bp bsm" type="button" onclick="App.saveEmployeeContract()">${t('ctrSave')}</button>`:''}
-      </div>
-      <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--g200)">
-        <div style="font-weight:600;margin-bottom:6px">${t('ctrText')}</div>
-        <div class="tsm tmu" style="margin-bottom:6px">${t('ctrTextHint')}</div>
-        <textarea id="ctr-fulltext" rows="12" style="width:100%;font-family:inherit;font-size:13px;line-height:1.45;padding:10px;border:1px solid var(--g200);border-radius:8px;resize:vertical;background:var(--bg-card, #fff);color:inherit" ${canE?'':'readonly'}>${escH(c.fullText||'')}</textarea>
-        ${canE?`<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px">
-          <button class="btn bs bsm" type="button" onclick="App.fillContractTemplate()">${t('ctrTextFill')}</button>
-          <button class="btn bp bsm" type="button" onclick="App.saveContractText()">${t('ctrTextSave')}</button>
-          <button class="btn bd bsm" type="button" onclick="App.resetContractText()">${t('ctrTextReset')}</button>
-        </div>`:''}
-      </div>
-      <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--g200)">
-        <div style="font-weight:600;margin-bottom:6px">${t('ctrScan')}</div>
-        ${c.scan&&c.scan.data
-          ?`<div class="tsm" style="margin-bottom:8px">✅ ${escH(c.scan.name||'file')} · ${Math.round((c.scan.size||0)/1024)} КБ · ${c.scan.uploadedAt?fD(c.scan.uploadedAt):'—'}</div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px">
-              <button class="btn bs bsm" type="button" onclick="App.openContractScan('${e.id}')">${t('ctrScanOpen')}</button>
-              ${canE?`<button class="btn bd bsm" type="button" onclick="App.removeContractScan()">${t('ctrScanDel')}</button>`:''}
-            </div>`
-          :`<div class="tsm tmu" style="margin-bottom:8px">${t('ctrScanNone')}</div>
-            ${canE?`<label class="btn bs bsm" style="display:inline-block;cursor:pointer">
-              ${t('ctrScanUp')}
-              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" style="display:none" onchange="App.attachContractScan(event)">
-            </label>`:''}`}
-      </div>
-      ${canE?'':'<div class="tsm tmu" style="margin-top:8px">Тільки перегляд</div>'}
-    </div>`;
-    })()}
-    ${reservationSectionHtml(e,canE)}
-    ${cc.length?`<div class="cc cc-w mb16"><b>${t('mViol')}</b><br>${cc.map(c=>'• '+c).join('<br>')}</div>`
-      :`<div class="cc cc-ok mb16">${t('mOk')}</div>`}
+      <p class="ecard-hint">${t('ctrHint')}</p>
+      ${st.key==='soon'?`<div class="ecard-alert warn">⚠️ ${t('ctrSoon')}: ${t('ctrDaysLeft',{n:st.days})} (${fD(c.endAt)})</div>`:''}
+      ${st.key==='expired'?`<div class="ecard-alert warn">⛔ ${t('ctrExpired')}: ${fD(c.endAt)}</div>`:''}
+      <div class="ecard-actions">
+        <button class="btn bs" type="button" onclick="App.printContract('${e.id}')">${t('ctrPreview')}</button>
+        ${canE?`<button class="btn bp" type="button" onclick="App.saveEmployeeContract()">${t('ctrSave')}</button>`:''}
+        ${canE?`<label class="btn bs" style="display:inline-flex;align-items:center;cursor:pointer;margin:0">
+          ${t('ctrScanUp')}
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" style="display:none" onchange="App.attachContractScan(event)">
+        </label>`:''}
+        ${c.scanData?`<button class="btn bs" type="button" onclick="App.openContractScan('${e.id}')">${t('ctrScanOpen')}</button>
+          ${canE?`<button class="btn bd" type="button" onclick="App.removeContractScan('${e.id}')">× скан</button>`:''}`:''}
+      </div>`;
+      })()}
+    </div>
 
-    <h3 style="font-size:14px;margin:20px 0 10px;font-weight:700">${t('sick')}</h3>
-    ${slh}
-    ${canE?`<div class="fr mt-8" style="align-items:flex-end">
-      <div class="ff"><label>${t('sickFrom')}</label><input type="date" id="sl-s"></div>
-      <div class="ff"><label>${t('sickTo')}</label><input type="date" id="sl-e"></div>
-      <div class="ff"><label>${t('sickType')}</label>
-        <select id="sl-t"><option value="sick">${t('sickTypeSick')}</option>
-        <option value="child">${t('sickTypeChild')}</option></select></div>
-      <div class="ff ffn" style="align-self:center">
-        <label style="display:flex;gap:6px;align-items:center;font-weight:500;font-size:12px">
-          <input type="checkbox" id="sl-esv" style="width:auto"> ${t('sickEsv')}</label></div>
-      <div class="ff ffn"><label>&nbsp;</label>
-        <button class="btn bp bsm" onclick="App.addSick()">${t('sickCalc')}</button></div>
-    </div>`:''}
+    <div class="ecard-pane" data-emp-page="projects">
+      <label class="ecard-label">Проекти співробітника</label>
+      <select id="emp-projects" multiple size="10" class="ecard-multi">${(window.NexusCore?NexusCore.getProjects():[]).filter(p=>p.status!=='cancelled').map(p=>`<option value="${p.id}" ${(Array.isArray(e.projectIds)?e.projectIds:(e.projectId?[e.projectId]:[])).includes(p.id)?'selected':''}>${p.code} — ${p.name}</option>`).join('')}</select>
+      <p class="ecard-hint">Ctrl + клік — кілька проектів</p>
+      ${canE?`<div class="ecard-actions"><button class="btn bp" onclick="App.saveEmployeeProjects()">Зберегти проекти</button></div>`:'<p class="ecard-hint">Тільки перегляд</p>'}
+    </div>
 
-    <h3 style="font-size:14px;margin:20px 0 10px;font-weight:700">${t('mUsedL')}</h3>
-    ${lh}
-    ${canE?`<div class="fr mt-8" style="align-items:flex-end">
-      <div class="ff"><label>${t('tStart')}</label><input type="date" id="nl-s"></div>
-      <div class="ff"><label>${t('tEnd')}</label><input type="date" id="nl-e"></div>
-      <div class="ff ffn"><label>&nbsp;</label>
-        <button class="btn bp bsm" onclick="App.addLeave()">${t('mAdd')}</button></div>
-    </div>`:''}
+    <div class="ecard-pane" data-emp-page="leaves">
+      <div class="ecard-list">${lh}</div>
+      ${canE?`<div class="ecard-add">
+        <label>Початок<input type="date" id="nl-s"></label>
+        <label>Кінець<input type="date" id="nl-e"></label>
+        <button class="btn bp" onclick="App.addLeave()">${t('mAdd')}</button>
+      </div>`:''}
+    </div>
 
-    <h3 style="font-size:14px;margin:20px 0 10px;font-weight:700">${t('mPay')}</h3>
-    ${ph}
-    ${canE?`<div class="fr mt-8" style="align-items:flex-end">
-      <div class="ff ffn"><label>${t('mYear')}</label><input type="number" id="np-y" value="${new Date().getFullYear()}"></div>
-      <div class="ff ffn"><label>${t('mMonth')}</label><input type="number" id="np-m" min="1" max="12" value="${new Date().getMonth()+1}"></div>
-      <div class="ff"><label>${t('mAmt')}</label><input type="number" id="np-a" placeholder="20000"></div>
-      <div class="ff ffn"><label>&nbsp;</label>
-        <button class="btn bp bsm" onclick="App.addPay()">${t('mAdd')}</button></div>
-    </div>`:''}
+    <div class="ecard-pane" data-emp-page="sick">
+      <div class="ecard-list">${slh}</div>
+      ${canE?`<div class="ecard-add">
+        <label>${t('sickFrom')}<input type="date" id="sl-s"></label>
+        <label>${t('sickTo')}<input type="date" id="sl-e"></label>
+        <label>${t('sickType')}
+          <select id="sl-t">
+            <option value="sick">${t('sickTypeSick')}</option>
+            <option value="child">${t('sickTypeChild')}</option>
+          </select>
+        </label>
+        <label class="ecard-check"><input type="checkbox" id="sl-esv"> ${t('sickEsv')}</label>
+        <button class="btn bp" onclick="App.addSick()">${t('sickCalc')}</button>
+      </div>`:''}
+    </div>
 
-    <h3 style="font-size:14px;margin:20px 0 10px;font-weight:700">${t('mPerT')}</h3>
-    <div class="tsm tmu mb16">${t('mPerH')}</div>
-    ${prh}
-    ${canE?`<div class="fr mt-8" style="align-items:flex-end">
-      <div class="ff"><label>${t('mType')}</label>
-        <select id="nper-t"><option value="unpaidPeriods">${t('mUnp2')}</option>
-        <option value="parentalPeriods">${t('mPar2')}</option></select></div>
-      <div class="ff"><label>${t('tStart')}</label><input type="date" id="nper-s"></div>
-      <div class="ff"><label>${t('tEnd')}</label><input type="date" id="nper-e"></div>
-      <div class="ff ffn"><label>&nbsp;</label>
-        <button class="btn bp bsm" onclick="App.addPer()">${t('mAdd')}</button></div>
-    </div>`:''}`;
+    <div class="ecard-pane" data-emp-page="pay">
+      <div class="ecard-list">${ph}</div>
+      ${canE?`<div class="ecard-add">
+        <label>${t('mYear')}<input type="number" id="np-y" value="${new Date().getFullYear()}"></label>
+        <label>${t('mMonth')}<input type="number" id="np-m" min="1" max="12" value="${new Date().getMonth()+1}"></label>
+        <label>${t('mAmt')}<input type="number" id="np-a" placeholder="20000"></label>
+        <button class="btn bp" onclick="App.addPay()">${t('mAdd')}</button>
+      </div>`:''}
+    </div>
+
+    <div class="ecard-pane" data-emp-page="periods">
+      <p class="ecard-hint">${t('mPerH')}</p>
+      <div class="ecard-list">${prh}</div>
+      ${canE?`<div class="ecard-add">
+        <label>${t('mType')}
+          <select id="nper-t">
+            <option value="unpaidPeriods">${t('mUnp2')}</option>
+            <option value="parentalPeriods">${t('mPar2')}</option>
+          </select>
+        </label>
+        <label>${t('tStart')}<input type="date" id="nper-s"></label>
+        <label>${t('tEnd')}<input type="date" id="nper-e"></label>
+        <button class="btn bp" onclick="App.addPer()">${t('mAdd')}</button>
+      </div>`:''}
+    </div>
+
+    <div class="ecard-pane" data-emp-page="reserve">
+      ${reservationSectionHtml(e,canE)}
+    </div>
+  </div>
+</div>
+`;
+  bindEmpNotebook();
+
+
   renderDepartmentSelects();
   const depSel=$('#emp-department');
   if(depSel) depSel.value=e.departmentId||'';
@@ -2178,7 +2300,7 @@ return{
   exportExcel:expXls,downloadTemplate:tpl,
   exportJSON:expJ,importJSON:impJ,
   saveSettings:saveSet,addHoliday:addHol,delHol,clearAll,
-  saveCompany,renderAll,init,handleXls,saveEmployeeProjects,saveEmployeeContract,onContractTypeChange,
+  saveCompany,renderAll,init,handleXls,saveEmployeeProjects,saveEmployeeContract,nextContractNumber,onContractTypeChange,
   printContract,attachContractScan,openContractScan,removeContractScan,
   fillContractTemplate,saveContractText,resetContractText,saveEmployeePosition,
   saveDepartment,editDepartment,cancelDepartmentEdit,openDepartmentForm,closeDepartmentForm,openEmployeeForm,closeEmployeeForm,saveEmployeeDepartment,

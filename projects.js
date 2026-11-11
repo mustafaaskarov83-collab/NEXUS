@@ -8,7 +8,7 @@ const Projects = (() => {
   function load(){const d=read(KEY);return d&&Array.isArray(d.projects)?d:{projects:[],meta:{version:'1.0',created:new Date().toISOString().slice(0,10)}}}
   function save(){localStorage.setItem(KEY,JSON.stringify(db)); if(window.NexusCore) NexusCore.audit('project.save','project',{count:db.projects.length});}
   function user(){const s=read(SESSION);if(!s?.userId)return null;return (read(USERS)||[]).find(x=>x.id===s.userId)||null}
-  function canEdit(){return !!user()&&user().role!=='viewer'}
+  function canEdit(){if(window.NexusCore&&typeof NexusCore.canEdit==='function')return NexusCore.canEdit('projects');const u=user();return !!u&&u.role!=='viewer'}
   const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const fmt=n=>new Intl.NumberFormat('uk-UA',{maximumFractionDigits:2}).format(Number(n)||0);
   function getData(key,prop){const d=read(key);return d&&Array.isArray(d[prop])?d[prop]:[]}
@@ -146,7 +146,7 @@ const Projects = (() => {
     document.getElementById('detail-modal').classList.add('vis');}
   function row(a,b){return `<div class="detail-row"><span>${a}</span><b>${esc(b||'—')}</b></div>`}
   function close(){document.getElementById('detail-modal').classList.remove('vis')}
-  function render(){const q=(document.getElementById('search')?.value||'').toLowerCase();const status=document.getElementById('filter-status')?.value||'';const list=db.projects.filter(p=>(!q||[p.code,p.name,p.customer,p.manager].join(' ').toLowerCase().includes(q))&&(!status||p.status===status));document.getElementById('count').textContent=list.length;document.getElementById('stats').innerHTML=stats();const el=document.getElementById('project-list');if(!list.length){el.innerHTML='<div class="empty">Проектів поки немає. Створіть перший проект вище.</div>';return}el.innerHTML=list.map(p=>card(p)).join('');}
+  function render(){const q=(document.getElementById('search')?.value||'').toLowerCase();const status=document.getElementById('filter-status')?.value||'';const list=db.projects.filter(p=>(!q||[p.code,p.name,p.customer,p.manager].join(' ').toLowerCase().includes(q))&&(!status||p.status===status));document.getElementById('count').textContent=list.length;document.getElementById('stats').innerHTML=stats();const el=document.getElementById('project-list');if(!list.length){el.innerHTML='<div class="nx-empty"><strong>Проектів поки немає</strong>Створіть перший проект кнопкою «Новий проект».</div>';return}el.innerHTML=list.map(p=>card(p)).join('');}
   function card(p){const r=refs(p),st=STATUS[p.status]||STATUS.planning;const amount=Number(p.contractAmount)||0;const cur=esc(p.currency||'UAH');
     const docLine=[
       p.contractNum||p.contractName?`📝 Договір${p.contractNum?` № ${esc(p.contractNum)}`:''}${p.contractName?` — ${esc(p.contractName)}`:''}`:null,
@@ -162,6 +162,11 @@ const Projects = (() => {
   function hideForm(){const m=document.getElementById('project-form-modal');if(m)m.classList.remove('vis');}
   function toggleForm(){openForm();}
   function cancelForm(){closeForm();}
-  return {init,save:saveProject,reset,edit,del,open,close,render,fillProjectSelectors,contractChanged,addendumChanged,toggleAddendum,recalcProjectAmount,canEdit,toggleForm,hideForm,cancelForm,openForm,closeForm,showForm};
+  function filter(q){
+    const s=document.getElementById('search')||document.getElementById('nx-cp-search');
+    if(s && typeof q==='string') s.value=q;
+    render();
+  }
+  return {init,save:saveProject,reset,edit,del,open,close,render,filter,fillProjectSelectors,contractChanged,addendumChanged,toggleAddendum,recalcProjectAmount,canEdit,toggleForm,hideForm,cancelForm,openForm,closeForm,showForm};
 })();
 window.Projects=Projects;document.addEventListener('DOMContentLoaded',Projects.init);

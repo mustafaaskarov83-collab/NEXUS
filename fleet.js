@@ -191,6 +191,7 @@ const Fleet = (() => {
     return (num ? (num + ' — ') : '') + name;
   }
   function canEdit() {
+    if (window.NexusCore && typeof NexusCore.canEdit === 'function') return NexusCore.canEdit('fleet');
     const u = getCurrentUser();
     return !!u && u.role !== 'viewer';
   }

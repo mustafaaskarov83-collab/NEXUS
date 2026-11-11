@@ -1,0 +1,2597 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEXUS — Professional UI (Odoo-inspired) v1.1
+   Shared design system for portal + all modules
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ─── Design tokens (Odoo-like enterprise) ─────────────────────────────── */
+:root {
+  /* Brand — professional blue (engineering) with teal accent */
+  --nx-primary: #1f6feb;
+  --nx-primary-hover: #1a5fd0;
+  --nx-primary-pressed: #154ba3;
+  --nx-primary-soft: rgba(31, 111, 235, 0.09);
+  --nx-primary-border: rgba(31, 111, 235, 0.22);
+
+  --nx-accent: #0d9488;
+  --nx-accent-soft: rgba(13, 148, 136, 0.1);
+
+  /* Semantic */
+  --nx-success: #16a34a;
+  --nx-success-soft: #dcfce7;
+  --nx-success-text: #166534;
+  --nx-warn: #d97706;
+  --nx-warn-soft: #fef3c7;
+  --nx-warn-text: #92400e;
+  --nx-danger: #dc2626;
+  --nx-danger-soft: #fee2e2;
+  --nx-danger-text: #991b1b;
+  --nx-info: #2563eb;
+  --nx-info-soft: #dbeafe;
+
+  /* Surfaces */
+  --nx-bg: #f8f9fb;
+  --nx-bg-elevated: #ffffff;
+  --nx-bg-muted: #f1f3f7;
+  --nx-bg-hover: #eef1f6;
+  --nx-bg-active: #e8ecf3;
+
+  /* Text */
+  --nx-text: #1c2333;
+  --nx-text-secondary: #5b6475;
+  --nx-text-muted: #8b93a7;
+  --nx-text-inverse: #ffffff;
+
+  /* Borders & shadows (Odoo uses very subtle borders) */
+  --nx-border: #e2e6ef;
+  --nx-border-strong: #cfd5e3;
+  --nx-divider: #eef0f5;
+
+  --nx-shadow-xs: 0 1px 2px rgba(28, 35, 51, 0.04);
+  --nx-shadow-sm: 0 1px 3px rgba(28, 35, 51, 0.06), 0 1px 2px rgba(28, 35, 51, 0.04);
+  --nx-shadow-md: 0 4px 12px rgba(28, 35, 51, 0.07), 0 1px 3px rgba(28, 35, 51, 0.04);
+  --nx-shadow-lg: 0 12px 28px rgba(28, 35, 51, 0.1), 0 4px 8px rgba(28, 35, 51, 0.04);
+  --nx-shadow-focus: 0 0 0 3px rgba(31, 111, 235, 0.22);
+
+  /* Radius — Odoo is tighter than current NEXUS */
+  --nx-radius-xs: 4px;
+  --nx-radius-sm: 6px;
+  --nx-radius: 8px;
+  --nx-radius-md: 10px;
+  --nx-radius-lg: 12px;
+  --nx-radius-xl: 16px;
+  --nx-radius-pill: 999px;
+
+  /* Layout */
+  --nx-sidebar-w: 236px;
+  --nx-sidebar-collapsed: 64px;
+  --nx-topbar-h: 48px;
+  --nx-control-h: 46px;
+
+  /* Typography */
+  --nx-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --nx-font-mono: 'SF Mono', 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  --nx-fs-xs: 11px;
+  --nx-fs-sm: 12.5px;
+  --nx-fs: 13.5px;
+  --nx-fs-md: 14.5px;
+  --nx-fs-lg: 16px;
+  --nx-fs-xl: 20px;
+  --nx-fs-2xl: 24px;
+
+  /* Motion */
+  --nx-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --nx-duration: 160ms;
+
+  color-scheme: light;
+}
+
+/* Dark theme */
+html[data-theme="dark"] {
+  --nx-primary: #3b82f6;
+  --nx-primary-hover: #60a5fa;
+  --nx-primary-pressed: #2563eb;
+  --nx-primary-soft: rgba(59, 130, 246, 0.14);
+  --nx-primary-border: rgba(59, 130, 246, 0.28);
+
+  --nx-accent: #14b8a6;
+  --nx-accent-soft: rgba(20, 184, 166, 0.14);
+
+  --nx-success: #22c55e;
+  --nx-success-soft: rgba(34, 197, 94, 0.15);
+  --nx-success-text: #86efac;
+  --nx-warn: #f59e0b;
+  --nx-warn-soft: rgba(245, 158, 11, 0.15);
+  --nx-warn-text: #fcd34d;
+  --nx-danger: #f87171;
+  --nx-danger-soft: rgba(248, 113, 113, 0.15);
+  --nx-danger-text: #fca5a5;
+  --nx-info: #60a5fa;
+  --nx-info-soft: rgba(96, 165, 250, 0.15);
+
+  --nx-bg: #0b0f17;
+  --nx-bg-elevated: #121826;
+  --nx-bg-muted: #1a2233;
+  --nx-bg-hover: #1e293b;
+  --nx-bg-active: #243044;
+
+  --nx-text: #e8edf7;
+  --nx-text-secondary: #a0aec0;
+  --nx-text-muted: #718096;
+  --nx-text-inverse: #0b0f17;
+
+  --nx-border: #1e293b;
+  --nx-border-strong: #2d3a4f;
+  --nx-divider: #1a2233;
+
+  --nx-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --nx-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --nx-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --nx-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --nx-shadow-focus: 0 0 0 3px rgba(59, 130, 246, 0.3);
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] {
+    --nx-primary: #3b82f6;
+    --nx-primary-hover: #60a5fa;
+    --nx-primary-pressed: #2563eb;
+    --nx-primary-soft: rgba(59, 130, 246, 0.14);
+    --nx-primary-border: rgba(59, 130, 246, 0.28);
+    --nx-accent: #14b8a6;
+    --nx-accent-soft: rgba(20, 184, 166, 0.14);
+    --nx-success: #22c55e;
+    --nx-success-soft: rgba(34, 197, 94, 0.15);
+    --nx-success-text: #86efac;
+    --nx-warn: #f59e0b;
+    --nx-warn-soft: rgba(245, 158, 11, 0.15);
+    --nx-warn-text: #fcd34d;
+    --nx-danger: #f87171;
+    --nx-danger-soft: rgba(248, 113, 113, 0.15);
+    --nx-danger-text: #fca5a5;
+    --nx-info: #60a5fa;
+    --nx-info-soft: rgba(96, 165, 250, 0.15);
+    --nx-bg: #0b0f17;
+    --nx-bg-elevated: #121826;
+    --nx-bg-muted: #1a2233;
+    --nx-bg-hover: #1e293b;
+    --nx-bg-active: #243044;
+    --nx-text: #e8edf7;
+    --nx-text-secondary: #a0aec0;
+    --nx-text-muted: #718096;
+    --nx-text-inverse: #0b0f17;
+    --nx-border: #1e293b;
+    --nx-border-strong: #2d3a4f;
+    --nx-divider: #1a2233;
+    --nx-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --nx-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --nx-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+    --nx-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+    --nx-shadow-focus: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    color-scheme: dark;
+  }
+}
+
+/* Map old CSS variables → new tokens so existing modules pick up the look */
+:root, html[data-theme="dark"], html[data-theme="auto"] {
+  --primary: var(--nx-primary);
+  --primary-l: var(--nx-primary-hover);
+  --primary-d: var(--nx-primary-pressed);
+  --primary-bg: var(--nx-primary-soft);
+  --accent: var(--nx-accent);
+  --success: var(--nx-success);
+  --success-bg: var(--nx-success-soft);
+  --warn: var(--nx-warn);
+  --warn-bg: var(--nx-warn-soft);
+  --danger: var(--nx-danger);
+  --danger-bg: var(--nx-danger-soft);
+  --bg-page: var(--nx-bg);
+  --bg-card: var(--nx-bg-elevated);
+  --bg-input: var(--nx-bg-elevated);
+  --text: var(--nx-text);
+  --text-muted: var(--nx-text-secondary);
+  --text-label: var(--nx-text-secondary);
+  --border: var(--nx-border);
+  --border-light: var(--nx-divider);
+  --shadow: var(--nx-shadow-sm);
+  --shadow-md: var(--nx-shadow-md);
+  --shadow-lg: var(--nx-shadow-lg);
+  --shadow-xl: var(--nx-shadow-lg);
+  --r: var(--nx-radius);
+  --rl: var(--nx-radius-md);
+  --rxl: var(--nx-radius-lg);
+  --font: var(--nx-font);
+  --mono: var(--nx-font-mono);
+  --g50: var(--nx-bg-muted);
+  --g100: var(--nx-bg-hover);
+  --g200: var(--nx-border);
+  --g300: var(--nx-border-strong);
+  --g500: var(--nx-text-muted);
+  --g700: var(--nx-text-secondary);
+  --g900: var(--nx-text);
+}
+
+/* ─── Base ─────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  font-family: var(--nx-font);
+  font-size: var(--nx-fs);
+  line-height: 1.5;
+  color: var(--nx-text);
+  background: var(--nx-bg);
+  letter-spacing: -0.01em;
+}
+
+a { color: var(--nx-primary); text-decoration: none; }
+a:hover { color: var(--nx-primary-hover); }
+
+/* ─── Buttons (Odoo-style) ─────────────────────────────────────────────── */
+.btn,
+button.btn,
+.nx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: var(--nx-fs-sm);
+  font-weight: 550;
+  line-height: 1;
+  border-radius: var(--nx-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background var(--nx-duration) var(--nx-ease),
+              border-color var(--nx-duration) var(--nx-ease),
+              box-shadow var(--nx-duration) var(--nx-ease),
+              color var(--nx-duration) var(--nx-ease);
+  white-space: nowrap;
+  user-select: none;
+  text-decoration: none;
+}
+
+.btn:focus-visible,
+.nx-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--nx-shadow-focus);
+}
+
+/* Primary */
+.btn.bp,
+.btn-primary,
+.nx-btn--primary {
+  background: var(--nx-primary);
+  color: #fff;
+  border-color: var(--nx-primary);
+}
+.btn.bp:hover,
+.btn-primary:hover,
+.nx-btn--primary:hover {
+  background: var(--nx-primary-hover);
+  border-color: var(--nx-primary-hover);
+  color: #fff;
+}
+.btn.bp:active,
+.nx-btn--primary:active {
+  background: var(--nx-primary-pressed);
+}
+
+/* Secondary / default */
+.btn.bs,
+.btn-secondary,
+.nx-btn--secondary {
+  background: var(--nx-bg-elevated);
+  color: var(--nx-text);
+  border-color: var(--nx-border-strong);
+  box-shadow: var(--nx-shadow-xs);
+}
+.btn.bs:hover,
+.nx-btn--secondary:hover {
+  background: var(--nx-bg-hover);
+  border-color: var(--nx-border-strong);
+}
+
+/* Ghost / light */
+.btn.bg,
+.nx-btn--ghost {
+  background: transparent;
+  color: var(--nx-text-secondary);
+  border-color: transparent;
+}
+.btn.bg:hover,
+.nx-btn--ghost:hover {
+  background: var(--nx-bg-hover);
+  color: var(--nx-text);
+}
+
+/* Danger */
+.btn.bd,
+.btn-danger,
+.nx-btn--danger {
+  background: var(--nx-danger-soft);
+  color: var(--nx-danger-text);
+  border-color: transparent;
+}
+.btn.bd:hover,
+.nx-btn--danger:hover {
+  background: var(--nx-danger);
+  color: #fff;
+}
+
+/* Size variants */
+.btn.bsm,
+.nx-btn--sm {
+  height: 28px;
+  padding: 0 10px;
+  font-size: var(--nx-fs-xs);
+}
+.btn.blg,
+.nx-btn--lg {
+  height: 40px;
+  padding: 0 18px;
+  font-size: var(--nx-fs);
+}
+
+/* ─── Form controls ────────────────────────────────────────────────────── */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="date"],
+input[type="search"],
+input[type="tel"],
+select,
+textarea,
+.nx-input {
+  height: 34px;
+  padding: 0 11px;
+  font-family: inherit;
+  font-size: var(--nx-fs);
+  color: var(--nx-text);
+  background: var(--nx-bg-elevated);
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-radius-sm);
+  transition: border-color var(--nx-duration) var(--nx-ease),
+              box-shadow var(--nx-duration) var(--nx-ease);
+  width: 100%;
+}
+
+textarea,
+.nx-input--area {
+  height: auto;
+  min-height: 80px;
+  padding: 9px 11px;
+  resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.nx-input:focus {
+  outline: none;
+  border-color: var(--nx-primary);
+  box-shadow: var(--nx-shadow-focus);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--nx-text-muted);
+}
+
+label,
+.nx-label {
+  display: block;
+  font-size: var(--nx-fs-sm);
+  font-weight: 550;
+  color: var(--nx-text-secondary);
+  margin-bottom: 5px;
+}
+
+/* ─── Cards ────────────────────────────────────────────────────────────── */
+.nx-card,
+.cabinet-card,
+.pmodule,
+.qstat {
+  background: var(--nx-bg-elevated);
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-radius-md);
+  box-shadow: var(--nx-shadow-xs);
+}
+
+.nx-card {
+  padding: 16px 18px;
+}
+
+.nx-card__title {
+  font-size: var(--nx-fs-md);
+  font-weight: 600;
+  color: var(--nx-text);
+  margin: 0 0 4px;
+}
+
+.nx-card__subtitle {
+  font-size: var(--nx-fs-sm);
+  color: var(--nx-text-muted);
+}
+
+/* ─── Tables (List view — Odoo style) ──────────────────────────────────── */
+.nx-table,
+table.data-table,
+.users-table,
+.tbl {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--nx-fs);
+  background: var(--nx-bg-elevated);
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-radius);
+  overflow: hidden;
+}
+
+.nx-table th,
+table.data-table th,
+.users-table th,
+.tbl th {
+  background: var(--nx-bg-muted);
+  color: var(--nx-text-secondary);
+  font-size: var(--nx-fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--nx-border);
+  white-space: nowrap;
+}
+
+.nx-table td,
+table.data-table td,
+.users-table td,
+.tbl td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--nx-divider);
+  color: var(--nx-text);
+  vertical-align: middle;
+}
+
+.nx-table tr:last-child td,
+table.data-table tr:last-child td,
+.users-table tr:last-child td {
+  border-bottom: none;
+}
+
+.nx-table tbody tr:hover,
+table.data-table tbody tr:hover,
+.users-table tbody tr:hover {
+  background: var(--nx-bg-hover);
+}
+
+/* ─── Badges / Pills (status) ──────────────────────────────────────────── */
+.nx-badge,
+.badge,
+.pmodule__badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--nx-radius-pill);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.nx-badge--success,
+.badge-success { background: var(--nx-success-soft); color: var(--nx-success-text); }
+.nx-badge--warn,
+.badge-warn { background: var(--nx-warn-soft); color: var(--nx-warn-text); }
+.nx-badge--danger,
+.badge-danger { background: var(--nx-danger-soft); color: var(--nx-danger-text); }
+.nx-badge--info,
+.badge-info { background: var(--nx-info-soft); color: var(--nx-info); }
+.nx-badge--muted {
+  background: var(--nx-bg-muted);
+  color: var(--nx-text-secondary);
+}
+
+/* ─── Control panel (Odoo-style top bar inside content) ─────────────────── */
+.nx-control-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--nx-control-h);
+  padding: 8px 0 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.nx-control-panel__title {
+  font-size: var(--nx-fs-xl);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--nx-text);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.nx-control-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.nx-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--nx-fs-sm);
+  color: var(--nx-text-muted);
+  margin-bottom: 4px;
+}
+
+.nx-breadcrumbs a {
+  color: var(--nx-text-secondary);
+}
+.nx-breadcrumbs a:hover { color: var(--nx-primary); }
+.nx-breadcrumbs__sep { opacity: 0.5; }
+
+/* Search in control panel */
+.nx-search {
+  position: relative;
+  min-width: 220px;
+}
+.nx-search input {
+  padding-left: 34px;
+  background: var(--nx-bg-elevated);
+}
+.nx-search__icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--nx-text-muted);
+  pointer-events: none;
+  font-size: 14px;
+}
+
+/* ─── Empty state ──────────────────────────────────────────────────────── */
+.nx-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--nx-text-muted);
+  background: var(--nx-bg-elevated);
+  border: 1px dashed var(--nx-border);
+  border-radius: var(--nx-radius-md);
+}
+.nx-empty__icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  opacity: 0.7;
+}
+.nx-empty__title {
+  font-size: var(--nx-fs-md);
+  font-weight: 600;
+  color: var(--nx-text-secondary);
+  margin-bottom: 4px;
+}
+.nx-empty__text {
+  font-size: var(--nx-fs-sm);
+  max-width: 360px;
+}
+
+/* ─── Sidebar (Odoo Apps menu style) ───────────────────────────────────── */
+.nexus-sidebar,
+#nexus-sidebar.nexus-shell-sidebar,
+.nx-shell-sidebar {
+  width: var(--nx-sidebar-w) !important;
+  background: #0f1419 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: #c9d1d9 !important;
+  font-family: var(--nx-font) !important;
+}
+
+.nexus-sidebar__brand,
+.nx-shell-brand {
+  padding: 16px 14px 12px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.nexus-sidebar__logo,
+.nx-shell-logo {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+  background: linear-gradient(145deg, #1f6feb, #154ba3) !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  box-shadow: 0 2px 8px rgba(31, 111, 235, 0.35) !important;
+}
+
+.nexus-sidebar__brand-name,
+.nx-shell-brand-name {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: #f0f3f6 !important;
+}
+
+.nexus-sidebar__brand-tag {
+  font-size: 10.5px !important;
+  color: #8b949e !important;
+  font-weight: 500 !important;
+}
+
+.nexus-sidebar__user {
+  padding: 12px 14px !important;
+  margin: 8px 8px 4px !important;
+  border-radius: var(--nx-radius) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.nexus-sidebar__avatar {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(145deg, #3b82f6, #1f6feb) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.nexus-sidebar__user-name {
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  color: #e6edf3 !important;
+}
+
+.nexus-sidebar__user-role {
+  font-size: 10.5px !important;
+  color: #8b949e !important;
+}
+
+.nexus-nav-section,
+.nx-shell-sec {
+  font-size: 10px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: #6e7681 !important;
+  padding: 14px 14px 6px !important;
+  margin-top: 4px;
+}
+
+.nexus-nav-item,
+.nx-shell-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 7px 12px !important;
+  margin: 1px 8px !important;
+  border-radius: var(--nx-radius-sm) !important;
+  color: #c9d1d9 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  transition: background 120ms ease, color 120ms ease !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.nexus-nav-item:hover,
+.nx-shell-item:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #f0f3f6 !important;
+}
+
+.nexus-nav-item--active,
+.nx-shell-item.is-active,
+.nexus-nav-item.is-active {
+  background: rgba(31, 111, 235, 0.18) !important;
+  color: #79b8ff !important;
+  font-weight: 600 !important;
+}
+
+.nexus-nav-icon,
+.nx-shell-item .nx-shell-icon {
+  width: 20px;
+  text-align: center;
+  font-size: 15px;
+  opacity: 0.9;
+}
+
+.nexus-nav-badge {
+  margin-left: auto !important;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--nx-primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nexus-sidebar__foot {
+  padding: 10px 8px 14px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  margin-top: auto;
+}
+
+.nexus-sidebar__theme,
+.nexus-sidebar__logout,
+.nx-shell-theme,
+.nx-shell-logout {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  padding: 8px 12px !important;
+  margin: 2px 0 !important;
+  border-radius: var(--nx-radius-sm) !important;
+  background: transparent !important;
+  border: none !important;
+  color: #8b949e !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  font-family: inherit !important;
+  text-align: left !important;
+}
+
+.nexus-sidebar__theme:hover,
+.nexus-sidebar__logout:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #e6edf3 !important;
+}
+
+.nexus-sidebar__logout:hover {
+  color: #f85149 !important;
+}
+
+/* ─── Main content area when shell is active ───────────────────────────── */
+body.nexus-shell-open {
+  background: var(--nx-bg);
+}
+
+#nexus-shell-main,
+.nexus-shell-main {
+  /* Offset for fixed sidebar — single source of truth at end of file */
+  min-height: 100vh;
+  background: var(--nx-bg);
+  min-width: 0;
+  width: auto;
+  box-sizing: border-box;
+}
+
+/* Module header (existing .hd) — make cleaner */
+header.hd,
+.hd {
+  background: var(--nx-bg-elevated) !important;
+  border-bottom: 1px solid var(--nx-border) !important;
+  box-shadow: none !important;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.hd-in {
+  max-width: none !important;
+  padding: 0 20px !important;
+  height: var(--nx-topbar-h) !important;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hd-br {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+/* Content padding */
+.wrap,
+.container,
+.main-content,
+#app > .wrap {
+  padding: 16px 20px 32px !important;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ─── Portal specific upgrades ─────────────────────────────────────────── */
+.portal-header {
+  background: var(--nx-bg-elevated) !important;
+  border-bottom: 1px solid var(--nx-border) !important;
+  box-shadow: none !important;
+  height: var(--nx-topbar-h);
+}
+
+.portal-header__inner {
+  height: var(--nx-topbar-h) !important;
+  max-width: none !important;
+  padding: 0 20px !important;
+}
+
+.portal-brand__logo {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 7px !important;
+  background: linear-gradient(145deg, #1f6feb, #154ba3) !important;
+  font-size: 13px !important;
+  box-shadow: 0 2px 6px rgba(31, 111, 235, 0.3) !important;
+}
+
+.portal-hero {
+  padding: 28px 20px 12px !important;
+}
+.portal-hero__title {
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+}
+.portal-hero__greet {
+  font-size: 13px !important;
+  color: var(--nx-text-muted) !important;
+}
+
+.portal-quick-stats {
+  padding: 8px 20px 16px !important;
+  gap: 12px !important;
+}
+
+.qstat {
+  padding: 14px 16px !important;
+  border-radius: var(--nx-radius-md) !important;
+  box-shadow: var(--nx-shadow-xs) !important;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.qstat:hover {
+  box-shadow: var(--nx-shadow-sm);
+  border-color: var(--nx-border-strong);
+}
+.qstat__value {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+}
+.qstat__label {
+  font-size: 10.5px !important;
+  letter-spacing: 0.03em !important;
+}
+
+.pmodule {
+  border-radius: var(--nx-radius-md) !important;
+  padding: 16px !important;
+  min-height: 132px !important;
+  box-shadow: var(--nx-shadow-xs) !important;
+  transition: transform 0.18s var(--nx-ease), box-shadow 0.18s var(--nx-ease), border-color 0.18s !important;
+}
+.pmodule:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--nx-shadow-md) !important;
+  border-color: var(--nx-primary-border) !important;
+}
+.pmodule::after {
+  height: 2px !important;
+  background: var(--nx-primary) !important;
+}
+.pmodule__icon {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 10px !important;
+  font-size: 20px !important;
+}
+
+.portal-section {
+  padding: 12px 20px 8px !important;
+}
+.portal-section__title {
+  font-size: 15px !important;
+  font-weight: 650 !important;
+}
+.portal-section__title::before {
+  width: 3px !important;
+  height: 16px !important;
+  border-radius: 2px !important;
+  background: var(--nx-primary) !important;
+}
+
+.cabinet-card {
+  border-radius: var(--nx-radius-md) !important;
+  box-shadow: var(--nx-shadow-xs) !important;
+  border: 1px solid var(--nx-border) !important;
+}
+.cabinet-card:hover {
+  box-shadow: var(--nx-shadow-sm) !important;
+}
+
+/* ─── Auth screens ─────────────────────────────────────────────────────── */
+.portal-auth-ov,
+.auth-ov {
+  background: linear-gradient(160deg, #0f1419 0%, #1a2332 45%, #0f172a 100%) !important;
+}
+.portal-auth-card,
+.auth-card {
+  border-radius: var(--nx-radius-lg) !important;
+  box-shadow: var(--nx-shadow-lg) !important;
+  border: 1px solid var(--nx-border) !important;
+}
+.portal-auth-btn,
+.auth-sub {
+  background: var(--nx-primary) !important;
+  border-radius: var(--nx-radius-sm) !important;
+  font-weight: 600 !important;
+  height: 40px !important;
+}
+.portal-auth-btn:hover,
+.auth-sub:hover {
+  background: var(--nx-primary-hover) !important;
+}
+
+/* ─── Scrollbar (subtle) ───────────────────────────────────────────────── */
+.nexus-sidebar::-webkit-scrollbar,
+.nx-shell-sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+.nexus-sidebar::-webkit-scrollbar-thumb,
+.nx-shell-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+/* ─── Utility ──────────────────────────────────────────────────────────── */
+.nx-text-muted { color: var(--nx-text-muted) !important; }
+.nx-text-secondary { color: var(--nx-text-secondary) !important; }
+.nx-fw-500 { font-weight: 500; }
+.nx-fw-600 { font-weight: 600; }
+.nx-fw-700 { font-weight: 700; }
+
+/* Smooth theme transition */
+body, .nexus-sidebar, .nx-card, .pmodule, .qstat, header.hd, .portal-header {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEXUS UI v1.1 — Professional polish pass
+   Stronger enterprise look: denser, quieter, less “demo”
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* —— Density & base —— */
+body {
+  font-size: 13.5px !important;
+  line-height: 1.45 !important;
+  background: #f4f5f8 !important;
+}
+html[data-theme="dark"] body,
+html[data-theme="auto"] body {
+  background: var(--nx-bg) !important;
+}
+
+/* —— Module top bar (header.hd) —— */
+header.hd,
+.hd,
+#nexus-shell-main .hd,
+#nexus-shell-main header.hd {
+  background: #fff !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  box-shadow: none !important;
+  min-height: 46px !important;
+}
+html[data-theme="dark"] header.hd,
+html[data-theme="dark"] .hd,
+html[data-theme="auto"] header.hd {
+  background: var(--nx-bg-elevated) !important;
+  border-bottom-color: var(--nx-border) !important;
+}
+
+.hd-in,
+#nexus-shell-main .hd-in {
+  height: 46px !important;
+  min-height: 46px !important;
+  padding: 0 16px !important;
+  max-width: none !important;
+  gap: 12px !important;
+}
+
+.hd-br,
+.hd-br a,
+.brand,
+.brand b {
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.02em !important;
+  color: var(--nx-text) !important;
+}
+
+.hd .btn,
+.hd button {
+  height: 30px !important;
+  padding: 0 11px !important;
+  font-size: 12.5px !important;
+  border-radius: 6px !important;
+}
+
+/* —— Content area —— */
+#nexus-shell-main .main,
+#nexus-shell-main main,
+#nexus-shell-main .wrap,
+.main,
+.wrap {
+  padding: 14px 16px 28px !important;
+  max-width: 1280px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* —— Panels / sections —— */
+.panel,
+.section,
+.card-box,
+.box {
+  background: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+  padding: 14px 16px !important;
+  margin-bottom: 12px !important;
+}
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .section,
+html[data-theme="auto"] .panel {
+  background: var(--nx-bg-elevated) !important;
+  border-color: var(--nx-border) !important;
+}
+
+/* —— Toolbar row (filters + actions) —— */
+.toolbar,
+.filters,
+.actions-bar,
+.bar-actions {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+}
+
+/* —— Tables: denser list view —— */
+table,
+.nx-table,
+.tbl,
+.users-table,
+.data-table,
+table.list {
+  font-size: 13px !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  background: #fff !important;
+}
+html[data-theme="dark"] table,
+html[data-theme="dark"] .tbl {
+  background: var(--nx-bg-elevated) !important;
+  border-color: var(--nx-border) !important;
+}
+
+th {
+  background: #f8f9fb !important;
+  color: #64748b !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  padding: 9px 12px !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+html[data-theme="dark"] th {
+  background: var(--nx-bg-muted) !important;
+  color: var(--nx-text-secondary) !important;
+  border-bottom-color: var(--nx-border) !important;
+}
+
+td {
+  padding: 9px 12px !important;
+  border-bottom: 1px solid #f1f3f7 !important;
+  vertical-align: middle !important;
+}
+html[data-theme="dark"] td {
+  border-bottom-color: var(--nx-divider) !important;
+}
+
+tr:hover td {
+  background: #f8fafc !important;
+}
+html[data-theme="dark"] tr:hover td {
+  background: var(--nx-bg-hover) !important;
+}
+
+/* —— Buttons: quieter primary —— */
+.btn,
+button.btn {
+  height: 32px !important;
+  padding: 0 12px !important;
+  font-size: 12.5px !important;
+  font-weight: 550 !important;
+  border-radius: 6px !important;
+  letter-spacing: -0.01em !important;
+}
+
+.btn.bp,
+.btn.primary,
+.btn-primary {
+  background: #1f6feb !important;
+  border-color: #1f6feb !important;
+  color: #fff !important;
+  box-shadow: 0 1px 2px rgba(31, 111, 235, 0.2) !important;
+}
+.btn.bp:hover,
+.btn.primary:hover {
+  background: #1a5fd0 !important;
+  border-color: #1a5fd0 !important;
+}
+
+.btn.bs,
+.btn.secondary {
+  background: #fff !important;
+  border: 1px solid #d1d5db !important;
+  color: #374151 !important;
+  box-shadow: 0 1px 1px rgba(0,0,0,.03) !important;
+}
+.btn.bs:hover {
+  background: #f9fafb !important;
+  border-color: #9ca3af !important;
+}
+
+/* —— Inputs —— */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="date"],
+input[type="search"],
+select,
+textarea {
+  height: 32px !important;
+  font-size: 13px !important;
+  border-radius: 6px !important;
+  border: 1px solid #d1d5db !important;
+  padding: 0 10px !important;
+  background: #fff !important;
+}
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  background: var(--nx-bg-elevated) !important;
+  border-color: var(--nx-border) !important;
+  color: var(--nx-text) !important;
+}
+textarea { height: auto !important; min-height: 72px !important; padding: 8px 10px !important; }
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #1f6feb !important;
+  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.15) !important;
+  outline: none !important;
+}
+
+/* —— Tabs —— */
+.tabs,
+.nav-tabs,
+.tab-bar {
+  display: flex !important;
+  gap: 0 !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  margin-bottom: 14px !important;
+  background: transparent !important;
+}
+.tab,
+.tabs button,
+.nav-tabs a,
+.tab-btn {
+  padding: 9px 14px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #64748b !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  cursor: pointer !important;
+}
+.tab.active,
+.tabs button.active,
+.tab-btn.active,
+.nav-tabs a.active {
+  color: #1f6feb !important;
+  border-bottom-color: #1f6feb !important;
+  font-weight: 600 !important;
+  background: transparent !important;
+}
+
+/* —— Modal —— */
+.md,
+.modal,
+.modal-card,
+.dialog {
+  border-radius: 10px !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12) !important;
+}
+.md-h,
+.modal-header {
+  padding: 12px 16px !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+}
+
+/* —— Stats / KPI chips —— */
+.stats,
+.kpi-row,
+.stat-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  margin-bottom: 14px !important;
+}
+.stat,
+.kpi,
+.stat-card {
+  background: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  padding: 12px 14px !important;
+  min-width: 120px !important;
+  box-shadow: 0 1px 2px rgba(15,23,42,.03) !important;
+}
+.stat .val,
+.kpi .val,
+.stat-value {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+  color: #111827 !important;
+}
+.stat .lbl,
+.kpi .lbl,
+.stat-label {
+  font-size: 11px !important;
+  color: #64748b !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+}
+
+/* —— Portal module cards: less toy, more product —— */
+.pmodule {
+  border-radius: 8px !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+  padding: 14px 14px 12px !important;
+  min-height: 118px !important;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease !important;
+}
+.pmodule:hover {
+  transform: translateY(-1px) !important;
+  border-color: #c7d2fe !important;
+  box-shadow: 0 4px 12px rgba(31, 111, 235, 0.08) !important;
+}
+.pmodule::after {
+  height: 2px !important;
+  background: #1f6feb !important;
+  opacity: 0.85;
+}
+.pmodule__icon {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 8px !important;
+  font-size: 18px !important;
+  background: #f1f5f9 !important;
+}
+.pmodule__title {
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.015em !important;
+  margin-bottom: 4px !important;
+  color: #111827 !important;
+}
+.pmodule__desc {
+  font-size: 12px !important;
+  color: #64748b !important;
+  line-height: 1.4 !important;
+}
+.pmodule__badge {
+  font-size: 10px !important;
+  height: 18px !important;
+  padding: 0 7px !important;
+  border-radius: 4px !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-weight: 600 !important;
+}
+.pmodule__badge--new {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+}
+.pmodule__badge--soon {
+  background: #f3f4f6 !important;
+  color: #6b7280 !important;
+}
+.pmodule__meta {
+  font-size: 11px !important;
+  color: #9ca3af !important;
+  margin-top: auto !important;
+  padding-top: 8px !important;
+}
+
+.portal-section__title {
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  text-transform: none !important;
+  letter-spacing: -0.01em !important;
+}
+.portal-section__title::before {
+  width: 3px !important;
+  height: 14px !important;
+  background: #1f6feb !important;
+}
+.portal-section__hint {
+  font-size: 11.5px !important;
+  color: #9ca3af !important;
+}
+
+.portal-hero__title {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+}
+.portal-hero__greet,
+.portal-hero__subtitle {
+  font-size: 12.5px !important;
+  color: #6b7280 !important;
+}
+
+.qstat {
+  border-radius: 8px !important;
+  padding: 12px 14px !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 1px 2px rgba(15,23,42,.03) !important;
+}
+.qstat__value {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+}
+.qstat__label {
+  font-size: 10px !important;
+  color: #9ca3af !important;
+}
+
+/* —— Cabinet cards —— */
+.cabinet-card {
+  border-radius: 8px !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 1px 2px rgba(15,23,42,.03) !important;
+  overflow: hidden !important;
+}
+.cabinet-card__head {
+  padding: 10px 14px !important;
+  border-bottom: 1px solid #f1f3f7 !important;
+  background: #fafbfc !important;
+}
+.cabinet-card__title {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #111827 !important;
+}
+.cabinet-card__link {
+  font-size: 12px !important;
+  color: #1f6feb !important;
+  font-weight: 500 !important;
+}
+.cabinet-card__body {
+  padding: 10px 14px !important;
+  font-size: 13px !important;
+}
+.cabinet-empty {
+  color: #9ca3af !important;
+  font-size: 12.5px !important;
+  padding: 12px 0 !important;
+}
+
+/* —— Sidebar: tighter & quieter —— */
+.nexus-sidebar,
+#nexus-sidebar.nexus-shell-sidebar {
+  width: 236px !important;
+  min-width: 236px !important;
+}
+.nexus-nav-item,
+.nx-shell-item {
+  padding: 6px 10px !important;
+  margin: 1px 6px !important;
+  font-size: 12.5px !important;
+  border-radius: 6px !important;
+}
+.nexus-nav-section,
+.nx-shell-sec {
+  font-size: 10px !important;
+  letter-spacing: 0.07em !important;
+  padding: 12px 12px 4px !important;
+  color: #6e7681 !important;
+}
+
+/* —— Auth: more serious —— */
+.portal-auth-card,
+.auth-card {
+  border-radius: 12px !important;
+  box-shadow: 0 20px 50px rgba(0,0,0,.25) !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  padding: 28px 28px 22px !important;
+}
+.portal-auth-t,
+.auth-t {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+.portal-auth-btn,
+.auth-sub {
+  height: 38px !important;
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+  font-size: 13.5px !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* —— Scrollbars subtle —— */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c5cbd6 transparent;
+}
+html[data-theme="dark"] * {
+  scrollbar-color: #2d3a4f transparent;
+}
+
+/* —— Reduce “emoji loudness” in titles where possible —— */
+.portal-section__title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+/* —— Footer —— */
+.portal-footer {
+  font-size: 11.5px !important;
+  color: #9ca3af !important;
+  padding: 20px !important;
+  text-align: center !important;
+  border-top: 1px solid #e5e7eb !important;
+  margin-top: 12px !important;
+}
+
+/* —— Selection —— */
+::selection {
+  background: rgba(31, 111, 235, 0.18);
+  color: inherit;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Control panel · Icons · Form view · Table wrap (v6.2.1)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* SVG icons */
+.nx-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15em;
+  height: 1.15em;
+  flex-shrink: 0;
+  vertical-align: -0.15em;
+}
+.nx-ico svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.nx-ico--nav {
+  width: 18px;
+  height: 18px;
+  opacity: 0.92;
+}
+.nx-shell-item .nx-ico--nav,
+.nexus-nav-item .nx-ico--nav {
+  margin-right: 2px;
+}
+.btn .nx-ico {
+  width: 15px;
+  height: 15px;
+}
+
+/* Control panel */
+.nx-cp {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 0 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--nx-border, #e5e7eb);
+}
+.nx-cp__left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.nx-cp__crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--nx-text-muted, #8b93a7);
+  margin-bottom: 2px;
+}
+.nx-cp__crumbs a {
+  color: var(--nx-text-secondary, #5b6475);
+  text-decoration: none;
+}
+.nx-cp__crumbs a:hover {
+  color: var(--nx-primary, #1f6feb);
+}
+.nx-cp__sep {
+  opacity: 0.45;
+  margin: 0 2px;
+}
+.nx-cp__current {
+  color: var(--nx-text-secondary, #5b6475);
+  font-weight: 500;
+}
+.nx-cp__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--nx-text, #1c2333);
+  line-height: 1.25;
+}
+.nx-cp__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.nx-cp__search {
+  position: relative;
+  min-width: 200px;
+}
+.nx-cp__search input {
+  height: 32px !important;
+  padding-left: 32px !important;
+  width: 220px;
+  max-width: 100%;
+  border-radius: 6px !important;
+  border: 1px solid var(--nx-border-strong, #d1d5db) !important;
+  background: var(--nx-bg-elevated, #fff) !important;
+  font-size: 13px !important;
+}
+.nx-cp__search-ico {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 15px;
+  height: 15px;
+  color: var(--nx-text-muted, #8b93a7);
+  pointer-events: none;
+}
+.nx-cp__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nx-cp__actions .btn {
+  height: 32px !important;
+}
+
+@media (max-width: 720px) {
+  .nx-cp {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .nx-cp__right {
+    margin-left: 0;
+  }
+  .nx-cp__search input {
+    width: 100%;
+  }
+}
+
+/* Table wrap */
+.nx-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--nx-border, #e5e7eb);
+  background: var(--nx-bg-elevated, #fff);
+  margin-bottom: 12px;
+}
+.nx-table-wrap > table {
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+}
+.nx-table-wrap > table th:first-child,
+.nx-table-wrap > table td:first-child {
+  padding-left: 14px !important;
+}
+.nx-table-wrap > table th:last-child,
+.nx-table-wrap > table td:last-child {
+  padding-right: 14px !important;
+}
+
+/* Odoo-like form view */
+.nx-form,
+form.nx-form,
+.form-grid.nx-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  padding: 16px;
+  background: var(--nx-bg-elevated, #fff);
+  border: 1px solid var(--nx-border, #e5e7eb);
+  border-radius: 8px;
+}
+.nx-form .nx-field,
+.nx-form > label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--nx-text-secondary, #5b6475);
+  margin: 0;
+}
+.nx-form .nx-field input,
+.nx-form .nx-field select,
+.nx-form .nx-field textarea,
+.nx-form > label input,
+.nx-form > label select,
+.nx-form > label textarea {
+  font-weight: 400;
+  color: var(--nx-text, #1c2333);
+}
+.nx-form .nx-field--full,
+.nx-form .full,
+.nx-form label.full {
+  grid-column: 1 / -1;
+}
+.nx-form .nx-form__actions,
+.nx-form .form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--nx-divider, #eef0f5);
+  margin-top: 4px;
+}
+.nx-form-sheet {
+  background: var(--nx-bg-elevated, #fff);
+  border: 1px solid var(--nx-border, #e5e7eb);
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.nx-form-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--nx-border, #e5e7eb);
+  background: var(--nx-bg-muted, #f8f9fb);
+}
+.nx-form-sheet__title {
+  font-size: 15px;
+  font-weight: 650;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.nx-form-sheet__body {
+  padding: 16px;
+}
+.nx-statusbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--nx-border, #e5e7eb);
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 550;
+}
+.nx-statusbar__item {
+  padding: 5px 12px;
+  color: var(--nx-text-muted, #8b93a7);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--nx-border, #e5e7eb);
+  cursor: default;
+}
+.nx-statusbar__item:last-child {
+  border-right: none;
+}
+.nx-statusbar__item.is-active {
+  background: var(--nx-primary, #1f6feb);
+  color: #fff;
+}
+.nx-statusbar__item.is-done {
+  color: var(--nx-success-text, #166534);
+  background: var(--nx-success-soft, #dcfce7);
+}
+
+@media (max-width: 700px) {
+  .nx-form,
+  form.nx-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Quiet secondary nav tabs inside modules */
+.nav .nb,
+.nav-in .nb {
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  padding: 8px 12px !important;
+  border-radius: 6px 6px 0 0 !important;
+  color: var(--nx-text-secondary, #5b6475) !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+}
+.nav .nb.active,
+.nav-in .nb.active {
+  color: var(--nx-primary, #1f6feb) !important;
+  border-bottom-color: var(--nx-primary, #1f6feb) !important;
+  font-weight: 600 !important;
+  background: transparent !important;
+}
+.nav,
+.nav-in {
+  border-bottom: 1px solid var(--nx-border, #e5e7eb) !important;
+  background: var(--nx-bg-elevated, #fff) !important;
+  gap: 2px !important;
+  padding: 0 12px !important;
+}
+
+/* Card header row inside modules */
+.ch {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+  margin-bottom: 12px !important;
+}
+.ct {
+  font-size: 14px !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.02em !important;
+}
+.fg {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+
+/* Auth overlay stays out of flow */
+body.nexus-shell-on > #auth-ov.hidden,
+body.nexus-shell-on > .auth-ov.hidden {
+  display: none !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Layout overflow fix — cabinet + all modules (v6.2.2)
+   Prevents horizontal scrollbar / content cut off on the left
+   ═══════════════════════════════════════════════════════════════════════════ */
+html {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+  width: 100%;
+}
+
+/* Portal cabinet shell */
+.nexus-shell {
+  display: flex !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+.nexus-sidebar {
+  flex: 0 0 var(--nx-sidebar-w, 236px) !important;
+  width: var(--nx-sidebar-w, 236px) !important;
+  max-width: var(--nx-sidebar-w, 236px) !important;
+  min-width: 0 !important;
+}
+.nexus-main {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: auto !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* Module shell main */
+body.nexus-shell-on {
+  overflow-x: hidden !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+#nexus-shell-main,
+.nexus-shell-main {
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* Containers must not force page wider than viewport */
+.portal-header,
+.portal-header__inner,
+.cabinet-hero,
+.cabinet-grid,
+.portal-hero,
+.portal-section,
+.portal-quick-stats,
+.portal-grid,
+.portal-footer {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+.portal-header__inner,
+.cabinet-hero,
+.cabinet-grid,
+.portal-hero,
+.portal-section,
+.portal-quick-stats,
+.portal-grid {
+  width: 100% !important;
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+}
+
+/* Quick module chips — wrap instead of expanding page width */
+.portal-quick-stats,
+.portal-main-links {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+  gap: 10px !important;
+  overflow: hidden !important;
+}
+.portal-quick-stats .qstat,
+.portal-main-links .qstat {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Module cards grid */
+.portal-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+.cabinet-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+@media (max-width: 1100px) {
+  .portal-grid,
+  .cabinet-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+@media (max-width: 700px) {
+  .portal-grid,
+  .cabinet-grid,
+  .portal-quick-stats {
+    grid-template-columns: 1fr !important;
+  }
+  .nexus-sidebar {
+    /* mobile handled separately */
+  }
+}
+
+/* Tables: scroll inside, not the whole page */
+.nx-table-wrap,
+table.dt,
+table.tbl {
+  max-width: 100%;
+}
+.nx-table-wrap {
+  overflow-x: auto !important;
+}
+
+/* Control panel */
+.nx-cp {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UNIFIED LAYOUT SYSTEM v6.2.4
+   Sidebar: fixed 236px | Content: margin-left 236px on ALL pages
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --nx-sidebar-w: 236px;
+}
+
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100% !important;
+}
+
+/* Sidebar — fixed on every page */
+.nexus-sidebar,
+#nexus-sidebar,
+#nexus-sidebar.nexus-shell-sidebar,
+.nx-shell-sidebar {
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: var(--nx-sidebar-w) !important;
+  min-width: var(--nx-sidebar-w) !important;
+  max-width: var(--nx-sidebar-w) !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  z-index: 9000 !important;
+  box-sizing: border-box !important;
+}
+
+/* Content offset — portal cabinet */
+.nexus-shell {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+.nexus-main {
+  margin-left: var(--nx-sidebar-w) !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+}
+
+/* Content offset — all modules via shell */
+body.nexus-shell-on {
+  display: block !important;
+  overflow-x: hidden !important;
+}
+body.nexus-shell-on > #nexus-shell-main,
+#nexus-shell-main,
+.nexus-shell-main {
+  margin-left: var(--nx-sidebar-w) !important;
+  margin-right: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+}
+
+/* Inside shell: full-width children, no extra left gap */
+#nexus-shell-main #app,
+#nexus-shell-main > #app,
+.nexus-main > * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Headers must not be position:fixed full-viewport under sidebar */
+#nexus-shell-main header.hd,
+#nexus-shell-main .hd,
+.nexus-main .portal-header {
+  position: sticky !important;
+  left: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Module content areas */
+#nexus-shell-main .mn,
+#nexus-shell-main .main,
+#nexus-shell-main main,
+#nexus-shell-main .wrap,
+#nexus-shell-main .content {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  box-sizing: border-box !important;
+}
+
+/* Control panel */
+#nx-cp {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+}
+
+/* Portal sections */
+.portal-header,
+.portal-header__inner,
+.cabinet-hero,
+.cabinet-grid,
+.portal-hero,
+.portal-section,
+.portal-quick-stats,
+.portal-grid,
+.portal-footer {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Mobile: hide fixed sidebar off-canvas */
+@media (max-width: 980px) {
+  .nexus-sidebar,
+  #nexus-sidebar,
+  #nexus-sidebar.nexus-shell-sidebar {
+    transform: translateX(-100%) !important;
+  }
+  body.nexus-shell-open .nexus-sidebar,
+  body.nexus-shell-open #nexus-sidebar,
+  body.nexus-shell-open #nexus-sidebar.nexus-shell-sidebar,
+  .nexus-shell.sidebar-open .nexus-sidebar {
+    transform: translateX(0) !important;
+  }
+  .nexus-main,
+  #nexus-shell-main,
+  .nexus-shell-main,
+  body.nexus-shell-on > #nexus-shell-main {
+    margin-left: 0 !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ODOO ERP SKIN v2.0 — denser, flatter, list/form/control like Odoo 17
+   Applied last so it wins over earlier tokens where needed
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Closer to Odoo Enterprise neutrals */
+  --nx-bg: #f0f1f2;
+  --nx-bg-elevated: #ffffff;
+  --nx-bg-muted: #f7f7f8;
+  --nx-bg-hover: #e9ecef;
+  --nx-bg-active: #dee2e6;
+  --nx-border: #dee2e6;
+  --nx-border-strong: #ced4da;
+  --nx-divider: #e9ecef;
+  --nx-text: #212529;
+  --nx-text-secondary: #495057;
+  --nx-text-muted: #6c757d;
+  /* Odoo-like primary (customizable brand; blue for engineering) */
+  --nx-primary: #714B67;
+  --nx-primary-hover: #5d3e55;
+  --nx-primary-pressed: #4a3244;
+  --nx-primary-soft: rgba(113, 75, 103, 0.1);
+  --nx-primary-border: rgba(113, 75, 103, 0.28);
+  --nx-shadow-xs: none;
+  --nx-shadow-sm: 0 1px 0 rgba(0,0,0,.04);
+  --nx-shadow-md: 0 2px 6px rgba(0,0,0,.06);
+  --nx-radius-xs: 3px;
+  --nx-radius-sm: 4px;
+  --nx-radius: 4px;
+  --nx-radius-md: 6px;
+  --nx-radius-lg: 8px;
+  --nx-topbar-h: 46px;
+  --nx-control-h: 52px;
+  --nx-sidebar-w: 236px;
+
+  /* map legacy vars */
+  --primary: var(--nx-primary);
+  --primary-l: var(--nx-primary-hover);
+  --primary-d: var(--nx-primary-pressed);
+  --primary-bg: var(--nx-primary-soft);
+  --bg-page: var(--nx-bg);
+  --bg-card: var(--nx-bg-elevated);
+  --text: var(--nx-text);
+  --text-muted: var(--nx-text-secondary);
+  --border: var(--nx-border);
+  --shadow: var(--nx-shadow-sm);
+  --r: var(--nx-radius);
+  --rl: var(--nx-radius-md);
+}
+
+html[data-theme="dark"] {
+  --nx-primary: #c9a0c0;
+  --nx-primary-hover: #d4b0cc;
+  --nx-primary-pressed: #b888b0;
+  --nx-primary-soft: rgba(201, 160, 192, 0.14);
+  --nx-bg: #1a1a1a;
+  --nx-bg-elevated: #2b2b2b;
+  --nx-bg-muted: #333;
+  --nx-bg-hover: #3a3a3a;
+  --nx-border: #404040;
+  --nx-border-strong: #555;
+  --nx-text: #f0f0f0;
+  --nx-text-secondary: #c0c0c0;
+  --nx-text-muted: #999;
+}
+
+/* Body density */
+body {
+  background: var(--nx-bg) !important;
+  font-size: 13px !important;
+  color: var(--nx-text) !important;
+}
+
+/* ── Control panel (Odoo o_control_panel) ── */
+.nx-cp {
+  background: var(--nx-bg-elevated) !important;
+  border-bottom: 1px solid var(--nx-border) !important;
+  padding: 8px 16px !important;
+  margin: 0 0 0 0 !important;
+  min-height: var(--nx-control-h);
+  align-items: center !important;
+  gap: 12px !important;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  box-shadow: none !important;
+}
+.nx-cp__title {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: var(--nx-text) !important;
+}
+.nx-cp__crumbs {
+  font-size: 12px !important;
+  color: var(--nx-text-muted) !important;
+}
+.nx-cp__crumbs a { color: var(--nx-primary) !important; }
+.nx-cp__search input {
+  border: 1px solid var(--nx-border-strong) !important;
+  border-radius: 4px !important;
+  height: 30px !important;
+  background: var(--nx-bg-elevated) !important;
+  font-size: 13px !important;
+}
+.nx-cp__actions .btn {
+  height: 30px !important;
+  border-radius: 4px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+/* ── Buttons (Odoo btn styles) ── */
+.btn, button.btn, .nx-btn {
+  height: 30px !important;
+  padding: 0 12px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+.btn.bp, .btn.primary, .btn-primary, .nx-btn--primary {
+  background: var(--nx-primary) !important;
+  border-color: var(--nx-primary) !important;
+  color: #fff !important;
+}
+.btn.bp:hover, .btn.primary:hover {
+  background: var(--nx-primary-hover) !important;
+  border-color: var(--nx-primary-hover) !important;
+}
+.btn.bs, .btn.secondary, .nx-btn--secondary {
+  background: var(--nx-bg-elevated) !important;
+  border: 1px solid var(--nx-border-strong) !important;
+  color: var(--nx-text) !important;
+}
+.btn.bs:hover {
+  background: var(--nx-bg-hover) !important;
+}
+
+/* ── List view (Odoo o_list_view) ── */
+.nx-table-wrap {
+  border: 1px solid var(--nx-border) !important;
+  border-radius: 0 !important;
+  background: var(--nx-bg-elevated) !important;
+  box-shadow: none !important;
+}
+table.dt, table.tbl, table.nx-table, .nx-table, .users-table, .data-table {
+  border: 1px solid var(--nx-border) !important;
+  border-radius: 0 !important;
+  font-size: 13px !important;
+  background: var(--nx-bg-elevated) !important;
+  box-shadow: none !important;
+}
+table.dt th, table.tbl th, .nx-table th, .users-table th {
+  background: var(--nx-bg-muted) !important;
+  color: var(--nx-text-secondary) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  padding: 8px 12px !important;
+  border-bottom: 1px solid var(--nx-border) !important;
+  white-space: nowrap !important;
+}
+table.dt td, table.tbl td, .nx-table td, .users-table td {
+  padding: 6px 12px !important;
+  border-bottom: 1px solid var(--nx-divider) !important;
+  vertical-align: middle !important;
+}
+table.dt tbody tr:hover td,
+table.tbl tbody tr:hover td,
+.nx-table tbody tr:hover td {
+  background: var(--nx-primary-soft) !important;
+  cursor: pointer;
+}
+
+/* ── Form sheet (Odoo o_form_sheet) ── */
+.nx-form-sheet,
+.modal-box.nx-form-sheet,
+.md {
+  background: var(--nx-bg-elevated) !important;
+  border: 1px solid var(--nx-border) !important;
+  border-radius: 4px !important;
+  box-shadow: var(--nx-shadow-md) !important;
+}
+.nx-form-sheet__head,
+.modal-head,
+.md-h {
+  background: var(--nx-bg-muted) !important;
+  border-bottom: 1px solid var(--nx-border) !important;
+  padding: 10px 16px !important;
+}
+.nx-form,
+form.nx-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px 20px !important;
+  padding: 16px 20px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.nx-form label,
+.nx-form .nx-field {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--nx-text-secondary) !important;
+}
+.nx-form input,
+.nx-form select,
+.nx-form textarea,
+input[type="text"], input[type="password"], input[type="email"],
+input[type="number"], input[type="date"], input[type="search"],
+select, textarea {
+  height: 30px !important;
+  border: 1px solid var(--nx-border-strong) !important;
+  border-radius: 3px !important;
+  font-size: 13px !important;
+  padding: 0 8px !important;
+  background: var(--nx-bg-elevated) !important;
+  box-shadow: none !important;
+}
+textarea { height: auto !important; min-height: 64px !important; padding: 6px 8px !important; }
+input:focus, select:focus, textarea:focus {
+  border-color: var(--nx-primary) !important;
+  box-shadow: 0 0 0 1px var(--nx-primary) !important;
+  outline: none !important;
+}
+
+/* Statusbar (Odoo) */
+.nx-statusbar {
+  border-radius: 0 !important;
+  border: 1px solid var(--nx-border) !important;
+  overflow: hidden;
+}
+.nx-statusbar__item {
+  padding: 4px 14px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.02em !important;
+}
+.nx-statusbar__item.is-active {
+  background: var(--nx-primary) !important;
+  color: #fff !important;
+}
+
+/* ── Module header bar ── */
+header.hd, .hd {
+  background: var(--nx-bg-elevated) !important;
+  border-bottom: 1px solid var(--nx-border) !important;
+  box-shadow: none !important;
+  min-height: var(--nx-topbar-h) !important;
+}
+.hd-in {
+  height: var(--nx-topbar-h) !important;
+  padding: 0 16px !important;
+}
+.hd-br, .hd-br b, .bn {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: var(--nx-text) !important;
+}
+
+/* Tabs like Odoo notebook */
+.nav, .nav-in, .tabs {
+  background: var(--nx-bg-elevated) !important;
+  border-bottom: 1px solid var(--nx-border) !important;
+  padding: 0 8px !important;
+  gap: 0 !important;
+}
+.nav .nb, .nav-in .nb, .tab, .tab-btn {
+  padding: 10px 14px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: var(--nx-text-secondary) !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+.nav .nb.active, .nav-in .nb.active, .tab.active, .tab-btn.active {
+  color: var(--nx-primary) !important;
+  border-bottom-color: var(--nx-primary) !important;
+  font-weight: 600 !important;
+  background: transparent !important;
+}
+
+/* Panels / cards — flatter */
+.panel, .c, .box, .section, .cabinet-card, .pmodule, .qstat, .stat, .kpi {
+  border-radius: 4px !important;
+  border: 1px solid var(--nx-border) !important;
+  box-shadow: none !important;
+  background: var(--nx-bg-elevated) !important;
+}
+.pmodule:hover {
+  transform: none !important;
+  border-color: var(--nx-primary) !important;
+  box-shadow: var(--nx-shadow-md) !important;
+}
+.pmodule::after { display: none !important; }
+
+/* Badges */
+.nx-badge, .badge, .pmodule__badge {
+  border-radius: 3px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  height: 18px !important;
+  padding: 0 6px !important;
+  text-transform: none !important;
+}
+.pmodule__badge--new {
+  background: #d4edda !important;
+  color: #155724 !important;
+}
+
+/* Sidebar — dark Odoo-like app menu */
+.nexus-sidebar,
+#nexus-sidebar.nexus-shell-sidebar {
+  background: #2c2c2c !important;
+  border-right: 1px solid #1a1a1a !important;
+}
+.nexus-nav-item--active,
+.nx-shell-item.is-active {
+  background: rgba(113, 75, 103, 0.35) !important;
+  color: #fff !important;
+  box-shadow: inset 3px 0 0 var(--nx-primary) !important;
+}
+.nexus-nav-item:hover,
+.nx-shell-item:hover {
+  background: rgba(255,255,255,0.06) !important;
+}
+
+/* Auth */
+.portal-auth-btn, .auth-sub, .btn.bp.auth-sub {
+  background: var(--nx-primary) !important;
+  border-color: var(--nx-primary) !important;
+}
+
+/* Portal header flatter */
+.portal-header {
+  background: var(--nx-bg-elevated) !important;
+  border-bottom: 1px solid var(--nx-border) !important;
+  box-shadow: none !important;
+}
+.portal-brand__logo,
+.nexus-sidebar__logo,
+.nx-shell-logo {
+  background: var(--nx-primary) !important;
+  box-shadow: none !important;
+  border-radius: 4px !important;
+}
+
+/* Empty state */
+.nx-empty, .cabinet-empty {
+  color: var(--nx-text-muted) !important;
+  font-size: 13px !important;
+}
+
+/* Keep layout offsets intact (do not override margin-left system) */
+.nexus-main,
+#nexus-shell-main,
+.nexus-shell-main {
+  margin-left: var(--nx-sidebar-w, 236px) !important;
+}
+.nexus-sidebar,
+#nexus-sidebar,
+#nexus-sidebar.nexus-shell-sidebar {
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: var(--nx-sidebar-w, 236px) !important;
+  z-index: 9000 !important;
+}
+@media (max-width: 980px) {
+  .nexus-main, #nexus-shell-main, .nexus-shell-main {
+    margin-left: 0 !important;
+  }
+}
+
+/* Employee Odoo notebook */
+#emp-modal .md { max-width: 920px !important; width: 96% !important; }
+.o-notebook__nav {
+  display: flex; flex-wrap: wrap; gap: 0;
+  border-bottom: 1px solid var(--nx-border, #dee2e6);
+  padding: 0 12px; background: var(--nx-bg-elevated, #fff);
+}
+.o-notebook__tab {
+  border: 0; background: transparent; padding: 10px 14px;
+  font-size: 13px; font-weight: 500; color: var(--nx-text-muted);
+  cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.o-notebook__tab.is-active {
+  color: var(--nx-primary, #714B67); font-weight: 600;
+  border-bottom-color: var(--nx-primary, #714B67);
+}
+.o-notebook__page { display: none; padding: 16px; }
+.o-notebook__page.is-active { display: block; }
+.o-form-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px;
+}
+.o-form-actions {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;
+  padding-top: 12px; border-top: 1px solid var(--nx-border);
+}
+
+/* Odoo employee form — full viewport */
+#emp-modal.open { display: flex !important; }
+#emp-modal .emp-md, #emp-modal .md.emp-md, #emp-modal > .md {
+  width: 100% !important; max-width: 100% !important;
+  height: 100% !important; max-height: 100% !important;
+  margin: 0 !important; border-radius: 0 !important;
+}
+
+
+/* ===== NEXUS EMP CARD SIZE v6.4.8 — 50% width, height by content ===== */
+#emp-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10050 !important;
+  display: none !important;
+  padding: 32px 16px !important;
+  background: rgba(15, 23, 42, 0.45) !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+}
+#emp-modal.open {
+  display: flex !important;
+}
+#emp-modal .emp-md,
+#emp-modal .md.emp-md,
+#emp-modal > .md {
+  width: 50vw !important;
+  max-width: calc(100vw - 32px) !important;
+  min-width: 320px !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  margin: 0 auto 32px auto !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  box-shadow: 0 20px 50px rgba(0,0,0,.22) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+#emp-modal .emp-md-h,
+#emp-modal .md-h {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-shrink: 0 !important;
+  padding: 12px 16px !important;
+  background: #f8f9fb !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 5 !important;
+}
+#emp-modal .emp-md-h-actions {
+  display: flex !important;
+  gap: 8px !important;
+  flex-shrink: 0 !important;
+}
+#emp-modal .emp-md-h-actions .btn,
+#emp-modal .md-x,
+#emp-modal .emp-md-foot .btn {
+  display: inline-flex !important;
+  visibility: visible !important;
+  cursor: pointer !important;
+}
+#emp-modal .md-x {
+  width: 36px !important;
+  height: 36px !important;
+  font-size: 22px !important;
+  border: 1px solid #dee2e6 !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+#emp-modal .emp-md-b,
+#emp-modal .md-b {
+  flex: 0 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+#emp-modal .emp-md-foot {
+  display: flex !important;
+  flex-shrink: 0 !important;
+  justify-content: flex-end !important;
+  padding: 10px 16px !important;
+  border-top: 1px solid #e5e7eb !important;
+  background: #f8f9fb !important;
+}
+#emp-modal .ecard { max-width: 100% !important; }
+#emp-modal .ecard-grid { grid-template-columns: 1fr 1fr !important; }

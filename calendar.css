@@ -96,3 +96,16 @@ body{font-family:var(--font);background:var(--bg-page);color:var(--text);font-si
 .ff-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .fg{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 @media(max-width:900px){.cal-layout{grid-template-columns:1fr}.cal-cell{min-height:56px}}
+
+
+.cab-link-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px 14px; border-radius: 10px;
+  border: 1px solid rgba(180, 83, 9, 0.35);
+  background: rgba(180, 83, 9, 0.08);
+  font-size: 13px; line-height: 1.45;
+}
+.cab-link-banner__btn {
+  display: inline-block; padding: 6px 12px; border-radius: 8px;
+  background: #0c0c0e; color: #fafafa; text-decoration: none; font-weight: 600; font-size: 12.5px;
+}

@@ -373,6 +373,29 @@
     };
   }
 
+
+  function renderEmpBanner() {
+    const el = document.getElementById('cal-emp-banner');
+    if (!el) return;
+    const u = getCurrentUser();
+    if (!u) { el.style.display = 'none'; return; }
+    let linked = null;
+    try {
+      const hr = JSON.parse(localStorage.getItem('nexus_hr_ua_v2') || '{}');
+      const emps = hr.employees || [];
+      if (u.employeeId) linked = emps.find(e => e.id === u.employeeId) || null;
+      if (!linked && u.fullName) linked = emps.find(e => (e.fullName || '').trim() === (u.fullName || '').trim()) || null;
+    } catch (e) {}
+    if (linked) {
+      el.style.display = 'none';
+      return;
+    }
+    el.style.display = '';
+    el.innerHTML = '<div class="cab-link-banner__text"><strong>Календар особистих подій порожній без привʼязки</strong> ' +
+      'Привʼяжіть користувача до картки співробітника в HR → Налаштування / Користувачі.</div>' +
+      '<a class="cab-link-banner__btn" href="hr.html#settings">Відкрити HR</a>';
+  }
+
   function init() {
     const user = currentUser();
     if (!user) {

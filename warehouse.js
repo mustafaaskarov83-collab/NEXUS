@@ -106,8 +106,9 @@ const WH = (() => {
     } catch (e) { return null; }
   }
   function canEdit() {
-    const u = getCurrentUser();
-    return !!(u && u.role !== 'viewer');
+    if (window.NexusCore && typeof NexusCore.canEdit === 'function') return NexusCore.canEdit('warehouse');
+    const u = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+    return !!u && u.role !== 'viewer';
   }
   function denyEdit() { alert('Режим перегляду: зміни недоступні'); }
 

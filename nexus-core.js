@@ -1,10 +1,11 @@
-/* NEXUS ENGENEERING — NEXUS CORE v6.1.0 (merged)
+/* NEXUS ENGENEERING — NEXUS CORE v6.3.0 (Odoo skin)
  * Base: GitHub 5.0.1 (XSS/quota/UUID/observer) + chat logic 6.x without Mercedes theme.
  * Provides: session/auth helpers, RBAC, audit log, notifications, safe storage,
  * global error capture, backup/restore helpers and read-only enforcement.
  *
  * v5.0.1: HTML sanitization, quota handling, MutationObserver fix, crypto.randomUUID, validation
  * v6.1.0: canEdit/denyEdit/hashPassword, storage stats, last-backup tracking
+ * v6.2.0: Professional UI loader (nexus-ui.js), Odoo-inspired shell
  *
  * NOTE: localStorage authentication remains a local/offline mode; for real
  * multi-user deployment this layer should be backed by the server API.
@@ -12,7 +13,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '6.1.0';
+  const VERSION = '6.3.0';
   const KEYS = Object.freeze({
     users: 'nexus_users_v1',
     session: 'nexus_session_v1',
@@ -496,13 +497,34 @@
   function loadPersistentShell() {
     try {
       const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-      if (page === 'index.html' || page === '' || page === '/') return;
-      if (document.getElementById('nexus-shell-script')) return;
+      if (page === 'index.html' || page === '' || page === '/') {
+        loadNexusUI();
+        return;
+      }
+      if (document.getElementById('nexus-shell-script')) {
+        loadNexusUI();
+        return;
+      }
       const s = document.createElement('script');
       s.id = 'nexus-shell-script';
       s.src = 'nexus-shell.js';
       s.async = false;
+      s.onload = loadNexusUI;
       (document.body || document.documentElement).appendChild(s);
+      setTimeout(loadNexusUI, 120);
+    } catch (_) {
+      loadNexusUI();
+    }
+  }
+
+  function loadNexusUI() {
+    try {
+      if (document.getElementById('nexus-ui-script')) return;
+      const u = document.createElement('script');
+      u.id = 'nexus-ui-script';
+      u.src = 'nexus-ui.js';
+      u.async = false;
+      (document.body || document.documentElement).appendChild(u);
     } catch (_) {}
   }
 
