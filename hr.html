@@ -459,5 +459,13 @@
 <script src="cabinet-requests.js"></script>
 <script src="hr-requests.js"></script>
 <script src="nexus-assistant.js"></script>
+  <!-- Подключение библиотеки Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://csuxnzvuxybffrmkrjus.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_P8ijcthJq-2s1SNK7cfv9Q_AGk_V5cV'; 
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    console.log('Supabase инициализирован на странице HR!');
+  </script>
 </body>
 </html>
