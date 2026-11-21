@@ -2399,3 +2399,59 @@ async function syncEmployeesFromCloud() {
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(syncEmployeesFromCloud, 500);
 });
+// --- СИНХРОНИЗАЦИЯ СОТРУДНИКОВ ИЗ SUPABASE ---
+async function syncEmployeesFromCloud() {
+  if (!window.supabaseClient) return;
+  console.log('Синхронизация сотрудников из Supabase...');
+  const { data, error } = await supabaseClient.from('employees').select('*');
+  
+  if (error) {
+    console.error('❌ Ошибка загрузки сотрудников:', error.message);
+    return;
+  }
+  
+  if (data && data.length > 0) {
+    let localDb = loadDB();
+    let added = 0;
+    data.forEach(cloudEmp => {
+      const existing = localDb.employees.find(e => e.id === cloudEmp.id);
+      if (!existing) {
+        localDb.employees.push({
+          id: cloudEmp.id,
+          fullName: cloudEmp.full_name,
+          position: cloudEmp.position,
+          departmentId: cloudEmp.department,
+          hireDate: cloudEmp.hire_date,
+          birthDate: '',
+          baseLeaveDays: 24,
+          insuranceYears: 0,
+          category: 'standard',
+          projectIds: [],
+          contract: {number:'', type:'indefinite', signedAt:'', endAt:'', note:''},
+          reservation: defaultReservation(),
+          payments: [],
+          leaves: [],
+          unpaidPeriods: [],
+          parentalPeriods: [],
+          sickLeaves: [],
+          createdAt: cloudEmp.created_at
+        });
+        added++;
+      }
+    });
+    
+    if (added > 0) {
+      localStorage.setItem(STORAGE, JSON.stringify(localDb));
+      console.log(`✅ Загружено ${added} новых сотрудников из Supabase.`);
+      if (typeof renderEmp === 'function') renderEmp();
+      if (typeof renderDash === 'function') renderDash();
+    } else {
+      console.log('✅ Все сотрудники актуальны.');
+    }
+  }
+}
+
+// Запускаем при загрузке
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(syncEmployeesFromCloud, 500);
+});
