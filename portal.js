@@ -702,9 +702,16 @@ const Portal = (() => {
     }
     closeUserMenu();
     cancelUserForm();
-    renderUsersList();
+    
+    // Показываем загрузку перед запросом
+    const el = document.getElementById('users-list');
+    if (el) el.innerHTML = '<div class="tm">Завантаження списку користувачів...</div>';
+    
     const m = document.getElementById('users-modal');
     if (m) m.classList.add('open');
+    
+    // Вызываем асинхронную отрисовку
+    renderUsersList();
   }
   function closeUsersModal() {
     const m = document.getElementById('users-modal');
@@ -712,18 +719,43 @@ const Portal = (() => {
     cancelUserForm();
   }
 
-  function renderUsersList() {
+  // ОБНОВЛЕННАЯ ФУНКЦИЯ: Теперь она скачивает данные из Supabase
+  async function renderUsersList() {
     const el = document.getElementById('users-list');
     if (!el) return;
-    const users = loadUsers();
+
+    let users = [];
+    
+    // 1. Запрашиваем актуальный список ВСЕХ пользователей из базы
+    if (window.supabaseClient) {
+      const { data, error } = await supabaseClient.from('users').select('*');
+      if (!error && data) {
+        users = data.map(u => ({
+          id: u.id, username: u.username, fullName: u.full_name,
+          role: u.role, modules: u.modules ? JSON.parse(u.modules) : [],
+          employeeId: u.employee_id, createdAt: u.created_at,
+          salt: u.salt, hash: u.hash // Нужны для корректной работы
+        }));
+        // Обновляем локальный кэш, чтобы он не отставал
+        saveUsers(users);
+      } else {
+        console.error('Ошибка загрузки юзеров:', error);
+        users = loadUsers(); // fallback на локальные
+      }
+    } else {
+      users = loadUsers(); // fallback
+    }
+
     const emps = loadHrEmployees();
     const empMap = {};
     emps.forEach(e => { empMap[e.id] = e; });
     const roleMap = { admin: 'Адміністратор', manager: 'Менеджер', viewer: 'Перегляд' };
+    
     if (!users.length) {
       el.innerHTML = '<div class="tm">Користувачів немає</div>';
       return;
     }
+    
     let h = '<table class="users-table"><thead><tr><th>Логін</th><th>ПІБ</th><th>Співробітник (HR)</th><th>Роль</th><th>Модулі</th><th></th></tr></thead><tbody>';
     users.forEach(u => {
       let modsLabel;
@@ -967,7 +999,7 @@ const Portal = (() => {
     if (window.NexusCore && NexusCore.audit) NexusCore.audit('users.save', 'user', { id: finalUser.id, role, modules, employeeId });
     
     cancelUserForm();
-    renderUsersList();
+    await renderUsersList(); // Ждем обновления списка
     applyModuleAccess();
     try { renderCabinet(); } catch (e) {}
     alert('Збережено. Користувач привʼязаний до співробітника «' + emp.fullName + '»');
@@ -997,7 +1029,7 @@ const Portal = (() => {
     let users = loadUsers().filter(x => x.id !== id);
     saveUsers(users);
     if (window.NexusCore && NexusCore.audit) NexusCore.audit('users.delete', 'user', { id });
-    renderUsersList();
+    await renderUsersList(); // Ждем обновления
   }
 
 
