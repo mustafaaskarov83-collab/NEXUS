@@ -654,8 +654,17 @@
   const SUPABASE_KEY = 'ВСТАВЬТЕ_СЮДА_ВАШ_КЛЮЧ_sb_publishable_...';
 
   // 2. Инициализируем клиент
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+          <!-- Подключение библиотеки Supabase -->
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+        <script>
+          const SUPABASE_URL = 'https://csuxnzvuxybfrmkrjus.supabase.co';
+          const SUPABASE_KEY = 'ВАШ_КЛЮЧ_sb_publishable_...'; // Убедитесь, что ключ на месте
+
+          // Переименовали переменную в supabaseClient
+          const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+          console.log('Supabase успешно инициализирован!', supabaseClient);
+        </script>
   // 3. Проверка подключения в консоли
   console.log('Supabase успешно инициализирован!', supabase);
 </script>
