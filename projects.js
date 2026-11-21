@@ -185,7 +185,7 @@ const Projects = (() => {
   // ==========================================
   // ОТПРАВКА В SUPABASE (В ФОНЕ)
   // ==========================================
-  if (window.supabaseClient) {
+  if (typeof supabaseClient !== 'undefined') {
     supabaseClient.from('projects').upsert({
       id: p.id,
       code: p.code,
