@@ -1080,7 +1080,8 @@ function addEmp(){
   const ctrEnd=($('#e-ctr-end')&&$('#e-ctr-end').value)||'';
   const ctrType=ctrEnd?'fixed':'indefinite';
   const newId=uid();
-  db.employees.push({
+  
+  const newEmp = {
     id:newId,fullName:n,position:$('#ep').value.trim(),departmentId,
     hireDate:h,birthDate:$('#eb').value||'',
     baseLeaveDays:Number($('#el').value)||LAW.MIN,
@@ -1091,8 +1092,28 @@ function addEmp(){
     reservation: defaultReservation(),
     payments:[],leaves:[],unpaidPeriods:[],parentalPeriods:[],sickLeaves:[],
     createdAt:today()
-  });
+  };
+  
+  db.employees.push(newEmp);
   save();
+
+  // --- ОТПРАВКА В SUPABASE ---
+  if (window.supabaseClient) {
+    supabaseClient.from('employees').upsert({
+      id: newEmp.id,
+      full_name: newEmp.fullName,
+      position: newEmp.position,
+      department: newEmp.departmentId,
+      hire_date: newEmp.hireDate,
+      status: 'active',
+      created_at: new Date().toISOString()
+    }).then(({error}) => {
+      if(error) console.error('❌ Ошибка Supabase:', error.message);
+      else console.log('✅ Сотрудник сохранен в Supabase!');
+    });
+  }
+  // ---------------------------
+
   closeEmployeeForm();
   $('#en').value='';$('#ep').value='';$('#eh').value='';$('#eb').value='';
   $('#ee').value='0';$('#ee-hint').textContent='';$('#ed').value=''; if($('#e-projects')) Array.from($('#e-projects').options).forEach(o=>o.selected=false);
@@ -1101,12 +1122,22 @@ function addEmp(){
   // відкрити повну картку з усіма вкладками
   setTimeout(()=>openEmp(newId), 50);
 }
+
 function delEmp(id){
   if(!reqEdit())return;
   const e=db.employees.find(x=>x.id===id);
   if(!confirm(t('aDel',{name:e.fullName})))return;
   db.employees=db.employees.filter(x=>x.id!==id);
   save();renderDepartments();renderEmp();refreshSel();renderDash();
+
+  // --- УДАЛЕНИЕ ИЗ SUPABASE ---
+  if (window.supabaseClient) {
+    supabaseClient.from('employees').delete().eq('id', id).then(({error}) => {
+      if(error) console.error('❌ Ошибка удаления из Supabase:', error.message);
+      else console.log('🗑️ Сотрудник удален из Supabase!');
+    });
+  }
+  // ---------------------------
 }
 function filterEmp(){renderEmp($('#search').value.toLowerCase().trim())}
 function renderEmp(q){
