@@ -135,7 +135,86 @@ const Projects = (() => {
   function fillSelect(id,selected){const el=document.getElementById(id);if(!el)return;el.innerHTML='<option value="">— без проекту —</option>'+db.projects.filter(p=>p.status!=='cancelled').sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${esc(p.id)}">${esc(p.code)} — ${esc(p.name)}</option>`).join('');if(selected)el.value=selected;}
   function reset(){editingId=null;['f-code','f-name','f-contract','f-addendum','f-addendum-amount','f-addendum-date','f-addendum-until','f-manager','f-start','f-end','f-amount','f-project-amount','f-customer','f-description'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});const manager=document.getElementById('f-manager');if(manager)manager.value='';document.getElementById('f-status').value='planning';document.getElementById('f-currency').value='UAH';const as=document.getElementById('f-amount-source');if(as)as.value='contract';document.getElementById('form-title').textContent='Новий проект';document.getElementById('btn-save').textContent='Створити проект';const br=document.getElementById('btn-reset');if(br)br.style.display='';showAddendumSection(false);fillContractSelect();}
 
-  function saveProject(){if(!canEdit()){alert('Недостатньо прав.');return}const contractId=document.getElementById('f-contract').value;const contract=getContracts().find(d=>d.id===contractId);if(!contract){alert('Оберіть договір для проекту');return}const addendumId=document.getElementById('f-addendum')?.value||'';const addendum=addendumId?getAddendumsForContract(contractId).find(d=>d.id===addendumId):null;const managerId=document.getElementById('f-manager').value;const managerName=managerId?(getEmployees().find(e=>e.id===managerId)?.fullName||''):'';const code=String(document.getElementById('f-code')?.value||'').trim();const name=String(document.getElementById('f-name')?.value||'').trim();if(!code||!name){alert('Вкажіть код і назву проекту');return}const prev=editingId?db.projects.find(x=>x.id===editingId)||null:null;const p={id:editingId||'prj_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),code:code||('PRJ-'+Date.now()),name,contractId,contractName:contract.name||'',contractNum:contract.num||'',addendumId:addendum?addendum.id:'',addendumNum:addendum?(addendum.num||''):'',addendumName:addendum?(addendum.name||''):'',customer:contract.counter||'',manager:managerName,managerId:managerId||'',start:document.getElementById('f-start').value,end:document.getElementById('f-end').value,status:document.getElementById('f-status').value,currency:contract.currency||'UAH',amountSource:(document.getElementById('f-amount-source')?.value||'contract'),contractAmount:recalcProjectAmount(),addendumAmount:addendum?(Number(addendum.amount)||0):0,description:document.getElementById('f-description').value.trim(),updatedAt:new Date().toISOString()};if(editingId){const i=db.projects.findIndex(x=>x.id===editingId);if(i>=0)db.projects[i]=p}else{p.createdAt=new Date().toISOString();db.projects.push(p)}linkProjectDocs(p, prev);save();reset();hideForm();render();fillProjectSelectors();}
+  function saveProject(){
+  if(!canEdit()){alert('Недостатньо прав.');return}
+  const contractId=document.getElementById('f-contract').value;
+  const contract=getContracts().find(d=>d.id===contractId);
+  if(!contract){alert('Оберіть договір для проекту');return}
+  const addendumId=document.getElementById('f-addendum')?.value||'';
+  const addendum=addendumId?getAddendumsForContract(contractId).find(d=>d.id===addendumId):null;
+  const managerId=document.getElementById('f-manager').value;
+  const managerName=managerId?(getEmployees().find(e=>e.id===managerId)?.fullName||''):'';
+  const code=String(document.getElementById('f-code')?.value||'').trim();
+  const name=String(document.getElementById('f-name')?.value||'').trim();
+  if(!code||!name){alert('Вкажіть код і назву проекту');return}
+  const prev=editingId?db.projects.find(x=>x.id===editingId)||null:null;
+  const p={
+    id:editingId||'prj_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+    code:code||('PRJ-'+Date.now()),
+    name:name,
+    contractId:contractId,
+    contractName:contract.name||'',
+    contractNum:contract.num||'',
+    addendumId:addendum?addendum.id:'',
+    addendumNum:addendum?(addendum.num||''):'',
+    addendumName:addendum?(addendum.name||''):'',
+    customer:contract.counter||'',
+    manager:managerName,
+    managerId:managerId||'',
+    start:document.getElementById('f-start').value,
+    end:document.getElementById('f-end').value,
+    status:document.getElementById('f-status').value,
+    currency:contract.currency||'UAH',
+    amountSource:(document.getElementById('f-amount-source')?.value||'contract'),
+    contractAmount:recalcProjectAmount(),
+    addendumAmount:addendum?(Number(addendum.amount)||0):0,
+    description:document.getElementById('f-description').value.trim(),
+    updatedAt:new Date().toISOString()
+  };
+  
+  if(editingId){
+    const i=db.projects.findIndex(x=>x.id===editingId);
+    if(i>=0)db.projects[i]=p
+  }else{
+    p.createdAt=new Date().toISOString();
+    db.projects.push(p)
+  }
+  
+  linkProjectDocs(p, prev);
+
+  // ==========================================
+  // ОТПРАВКА В SUPABASE (В ФОНЕ)
+  // ==========================================
+  if (window.supabaseClient) {
+    supabaseClient.from('projects').upsert({
+      id: p.id,
+      code: p.code,
+      name: p.name,
+      description: p.description,
+      status: p.status,
+      manager: p.manager,
+      start_date: p.start,
+      end_date: p.end,
+      contract_id: p.contractId,
+      contract_name: p.contractName,
+      customer: p.customer,
+      updated_at: p.updatedAt,
+      created_at: p.createdAt || new Date().toISOString()
+    }).then(({error}) => {
+      if (error) console.error('❌ Ошибка сохранения в Supabase:', error.message);
+      else console.log('✅ Проект успешно сохранен в Supabase!');
+    });
+  } else {
+    console.warn('supabaseClient не найден, сохранено только локально.');
+  }
+  // ==========================================
+
+  save();
+  reset();
+  hideForm();
+  render();
+  fillProjectSelectors();
+}
 
   function edit(id){const p=db.projects.find(x=>x.id===id);if(!p)return;editingId=id;fillContractSelect(p.contractId||'');fillAddendumSelect(p.addendumId||'');for(const [fid,val] of [['f-code',p.code],['f-name',p.name],['f-customer',p.customer],['f-description',p.description]]){const e=document.getElementById(fid);if(e)e.value=val||''}fillManagerSelect(p.managerId||p.manager||'');document.getElementById('f-status').value=p.status||'planning';document.getElementById('f-currency').value=p.currency||'UAH';const as=document.getElementById('f-amount-source');if(as)as.value=p.amountSource||'contract';recalcProjectAmount();document.getElementById('form-title').textContent='Редагувати проект';document.getElementById('btn-save').textContent='Зберегти зміни';const br=document.getElementById('btn-reset');if(br)br.style.display='';if(p.addendumId)showAddendumSection(true);else showAddendumSection(false);showForm();window.scrollTo({top:0,behavior:'smooth'});}
   function del(id){if(!canEdit())return;const p=db.projects.find(x=>x.id===id);if(!p)return;const r=refs(p);if(r.docs.length||r.inv.length||r.emps.length||r.tasks.length||r.ops.length){alert('Проект має повʼязані дані. Спочатку змініть їх проект або переведіть проект у «Скасовано». Видалення заблоковано.');return}if(confirm(`Видалити проект «${p.name}»?`)){db.projects=db.projects.filter(x=>x.id!==id);save();render();fillProjectSelectors();}}
@@ -183,11 +262,21 @@ async function syncFromSupabase() {
     }
 
     // 2. Преобразуем данные из Supabase в формат, который понимает ваш сайт
+    // ЗДЕСЬ МЫ ДОБАВИЛИ ВСЕ НОВЫЕ ПОЛЯ
     const cloudProjects = data.map(p => ({
         id: p.id.toString(),
+        code: p.code || '',
         name: p.name,
         description: p.description || '',
-        status: p.status || 'planning'
+        status: p.status || 'planning',
+        manager: p.manager || '',
+        start: p.start_date || '',
+        end: p.end_date || '',
+        contractId: p.contract_id || '',
+        contractName: p.contract_name || '',
+        customer: p.customer || '',
+        createdAt: p.created_at,
+        updatedAt: p.updated_at
     }));
 
     // 3. Читаем текущую базу из localStorage
