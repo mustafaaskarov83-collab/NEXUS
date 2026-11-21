@@ -217,7 +217,31 @@ const Projects = (() => {
 }
 
   function edit(id){const p=db.projects.find(x=>x.id===id);if(!p)return;editingId=id;fillContractSelect(p.contractId||'');fillAddendumSelect(p.addendumId||'');for(const [fid,val] of [['f-code',p.code],['f-name',p.name],['f-customer',p.customer],['f-description',p.description]]){const e=document.getElementById(fid);if(e)e.value=val||''}fillManagerSelect(p.managerId||p.manager||'');document.getElementById('f-status').value=p.status||'planning';document.getElementById('f-currency').value=p.currency||'UAH';const as=document.getElementById('f-amount-source');if(as)as.value=p.amountSource||'contract';recalcProjectAmount();document.getElementById('form-title').textContent='Редагувати проект';document.getElementById('btn-save').textContent='Зберегти зміни';const br=document.getElementById('btn-reset');if(br)br.style.display='';if(p.addendumId)showAddendumSection(true);else showAddendumSection(false);showForm();window.scrollTo({top:0,behavior:'smooth'});}
-  function del(id){if(!canEdit())return;const p=db.projects.find(x=>x.id===id);if(!p)return;const r=refs(p);if(r.docs.length||r.inv.length||r.emps.length||r.tasks.length||r.ops.length){alert('Проект має повʼязані дані. Спочатку змініть їх проект або переведіть проект у «Скасовано». Видалення заблоковано.');return}if(confirm(`Видалити проект «${p.name}»?`)){db.projects=db.projects.filter(x=>x.id!==id);save();render();fillProjectSelectors();}}
+  function del(id){
+  if(!canEdit())return;
+  const p=db.projects.find(x=>x.id===id);
+  if(!p)return;
+  const r=refs(p);
+  if(r.docs.length||r.inv.length||r.emps.length||r.tasks.length||r.ops.length){
+    alert('Проект має повʼязані дані. Спочатку змініть їх проект або переведіть проект у «Скасовано». Видалення заблоковано.');
+    return;
+  }
+  if(confirm(`Видалити проект «${p.name}»?`)){
+    // 1. Удаляем локально
+    db.projects=db.projects.filter(x=>x.id!==id);
+    save();
+    render();
+    fillProjectSelectors();
+    
+    // 2. Удаляем из Supabase (исправленная проверка)
+    if(typeof supabaseClient !== 'undefined'){
+      supabaseClient.from('projects').delete().eq('id', id).then(({error})=>{
+        if(error) console.error('❌ Ошибка удаления из Supabase:', error.message);
+        else console.log('🗑️ Проект успешно удален из Supabase!');
+      });
+    }
+  }
+} 
   function open(id){const p=db.projects.find(x=>x.id===id);if(!p)return;const r=refs(p), st=STATUS[p.status]||STATUS.planning;
     const amountSrc={contract:'Сума договору',addendum:'Сума додатку',sum:'Договір + додаток'}[p.amountSource]||'Сума договору';
     document.getElementById('detail-title').textContent=`${p.code} — ${p.name}`;
