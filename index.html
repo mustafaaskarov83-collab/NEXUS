@@ -649,11 +649,11 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
-    // Вставьте сюда ваш реальный URL (исправлена опечатка в слове bf)
+    // Вставьте сюда ваш реальный URL
     const SUPABASE_URL = 'https://csuxnzvuxybfrmkrjus.supabase.co';
     
-    // Вставьте сюда ваш реальный ключ
-    const SUPABASE_KEY = 'sb_publishable_P8ijcthJq-2s1SNK7cfv9Q_AGk_VSCv'; 
+    // Вставьте сюда ваш реальный ключ (ОБРАТИТЕ ВНИМАНИЕ НА ЦИФРУ 5 В КОНЦЕ)
+    const SUPABASE_KEY = 'sb_publishable_P8ijcthJq-2s1SNK7cfv9Q_AGk_V5cV'; 
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     console.log('Supabase успешно инициализирован!', supabaseClient);
@@ -667,8 +667,14 @@
       console.log('Пользователи не найдены локально. Ищем в облаке...');
       const { data, error } = await supabaseClient.from('users').select('*');
       
+      // Если есть ошибка подключения (например, неверный ключ)
+      if (error) {
+        console.error('❌ Ошибка подключения к Supabase:', error.message);
+        return;
+      }
+      
       if (data && data.length > 0) {
-        console.log('Найдено пользователей в облаке:', data.length);
+        console.log('✅ Найдено пользователей в облаке:', data.length);
         
         const localUsers = data.map(u => ({
           id: u.id,
@@ -684,7 +690,10 @@
         }));
         
         localStorage.setItem('nexus_users_v1', JSON.stringify(localUsers));
+        console.log('Данные сохранены. Перезагрузка...');
         window.location.reload();
+      } else {
+        console.log('⚠️ В базе данных пока нет пользователей.');
       }
     }
     
