@@ -646,18 +646,51 @@
 </script>
 
   <!-- Подключение библиотеки Supabase -->
-        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-        <script>
-          // Вставьте сюда ваш реальный URL
-          const SUPABASE_URL = 'https://csuxnzvuxybffrmkrjus.supabase.co';
-          
-          // Вставьте сюда ваш реальный ключ (без кавычек 'ВАШ_КЛЮЧ...')
-          const SUPABASE_KEY = 'sb_publishable_P8ijcthJq-2s1SNK7cfv9Q_AGk_VSCv'; 
+  <script>
+    // Вставьте сюда ваш реальный URL (исправлена опечатка в слове bf)
+    const SUPABASE_URL = 'https://csuxnzvuxybfrmkrjus.supabase.co';
+    
+    // Вставьте сюда ваш реальный ключ
+    const SUPABASE_KEY = 'sb_publishable_P8ijcthJq-2s1SNK7cfv9Q_AGk_VSCv'; 
 
-          const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-          console.log('Supabase успешно инициализирован!', supabaseClient);
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    console.log('Supabase успешно инициализирован!', supabaseClient);
+  </script>
 
-</script>
+  <!-- СКРИПТ СИНХРОНИЗАЦИИ ПОЛЬЗОВАТЕЛЕЙ ИЗ ОБЛАКА -->
+  <script>
+    async function syncUsersFromCloud() {
+      if (localStorage.getItem('nexus_users_v1')) return; 
+      
+      console.log('Пользователи не найдены локально. Ищем в облаке...');
+      const { data, error } = await supabaseClient.from('users').select('*');
+      
+      if (data && data.length > 0) {
+        console.log('Найдено пользователей в облаке:', data.length);
+        
+        const localUsers = data.map(u => ({
+          id: u.id,
+          username: u.username,
+          fullName: u.full_name,
+          role: u.role,
+          modules: u.modules ? JSON.parse(u.modules) : [],
+          salt: u.salt,
+          hash: u.hash,
+          employeeId: u.employee_id,
+          createdAt: u.created_at,
+          updatedAt: u.updated_at
+        }));
+        
+        localStorage.setItem('nexus_users_v1', JSON.stringify(localUsers));
+        window.location.reload();
+      }
+    }
+    
+    // Запускаем сразу
+    syncUsersFromCloud();
+  </script>
+
 </body>
 </html>
