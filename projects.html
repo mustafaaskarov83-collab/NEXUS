@@ -30,8 +30,8 @@
 <label>Опис проекту<textarea id="f-description" rows="3" placeholder="Мета, обсяг робіт, ключова інформація..."></textarea></label><div class="actions"><button class="btn primary" id="btn-save" onclick="Projects.save()">Створити проект</button><button class="btn secondary" id="btn-reset" onclick="Projects.closeForm()">Скасувати</button></div></div></div></div><section class="panel"><div class="panel-head"><div><h2>📁 Проекти <span class="badge" id="count">0</span></h2></div><div class="filters"><input id="search" placeholder="🔍 Пошук проекту..." oninput="Projects.render()"><select id="filter-status" onchange="Projects.render()"><option value="">Всі статуси</option><option value="planning">Планування</option><option value="active">Активні</option><option value="paused">Призупинені</option><option value="done">Завершені</option><option value="cancelled">Скасовані</option></select></div></div><div id="project-list" class="projects"></div></section></main></div><div id="detail-modal" class="modal" onclick="if(event.target===this)Projects.close()"><div class="modal-box"><div class="modal-head"><h2 id="detail-title"></h2><button onclick="Projects.close()">×</button></div><div id="detail-body"></div></div></div><script src="nexus-assistant.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  const SUPABASE_URL = 'https://csuxnzvuxybfrmkrjus.supabase.co';
-  const SUPABASE_KEY = 'ВАШ_КЛЮЧ_sb_publishable_...'; // ВСТАВЬТЕ СЮДА ВАШ КЛЮЧ ИЗ index.html
+  const SUPABASE_URL = 'https://csuxnzvuxybffrmkrjus.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_P8ijcthJq-2s1SNK7cfv9Q_AGk_VSCv'; // ВСТАВЬТЕ СЮДА ВАШ КЛЮЧ ИЗ index.html
   
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 </script>
