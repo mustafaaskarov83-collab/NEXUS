@@ -29,6 +29,7 @@ const Portal = (() => {
     return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
   }
   function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+  
   function loadUsers() {
     try {
       const r = localStorage.getItem(USERS_KEY);
@@ -93,45 +94,100 @@ const Portal = (() => {
       if (btn) btn.textContent = 'Увійти';
     }
   }
-  function submitAuth() {
+
+  // ФУНКЦИЯ АВТОРИЗАЦИИ (ПЕРЕПИСАНА ПОД SUPABASE)
+  async function submitAuth() {
     const username = (document.getElementById('portal-au')?.value || '').trim();
     const password = document.getElementById('portal-ap')?.value || '';
     const confirm = document.getElementById('portal-ac')?.value || '';
     const err = document.getElementById('portal-auth-err');
     const setErr = m => { if (err) err.textContent = m; };
+    const btn = document.getElementById('portal-auth-btn');
 
     if (!username || username.length < 3) { setErr('Логін мінімум 3 символи'); return; }
     if (!/^[a-zA-Z0-9_.\-]+$/.test(username)) { setErr('Тільки латиниця, цифри, _ . -'); return; }
     if (!password || password.length < 6) { setErr('Мінімум 6 символів'); return; }
 
     let users = loadUsers();
+    
+    // Блокируем кнопку на время запроса
+    if(btn) { btn.disabled = true; btn.textContent = 'Зачекайте...'; }
 
-    if (authMode === 'setup' || !users.length) {
-      if (password !== confirm) { setErr('Паролі не збігаються'); return; }
-      const salt = uid() + uid();
-      const nu = {
-        id: uid(), username, fullName: username, role: 'admin',
-        modules: ['*'],
-        salt, hash: hp(password, salt),
-        createdAt: new Date().toISOString().slice(0, 10)
-      };
-      users = [nu];
+    try {
+      if (authMode === 'setup' || !users.length) {
+        if (password !== confirm) { setErr('Паролі не збігаються'); return; }
+        const salt = uid() + uid();
+        const nu = {
+          id: uid(), username, fullName: username, role: 'admin',
+          modules: ['*'],
+          salt, hash: hp(password, salt),
+          createdAt: new Date().toISOString().slice(0, 10)
+        };
+        
+        // 1. СНАЧАЛА ПИШЕМ В SUPABASE
+        if (window.supabaseClient) {
+          const { error } = await supabaseClient.from('users').upsert({
+            id: nu.id, username: nu.username, full_name: nu.fullName,
+            role: nu.role, modules: JSON.stringify(nu.modules),
+            salt: nu.salt, hash: nu.hash, created_at: nu.createdAt
+          });
+          if (error) throw new Error('Помилка бази даних: ' + error.message);
+        }
+
+        // 2. ЕСЛИ УСПЕШНО - ОБНОВЛЯЕМ ЛОКАЛЬНЫЙ КЭШ
+        users = [nu];
+        saveUsers(users);
+        setSession(nu.id);
+        hideAuth();
+        afterLogin();
+        return;
+      }
+
+      // ВХОД
+      let found = null;
+
+      if (window.supabaseClient) {
+        // 1. ИЩЕМ ПОЛЬЗОВАТЕЛЯ В SUPABASE (А НЕ В LOCALSTORAGE)
+        const { data, error } = await supabaseClient.from('users').select('*').ilike('username', username).single();
+        
+        if (error || !data) {
+          setErr("Невірне ім'я або пароль");
+          return;
+        }
+        
+        found = {
+          id: data.id, username: data.username, fullName: data.full_name,
+          role: data.role, modules: data.modules ? JSON.parse(data.modules) : [],
+          salt: data.salt, hash: data.hash
+        };
+      } else {
+        // Fallback (если Supabase не загрузился)
+        found = users.find(x => String(x.username || '').toLowerCase() === username.toLowerCase());
+      }
+
+      if (!found || hp(password, found.salt) !== found.hash) {
+        setErr("Невірне ім'я або пароль");
+        return;
+      }
+
+      // 2. ЕСЛИ ПАРОЛЬ ВЕРНЫЙ - ОБНОВЛЯЕМ КЭШ И ПУСКАЕМ
+      const localIdx = users.findIndex(u => u.id === found.id);
+      if (localIdx >= 0) users[localIdx] = found;
+      else users.push(found);
       saveUsers(users);
-      setSession(nu.id);
+
+      setSession(found.id);
       hideAuth();
       afterLogin();
-      return;
-    }
 
-    const found = users.find(x => String(x.username || '').toLowerCase() === username.toLowerCase());
-    if (!found || hp(password, found.salt) !== found.hash) {
-      setErr("Невірне ім'я або пароль");
-      return;
+    } catch (e) {
+      console.error(e);
+      setErr('Помилка з\'єднання з базою даних');
+    } finally {
+      if(btn) { btn.disabled = false; btn.textContent = authMode === 'setup' ? 'Створити адміністратора' : 'Увійти'; }
     }
-    setSession(found.id);
-    hideAuth();
-    afterLogin();
   }
+
   function afterLogin() {
     renderVersion();
     renderGreeting();
@@ -815,7 +871,8 @@ const Portal = (() => {
     }
   }
 
-  function saveUser() {
+  // ФУНКЦИЯ СОХРАНЕНИЯ ПОЛЬЗОВАТЕЛЯ (ПЕРЕПИСАНА ПОД SUPABASE)
+  async function saveUser() {
     const me = getCurrentUser();
     if (!me || me.role !== 'admin') { alert('Лише адміністратор'); return; }
     const login = (document.getElementById('u-login')?.value || '').trim();
@@ -823,6 +880,7 @@ const Portal = (() => {
     const role = document.getElementById('u-role')?.value || 'manager';
     const pass = document.getElementById('u-pass')?.value || '';
     const employeeId = (document.getElementById('u-employee')?.value || '').trim();
+    
     if (!login || login.length < 3) { alert('Логін мінімум 3 символи'); return; }
     if (!/^[a-zA-Z0-9_.\-]+$/.test(login)) { alert('Логін: лише латиниця, цифри, _ . -'); return; }
     if (!employeeId) {
@@ -833,7 +891,6 @@ const Portal = (() => {
     if (!emp) { alert('Обраного співробітника не знайдено в кадровому обліку'); return; }
 
     let users = loadUsers();
-    // one employee — one user
     const takenBy = users.find(u => u.employeeId === employeeId && u.id !== editingUserId);
     if (takenBy) {
       alert('Цей співробітник уже привʼязаний до користувача «' + (takenBy.username || '') + '»');
@@ -848,6 +905,7 @@ const Portal = (() => {
     }
 
     const displayName = name || emp.fullName || login;
+    let finalUser = null;
 
     if (editingUserId) {
       const i = users.findIndex(x => x.id === editingUserId);
@@ -863,23 +921,51 @@ const Portal = (() => {
       users[i].modules = modules;
       users[i].employeeId = employeeId;
       users[i].updatedAt = new Date().toISOString().slice(0, 10);
-      if (window.NexusCore && NexusCore.audit) NexusCore.audit('users.update', 'user', { id: editingUserId, role, modules, employeeId });
+      finalUser = users[i];
     } else {
       if (!pass || pass.length < 6) { alert('Пароль мінімум 6 символів'); return; }
       if (users.some(x => String(x.username).toLowerCase() === login.toLowerCase())) {
         alert('Такий логін вже існує'); return;
       }
       const salt = uid() + uid();
-      const nu = {
+      finalUser = {
         id: uid(), username: login, fullName: displayName, role, modules,
         employeeId,
         salt, hash: hp(pass, salt),
         createdAt: new Date().toISOString().slice(0, 10)
       };
-      users.push(nu);
-      if (window.NexusCore && NexusCore.audit) NexusCore.audit('users.create', 'user', { id: nu.id, role, modules, employeeId });
+      users.push(finalUser);
     }
+
+    // 1. ПИШЕМ В SUPABASE
+    if (window.supabaseClient && finalUser) {
+      try {
+        const { error } = await supabaseClient.from('users').upsert({
+          id: finalUser.id,
+          username: finalUser.username,
+          full_name: finalUser.fullName,
+          role: finalUser.role,
+          modules: JSON.stringify(finalUser.modules),
+          salt: finalUser.salt,
+          hash: finalUser.hash,
+          employee_id: finalUser.employeeId,
+          created_at: finalUser.createdAt,
+          updated_at: finalUser.updatedAt || new Date().toISOString().slice(0, 10)
+        });
+        if (error) throw error;
+        console.log('✅ Користувач збережений в Supabase');
+      } catch(e) {
+        console.error('❌ Помилка Supabase:', e);
+        alert('Помилка збереження в базу даних: ' + e.message);
+        return; // Прерываем, если база не приняла
+      }
+    }
+
+    // 2. ОБНОВЛЯЕМ ЛОКАЛЬНЫЙ КЭШ
     saveUsers(users);
+    
+    if (window.NexusCore && NexusCore.audit) NexusCore.audit('users.save', 'user', { id: finalUser.id, role, modules, employeeId });
+    
     cancelUserForm();
     renderUsersList();
     applyModuleAccess();
@@ -887,11 +973,27 @@ const Portal = (() => {
     alert('Збережено. Користувач привʼязаний до співробітника «' + emp.fullName + '»');
   }
 
-  function deleteUser(id) {
+  // ФУНКЦИЯ УДАЛЕНИЯ (ПЕРЕПИСАНА ПОД SUPABASE)
+  async function deleteUser(id) {
     const me = getCurrentUser();
     if (!me || me.role !== 'admin') return;
     if (id === me.id) { alert('Не можна видалити себе'); return; }
     if (!confirm('Видалити користувача?')) return;
+
+    // 1. УДАЛЯЕМ ИЗ SUPABASE
+    if (window.supabaseClient) {
+      try {
+        const { error } = await supabaseClient.from('users').delete().eq('id', id);
+        if (error) throw error;
+        console.log('🗑️ Користувач видалений з Supabase');
+      } catch(e) {
+        console.error('❌ Помилка видалення з Supabase:', e);
+        alert('Не вдалося видалити з бази даних. Можливо, немає зв\'язку.');
+        return;
+      }
+    }
+
+    // 2. ОБНОВЛЯЕМ ЛОКАЛЬНЫЙ КЭШ
     let users = loadUsers().filter(x => x.id !== id);
     saveUsers(users);
     if (window.NexusCore && NexusCore.audit) NexusCore.audit('users.delete', 'user', { id });
@@ -1278,7 +1380,6 @@ const Portal = (() => {
   }
 
   /* patch init to also render cabinet */
-  const _origInit = null;
   function initCabinetHooks() {
     bindCabinetUi();
     const user = getCurrentUser();
