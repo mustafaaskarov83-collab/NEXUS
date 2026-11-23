@@ -1099,18 +1099,27 @@ function addEmp(){
 
   // --- ОТПРАВКА В SUPABASE ---
   if (window.supabaseClient) {
-    supabaseClient.from('employees').upsert({
+    const payload = {
       id: newEmp.id,
       full_name: newEmp.fullName,
-      position: newEmp.position,
-      department: newEmp.departmentId,
-      hire_date: newEmp.hireDate,
+      position: newEmp.position || null,
+      department_id: newEmp.departmentId || null,
+      department: newEmp.departmentId || null,
+      hire_date: newEmp.hireDate || null,
+      birth_date: newEmp.birthDate || null,
       status: 'active',
-      created_at: new Date().toISOString()
-    }).then(({error}) => {
-      if(error) console.error('❌ Ошибка Supabase:', error.message);
-      else console.log('✅ Сотрудник сохранен в Supabase!');
-    });
+      category: newEmp.category || null,
+      base_leave_days: newEmp.baseLeaveDays || null,
+      project_ids: newEmp.projectIds || [],
+      contract: newEmp.contract || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    supabaseClient.from('employees').upsert(payload)
+      .then(({error}) => {
+        if (error) console.error('❌ Ошибка Supabase (employees):', error.message);
+        else console.log('✅ Сотрудник сохранен в Supabase');
+      });
   }
   // ---------------------------
 
@@ -2343,115 +2352,64 @@ window.App=App;
 document.addEventListener('DOMContentLoaded',()=>{
   try{App.init()}catch(e){console.error(e);alert('Помилка: '+e.message)}
 });
-// --- СИНХРОНИЗАЦИЯ СОТРУДНИКОВ ИЗ SUPABASE ---
+// --- СИНХРОНИЗАЦИЯ СОТРУДНИКОВ ИЗ SUPABASE (v2) ---
 async function syncEmployeesFromCloud() {
   if (!window.supabaseClient) return;
   console.log('Синхронизация сотрудников из Supabase...');
   const { data, error } = await supabaseClient.from('employees').select('*');
-  
+
   if (error) {
     console.error('❌ Ошибка загрузки сотрудников:', error.message);
     return;
   }
-  
-  if (data && data.length > 0) {
-    let localDb = loadDB();
-    let added = 0;
-    data.forEach(cloudEmp => {
-      const existing = localDb.employees.find(e => e.id === cloudEmp.id);
-      if (!existing) {
-        localDb.employees.push({
-          id: cloudEmp.id,
-          fullName: cloudEmp.full_name,
-          position: cloudEmp.position,
-          departmentId: cloudEmp.department,
-          hireDate: cloudEmp.hire_date,
-          birthDate: '',
-          baseLeaveDays: 24,
-          insuranceYears: 0,
-          category: 'standard',
-          projectIds: [],
-          contract: {number:'', type:'indefinite', signedAt:'', endAt:'', note:''},
-          reservation: defaultReservation(),
-          payments: [],
-          leaves: [],
-          unpaidPeriods: [],
-          parentalPeriods: [],
-          sickLeaves: [],
-          createdAt: cloudEmp.created_at
-        });
-        added++;
-      }
-    });
-    
-    if (added > 0) {
-      localStorage.setItem(STORAGE, JSON.stringify(localDb));
-      console.log(`✅ Загружено ${added} новых сотрудников из Supabase.`);
-      if (typeof renderEmp === 'function') renderEmp();
-      if (typeof renderDash === 'function') renderDash();
-    } else {
-      console.log('✅ Все сотрудники актуальны.');
-    }
-  }
-}
 
-// Запускаем при загрузке
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(syncEmployeesFromCloud, 500);
-});
-// --- СИНХРОНИЗАЦИЯ СОТРУДНИКОВ ИЗ SUPABASE ---
-async function syncEmployeesFromCloud() {
-  if (!window.supabaseClient) return;
-  console.log('Синхронизация сотрудников из Supabase...');
-  const { data, error } = await supabaseClient.from('employees').select('*');
-  
-  if (error) {
-    console.error('❌ Ошибка загрузки сотрудников:', error.message);
+  if (!data || data.length === 0) {
+    console.log('В Supabase пока нет сотрудников.');
     return;
   }
-  
-  if (data && data.length > 0) {
-    let localDb = loadDB();
-    let added = 0;
-    data.forEach(cloudEmp => {
-      const existing = localDb.employees.find(e => e.id === cloudEmp.id);
-      if (!existing) {
-        localDb.employees.push({
-          id: cloudEmp.id,
-          fullName: cloudEmp.full_name,
-          position: cloudEmp.position,
-          departmentId: cloudEmp.department,
-          hireDate: cloudEmp.hire_date,
-          birthDate: '',
-          baseLeaveDays: 24,
-          insuranceYears: 0,
-          category: 'standard',
-          projectIds: [],
-          contract: {number:'', type:'indefinite', signedAt:'', endAt:'', note:''},
-          reservation: defaultReservation(),
-          payments: [],
-          leaves: [],
-          unpaidPeriods: [],
-          parentalPeriods: [],
-          sickLeaves: [],
-          createdAt: cloudEmp.created_at
-        });
-        added++;
-      }
+
+  let localDb = loadDB();
+  let added = 0;
+
+  data.forEach(cloudEmp => {
+    const existing = localDb.employees.find(e => e.id === cloudEmp.id);
+    if (existing) return;
+
+    localDb.employees.push({
+      id: cloudEmp.id,
+      fullName: cloudEmp.full_name || '',
+      position: cloudEmp.position || '',
+      departmentId: cloudEmp.department_id || cloudEmp.department || '',
+      hireDate: cloudEmp.hire_date || '',
+      birthDate: cloudEmp.birth_date || '',
+      baseLeaveDays: cloudEmp.base_leave_days || 24,
+      insuranceYears: 0,
+      category: cloudEmp.category || 'standard',
+      projectIds: Array.isArray(cloudEmp.project_ids) ? cloudEmp.project_ids : [],
+      contract: cloudEmp.contract || { number: '', type: 'indefinite', signedAt: '', endAt: '', note: '' },
+      reservation: (typeof defaultReservation === 'function' ? defaultReservation() : {}),
+      payments: [],
+      leaves: [],
+      unpaidPeriods: [],
+      parentalPeriods: [],
+      sickLeaves: [],
+      status: cloudEmp.status || 'active',
+      createdAt: cloudEmp.created_at ? String(cloudEmp.created_at).slice(0, 10) : new Date().toISOString().slice(0, 10)
     });
-    
-    if (added > 0) {
-      localStorage.setItem(STORAGE, JSON.stringify(localDb));
-      console.log(`✅ Загружено ${added} новых сотрудников из Supabase.`);
-      if (typeof renderEmp === 'function') renderEmp();
-      if (typeof renderDash === 'function') renderDash();
-    } else {
-      console.log('✅ Все сотрудники актуальны.');
-    }
+    added++;
+  });
+
+  if (added > 0) {
+    localStorage.setItem(STORAGE, JSON.stringify(localDb));
+    console.log(`✅ Загружено ${added} новых сотрудников из Supabase.`);
+    if (typeof renderEmp === 'function') renderEmp();
+    if (typeof renderDash === 'function') renderDash();
+  } else {
+    console.log('✅ Все сотрудники актуальны.');
   }
 }
 
-// Запускаем при загрузке
+// Запускаем при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(syncEmployeesFromCloud, 500);
+  setTimeout(syncEmployeesFromCloud, 600);
 });

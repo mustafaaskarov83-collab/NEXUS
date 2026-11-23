@@ -185,24 +185,27 @@ const Projects = (() => {
   // ==========================================
   // ОТПРАВКА В SUPABASE (В ФОНЕ)
   // ==========================================
-  if (typeof supabaseClient !== 'undefined') {
-    supabaseClient.from('projects').upsert({
+  if (typeof supabaseClient !== 'undefined' || window.supabaseClient) {
+    const client = window.supabaseClient || supabaseClient;
+    client.from('projects').upsert({
       id: p.id,
-      code: p.code,
+      code: p.code || null,
       name: p.name,
-      description: p.description,
-      status: p.status,
-      manager: p.manager,
-      start_date: p.start,
-      end_date: p.end,
-      contract_id: p.contractId,
-      contract_name: p.contractName,
-      customer: p.customer,
-      updated_at: p.updatedAt,
+      description: p.description || null,
+      status: p.status || null,
+      manager: p.manager || null,
+      start_date: p.start || null,
+      end_date: p.end || null,
+      contract_id: p.contractId || null,
+      contract_name: p.contractName || null,
+      customer: p.customer || null,
+      planned_amount: p.contractAmount || null,
+      currency: p.currency || 'UAH',
+      updated_at: p.updatedAt || new Date().toISOString(),
       created_at: p.createdAt || new Date().toISOString()
     }).then(({error}) => {
-      if (error) console.error('❌ Ошибка сохранения в Supabase:', error.message);
-      else console.log('✅ Проект успешно сохранен в Supabase!');
+      if (error) console.error('❌ Ошибка сохранения в Supabase (projects):', error.message);
+      else console.log('✅ Проект успешно сохранен в Supabase');
     });
   } else {
     console.warn('supabaseClient не найден, сохранено только локально.');

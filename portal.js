@@ -128,7 +128,7 @@ const Portal = (() => {
         if (window.supabaseClient) {
           const { error } = await supabaseClient.from('users').upsert({
             id: nu.id, username: nu.username, full_name: nu.fullName,
-            role: nu.role, modules: JSON.stringify(nu.modules),
+            role: nu.role, modules: nu.modules,          // jsonb — отправляем массив
             salt: nu.salt, hash: nu.hash, created_at: nu.createdAt
           });
           if (error) throw new Error('Помилка бази даних: ' + error.message);
@@ -157,7 +157,10 @@ const Portal = (() => {
         
         found = {
           id: data.id, username: data.username, fullName: data.full_name,
-          role: data.role, modules: data.modules ? JSON.parse(data.modules) : [],
+          role: data.role,
+          modules: Array.isArray(data.modules)
+            ? data.modules
+            : (typeof data.modules === 'string' ? JSON.parse(data.modules || '[]') : []),
           salt: data.salt, hash: data.hash
         };
       } else {
@@ -977,12 +980,12 @@ const Portal = (() => {
           username: finalUser.username,
           full_name: finalUser.fullName,
           role: finalUser.role,
-          modules: JSON.stringify(finalUser.modules),
+          modules: finalUser.modules,          // jsonb — отправляем массив
           salt: finalUser.salt,
           hash: finalUser.hash,
-          employee_id: finalUser.employeeId,
+          employee_id: finalUser.employeeId || null,
           created_at: finalUser.createdAt,
-          updated_at: finalUser.updatedAt || new Date().toISOString().slice(0, 10)
+          updated_at: finalUser.updatedAt || new Date().toISOString()
         });
         if (error) throw error;
         console.log('✅ Користувач збережений в Supabase');
