@@ -3,7 +3,7 @@
   'use strict';
 
   const SUPABASE_URL = 'https://ympjloemmczbhiusosep.supabase.co';
-  const SUPABASE_KEY = 'ВАШ_КЛЮЧ';
+  const SUPABASE_KEY = 'sb_publishable_P8ijcthJq-2s1SNK7cfv9Q_AGk_VSCv';
 
   if (!window.supabase || typeof window.supabase.createClient !== 'function') {
     console.error('[NEXUS] Supabase JS library is not loaded');
