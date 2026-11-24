@@ -898,6 +898,7 @@ const Portal = (() => {
       role,
       modules
     };
+    if (!isEditing) payload.password = pass;
     try {
       const result = await nexusAuth.manageUsers(payload);
       if (isEditing && pass) {
