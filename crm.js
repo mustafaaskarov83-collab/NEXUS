@@ -303,11 +303,17 @@ const CRM = (() => {
     document.getElementById('cli-form-modal').classList.add('open');
   }
 
-  function del(id) {
+  async function del(id) {
     if (!canEdit()) return denyEdit();
     const c = clientById(id);
     if (!c) return;
     if (!confirm('Видалити клієнта «' + c.name + '» та його активності?')) return;
+    try {
+      if (window.nexusData) await nexusData.archiveCrmParty(id);
+    } catch (error) {
+      alert('Помилка архівації клієнта в Supabase: ' + (error.message || error));
+      return;
+    }
     db.clients = db.clients.filter(x => x.id !== id);
     db.activities = (db.activities || []).filter(a => a.clientId !== id);
     saveDB();
@@ -322,6 +328,9 @@ const CRM = (() => {
     c.status = status;
     c.updatedAt = today();
     saveDB();
+    if (window.nexusData) {
+      nexusData.upsertCrmParty(c).catch(e => alert('Помилка збереження статусу CRM у Supabase: ' + (e.message || e)));
+    }
     renderAll();
     if (detailId === id) openDetail(id);
   }
@@ -435,7 +444,7 @@ const CRM = (() => {
   function pushActivity(clientId, type, text) {
     const u = getCurrentUser();
     if (!db.activities) db.activities = [];
-    db.activities.push({
+    const activity = {
       id: uid('act'),
       clientId,
       type,
@@ -443,10 +452,32 @@ const CRM = (() => {
       date: today(),
       author: u ? (u.fullName || u.username) : '',
       createdAt: today()
-    });
+    };
+    db.activities.push(activity);
     const c = clientById(clientId);
     if (c) { c.updatedAt = today(); c.lastActivityAt = today(); }
     saveDB();
+    syncActivity(activity);
+  }
+
+  async function syncActivity(activity) {
+    if (!window.nexusData) return;
+    try {
+      const party = clientById(activity.clientId);
+      if (party) await nexusData.upsertCrmParty(party);
+      await nexusData.upsertCrmActivity({
+        id: activity.id,
+        partyId: activity.clientId,
+        type: activity.type || 'note',
+        activityDate: new Date((activity.date || today()) + 'T12:00:00').toISOString(),
+        subject: activity.type || 'note',
+        description: activity.text || '',
+        status: 'done',
+        metadata: { author: activity.author || '', createdAt: activity.createdAt || '' }
+      });
+    } catch (error) {
+      alert('Помилка збереження активності CRM у Supabase: ' + (error.message || error));
+    }
   }
 
   function openActivityForm() {
@@ -473,13 +504,15 @@ const CRM = (() => {
     const date = document.getElementById('a-date')?.value || today();
     const u = getCurrentUser();
     if (!db.activities) db.activities = [];
-    db.activities.push({
+    const activity = {
       id: uid('act'), clientId, type, text, date,
       author: u ? (u.fullName || u.username) : '', createdAt: today()
-    });
+    };
+    db.activities.push(activity);
     const c = clientById(clientId);
     if (c) { c.updatedAt = today(); c.lastActivityAt = date; }
     saveDB();
+    syncActivity(activity);
     closeActivityForm();
     renderAll();
   }
@@ -505,7 +538,7 @@ const CRM = (() => {
         skipped++;
         return;
       }
-      db.clients.push({
+      const client = {
         id: uid('cli'),
         type: 'company',
         role: roleFromDoc,
@@ -518,7 +551,11 @@ const CRM = (() => {
         phone: '', email: '', city: '', address: '',
         notes: 'Імпортовано з ' + (isExpense ? 'витратного' : 'прибуткового') + ' договору' + (d.num ? ' №' + d.num : ''),
         createdAt: today(), updatedAt: today()
-      });
+      };
+      db.clients.push(client);
+      if (window.nexusData) {
+        nexusData.upsertCrmParty(client).catch(e => alert('Помилка імпорту CRM у Supabase: ' + (e.message || e)));
+      }
       added++;
     });
     saveDB();
@@ -708,7 +745,25 @@ const CRM = (() => {
     if (currentTab === 'activity') renderActivities();
   }
 
-  function init() {
+  async function syncFromSupabase() {
+    if (!window.nexusData) return;
+    let cloud = await nexusData.listCrm();
+    if (!cloud.clients.length && db.clients.length) {
+      for (const client of db.clients) await nexusData.upsertCrmParty(client);
+      for (const activity of db.activities || []) await syncActivity(activity);
+      cloud = await nexusData.listCrm();
+    }
+    const clients = new Map(db.clients.map(client => [client.id, client]));
+    const activities = new Map((db.activities || []).map(activity => [activity.id, activity]));
+    cloud.clients.forEach(client => clients.set(client.id, client));
+    cloud.activities.forEach(activity => activities.set(activity.id, activity));
+    db.clients = Array.from(clients.values());
+    db.activities = Array.from(activities.values());
+    saveDB();
+    renderAll();
+  }
+
+  async function init() {
     if (window.NexusCore && NexusCore.requireModule && !NexusCore.requireModule('crm')) return;
     if (!initAuth()) return;
     initTheme();
@@ -719,6 +774,11 @@ const CRM = (() => {
       if (!c.role) c.role = 'customer';
     });
     renderAll();
+    try {
+      await syncFromSupabase();
+    } catch (error) {
+      alert('Помилка завантаження CRM із Supabase: ' + (error.message || error));
+    }
     if (window.NexusCore && NexusCore.enforceReadOnly) NexusCore.enforceReadOnly();
   }
 

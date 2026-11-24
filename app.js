@@ -1010,6 +1010,13 @@ async function saveEmployeeToCloud(employee){
   await nexusData.upsertEmployee(employee);
 }
 
+function syncEmployeeChange(employee){
+  if(!window.nexusData)return;
+  saveEmployeeToCloud(employee).catch(error=>
+    alert('Помилка синхронізації даних співробітника: '+(error.message||error))
+  );
+}
+
 function saveDepartment(){
   if(!reqEdit())return;
   const code=$('#dep-code').value.trim().toUpperCase();
@@ -1160,18 +1167,21 @@ async function addEmp(){
   setTimeout(()=>openEmp(newId), 50);
 }
 
-function delEmp(id){
+async function delEmp(id){
   if(!reqEdit())return;
   const e=db.employees.find(x=>x.id===id);
+  if(!e)return;
   if(!confirm(t('aDel',{name:e.fullName})))return;
+  if(window.nexusData){
+    try{
+      await nexusData.deleteEmployee(id);
+    }catch(error){
+      alert('Помилка видалення співробітника: '+(error.message||error));
+      return;
+    }
+  }
   db.employees=db.employees.filter(x=>x.id!==id);
   save();renderDepartments();renderEmp();refreshSel();renderDash();
-
-  // --- УДАЛЕНИЕ ИЗ SUPABASE ---
-  if (window.nexusData) {
-    nexusData.deleteEmployee(id).catch(e => alert('Помилка видалення співробітника: ' + (e.message || e)));
-  }
-  // ---------------------------
 }
 function filterEmp(){renderEmp($('#search').value.toLowerCase().trim())}
 function renderEmp(q){
@@ -1724,32 +1734,42 @@ function addLeave(){if(!reqEdit())return;
   if(!s||!en){alert(t('aDates'));return}
   const d=cntD(s,en)-cntH(s,en);
   e.leaves.push({id:uid(),start:s,end:en,days:d,type:'annual'});
-  save();renderModal();
+  save();syncEmployeeChange(e);renderModal();
 }
-function delLeave(id){if(!reqEdit())return;
+async function delLeave(id){if(!reqEdit())return;
   const e=db.employees.find(x=>x.id===curEmpId);
-  e.leaves=e.leaves.filter(l=>l.id!==id);save();renderModal();
+  try{if(window.nexusData)await nexusData.deleteHrLeave(id)}
+  catch(error){alert('Помилка видалення відпустки: '+(error.message||error));return}
+  e.leaves=e.leaves.filter(l=>l.id!==id);save();syncEmployeeChange(e);renderModal();
 }
 function addPay(){if(!reqEdit())return;
   const e=db.employees.find(x=>x.id===curEmpId);
   const y=Number($('#np-y').value),m=Number($('#np-m').value),a=Number($('#np-a').value);
   if(!y||!m||m<1||m>12||!a){alert(t('aFillYMA'));return}
   e.payments=(e.payments||[]).filter(p=>!(p.year===y&&p.month===m));
-  e.payments.push({year:y,month:m,amount:a});save();renderModal();
+  e.payments.push({year:y,month:m,amount:a});save();syncEmployeeChange(e);renderModal();
 }
-function delPay(y,m){if(!reqEdit())return;
+async function delPay(y,m){if(!reqEdit())return;
   const e=db.employees.find(x=>x.id===curEmpId);
-  e.payments=(e.payments||[]).filter(p=>!(p.year===y&&p.month===m));save();renderModal();
+  try{if(window.nexusData)await nexusData.deleteHrPayrollPayment(e.id,y,m)}
+  catch(error){alert('Помилка видалення виплати: '+(error.message||error));return}
+  e.payments=(e.payments||[]).filter(p=>!(p.year===y&&p.month===m));save();syncEmployeeChange(e);renderModal();
 }
 function addPer(){if(!reqEdit())return;
   const e=db.employees.find(x=>x.id===curEmpId);
   const tt=$('#nper-t').value,s=$('#nper-s').value,en=$('#nper-e').value;
   if(!s||!en){alert(t('aDates'));return}
-  (e[tt]=e[tt]||[]).push({start:s,end:en});save();renderModal();
+  (e[tt]=e[tt]||[]).push({start:s,end:en});save();syncEmployeeChange(e);renderModal();
 }
-function delPer(tt,i){if(!reqEdit())return;
+async function delPer(tt,i){if(!reqEdit())return;
   const e=db.employees.find(x=>x.id===curEmpId);
+  const record=(e[tt]||[])[i];
+  if(!record)return;
+  const type=tt==='unpaidPeriods'?'unpaid':'parental';
+  try{if(window.nexusData)await nexusData.deleteHrLeave(type+':'+record.start+':'+record.end)}
+  catch(error){alert('Помилка видалення періоду: '+(error.message||error));return}
   e[tt].splice(i,1);save();renderModal();
+  syncEmployeeChange(e);
 }
 
 function addSick(){
@@ -1764,14 +1784,20 @@ function addSick(){
   e.sickLeaves=e.sickLeaves||[];
   e.sickLeaves.push({id:uid(),start:s,end:en,type,useEsv,
     total:r.total,dayPay:r.dayPay,days:r.days,pct:r.pct});
-  save();renderModal();
+  save();syncEmployeeChange(e);renderModal();
   alert(t('sickSaved')+': '+fN(r.total)+' '+t('cur'));
 }
-function delSick(empId,idx){
+async function delSick(empId,idx){
   if(!reqEdit())return;
   if(!confirm(t('sickDel')))return;
   const e=db.employees.find(x=>x.id===empId);
+  if(!e)return;
+  const record=e.sickLeaves[idx];
+  if(!record)return;
+  try{if(window.nexusData)await nexusData.deleteHrSickLeave(record.id)}
+  catch(error){alert('Помилка видалення лікарняного: '+(error.message||error));return}
   e.sickLeaves.splice(idx,1);save();renderModal();
+  syncEmployeeChange(e);
 }
 
 function printSick(empId,idx){
@@ -1986,7 +2012,7 @@ function fromWB(wb){
   imp.forEach(e=>{
     const d=db.employees.some(x=>x.fullName.toLowerCase()===e.fullName.toLowerCase()&&x.hireDate===e.hireDate);
     if(d){skip++;return}
-    db.employees.push(e);added++;
+    db.employees.push(e);added++;syncEmployeeChange(e);
   });
   save();renderEmp();refreshSel();renderDash();
   return{added,skip,errs,preview:imp.slice(0,10)};
@@ -2406,36 +2432,41 @@ async function syncEmployeesFromCloud() {
   let added = 0;
 
   data.forEach(cloudEmp => {
-    const existing = localDb.employees.find(e => e.id === cloudEmp.id);
-    if (existing) return;
-
-    localDb.employees.push({
+    const employee = {
       id: cloudEmp.id,
       fullName: cloudEmp.full_name || '',
       position: cloudEmp.position || '',
       departmentId: cloudEmp.department_id || cloudEmp.department || '',
       hireDate: cloudEmp.hire_date || '',
       birthDate: cloudEmp.birth_date || '',
-      baseLeaveDays: cloudEmp.base_leave_days || 24,
-      insuranceYears: 0,
+      baseLeaveDays: cloudEmp.metadata?.baseLeaveDays || cloudEmp.base_leave_days || 24,
+      insuranceYears: Number(cloudEmp.metadata?.insuranceYears) || 0,
       category: cloudEmp.category || 'standard',
-      projectIds: Array.isArray(cloudEmp.project_ids) ? cloudEmp.project_ids : [],
+      projectIds: Array.isArray(cloudEmp.metadata?.projectIds) ? cloudEmp.metadata.projectIds : [],
       contract: cloudEmp.contract || { number: '', type: 'indefinite', signedAt: '', endAt: '', note: '' },
-      reservation: (typeof defaultReservation === 'function' ? defaultReservation() : {}),
-      payments: [],
-      leaves: [],
-      unpaidPeriods: [],
-      parentalPeriods: [],
-      sickLeaves: [],
+      reservation: cloudEmp.reservation || (typeof defaultReservation === 'function' ? defaultReservation() : {}),
+      payments: cloudEmp.payments || [],
+      leaves: cloudEmp.leaves || [],
+      unpaidPeriods: cloudEmp.unpaidPeriods || [],
+      parentalPeriods: cloudEmp.parentalPeriods || [],
+      sickLeaves: cloudEmp.sickLeaves || [],
+      metadata: cloudEmp.metadata || {},
+      personalData: cloudEmp.personal_data || {},
       status: cloudEmp.status || 'active',
       createdAt: cloudEmp.created_at ? String(cloudEmp.created_at).slice(0, 10) : new Date().toISOString().slice(0, 10)
-    });
-    added++;
+    };
+    const existingIndex = localDb.employees.findIndex(e => e.id === cloudEmp.id);
+    if (existingIndex < 0) {
+      localDb.employees.push(employee);
+      added++;
+    } else {
+      localDb.employees[existingIndex] = { ...localDb.employees[existingIndex], ...employee };
+    }
   });
 
-  if (added > 0) {
+  if (data.length > 0) {
     localStorage.setItem(STORAGE, JSON.stringify(localDb));
-    console.log(`✅ Загружено ${added} новых сотрудников из Supabase.`);
+    console.log(`✅ Синхронизировано сотрудников из Supabase: ${data.length} (новых: ${added}).`);
     if (typeof renderEmp === 'function') renderEmp();
     if (typeof renderDash === 'function') renderDash();
   } else {

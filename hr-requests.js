@@ -38,13 +38,27 @@ const HrRequests = (() => {
 
   function saveStore(store) {
     try {
-      if (window.NexusCore && NexusCore.write) return NexusCore.write(KEY, store);
+      if (window.NexusCore && NexusCore.write) {
+        const saved = NexusCore.write(KEY, store);
+        syncTemplatesToSupabase(store);
+        return saved;
+      }
       localStorage.setItem(KEY, JSON.stringify(store));
+      syncTemplatesToSupabase(store);
       return true;
     } catch (e) {
       alert('Не вдалося зберегти (можливо, закінчилося місце в браузері).');
       return false;
     }
+  }
+
+  function syncTemplatesToSupabase(store) {
+    if (!window.nexusData) return;
+    (store.templates || []).forEach(template => {
+      nexusData.upsertHrRequestTemplate(template).catch(error =>
+        alert('Помилка збереження шаблону заявки в Supabase: ' + (error.message || error))
+      );
+    });
   }
 
   function uid() {
@@ -331,10 +345,16 @@ const HrRequests = (() => {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  function deleteCurrent() {
+  async function deleteCurrent() {
     if (!canEdit() || !currentId) return;
     if (!confirm('Видалити цю заявку?')) return;
     const store = loadStore();
+    try {
+      if (window.nexusData) await nexusData.deleteHrRequestTemplate(currentId);
+    } catch (error) {
+      alert('Помилка видалення шаблону з Supabase: ' + (error.message || error));
+      return;
+    }
     store.templates = store.templates.filter(t => t.id !== currentId);
     saveStore(store);
     currentId = null;
@@ -607,8 +627,38 @@ const HrRequests = (() => {
     });
   }
 
-  function init() {
+  async function syncFromSupabase() {
+    if (!window.nexusData) return;
+    const cloud = await nexusData.listHrRequests();
+    const localStore = loadStore();
+    if (!cloud.templates.length && localStore.templates.length) {
+      for (const template of localStore.templates) await nexusData.upsertHrRequestTemplate(template);
+    } else {
+      const templates = new Map(localStore.templates.map(template => [template.id, template]));
+      cloud.templates.forEach(template => templates.set(template.id, template));
+      saveStore({ templates: Array.from(templates.values()) });
+    }
+
+    const localRequests = loadSubs();
+    if (!cloud.requests.length && localRequests.length) {
+      for (const request of localRequests) await nexusData.upsertHrRequest(request);
+    } else if (cloud.requests.length) {
+      const requests = new Map(localRequests.map(request => [request.id, request]));
+      cloud.requests.forEach(request => requests.set(request.id, request));
+      const value = { items: Array.from(requests.values()) };
+      if (window.NexusCore && NexusCore.write) NexusCore.write('nexus_hr_request_submissions_v1', value);
+      else localStorage.setItem('nexus_hr_request_submissions_v1', JSON.stringify(value));
+    }
+  }
+
+  async function init() {
     bind();
+    try {
+      await syncFromSupabase();
+    } catch (error) {
+      alert('Помилка завантаження заявок із Supabase: ' + (error.message || error));
+    }
+    render();
     if (location.hash === '#requests') setTimeout(render, 80);
   }
 

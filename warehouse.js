@@ -8,6 +8,7 @@ const WH = (() => {
   const THEME_KEY = 'nexus_theme_v1';
 
   let db = loadDB();
+  let cloudReady = false;
   let editingItemId = null;
   let currentTab = 'stock';
 
@@ -74,6 +75,14 @@ const WH = (() => {
     return { items: [], moves: [], orders: [], warehouses: [], meta: { version: '1.0', created: today() } };
   }
   function saveDB() {
+    try { localStorage.setItem(WH_KEY, JSON.stringify(db)); } catch (e) {}
+    if (cloudReady && window.nexusData) {
+      nexusData.syncWarehouseSnapshot(db).catch(error =>
+        alert('Помилка синхронізації складу із Supabase: ' + (error.message || error))
+      );
+    }
+  }
+  function writeLocalDB() {
     try { localStorage.setItem(WH_KEY, JSON.stringify(db)); } catch (e) {}
   }
   function today() {
@@ -408,13 +417,21 @@ const WH = (() => {
     closeItem();
     renderAll();
   }
-  function delItem(id) {
+  async function delItem(id) {
     if (!canEdit()) return denyEdit();
     const it = itemById(id);
     if (!it) return;
     const used = (db.moves || []).some(m => m.itemId === id);
     if (used && !confirm('По позиції є рух. Видалити позицію і весь її рух?')) return;
     if (!used && !confirm('Видалити «' + it.name + '»?')) return;
+    try {
+      if (window.nexusData) {
+        await nexusData.deleteWarehouseItem(id, (db.warehouses || []).map(warehouse => warehouse.id));
+      }
+    } catch (error) {
+      alert('Помилка видалення номенклатури з Supabase: ' + (error.message || error));
+      return;
+    }
     db.items = db.items.filter(x => x.id !== id);
     db.moves = (db.moves || []).filter(m => m.itemId !== id);
     saveDB();
@@ -524,10 +541,16 @@ const WH = (() => {
     renderAll();
   }
 
-  function delMove(id) {
+  async function delMove(id) {
 
     if (!canEdit()) return denyEdit();
     if (!confirm('Видалити запис руху? Залишок перерахується.')) return;
+    try {
+      if (window.nexusData) await nexusData.deleteWarehouseMove(id);
+    } catch (error) {
+      alert('Помилка видалення руху із Supabase: ' + (error.message || error));
+      return;
+    }
     db.moves = (db.moves || []).filter(m => m.id !== id);
     saveDB();
     renderAll();
@@ -701,12 +724,18 @@ const WH = (() => {
     renderAll();
   }
 
-  function delOrder(id) {
+  async function delOrder(id) {
     if (!canEdit()) return denyEdit();
     const o = orderById(id);
     if (!o) return;
     if (o.status === 'received') { alert('Отримане замовлення не видаляється (історія приходів збережена в русі).'); return; }
     if (!confirm('Видалити замовлення?')) return;
+    try {
+      if (window.nexusData) await nexusData.deleteWarehouseOrder(id);
+    } catch (error) {
+      alert('Помилка видалення замовлення з Supabase: ' + (error.message || error));
+      return;
+    }
     db.orders = (db.orders || []).filter(x => x.id !== id);
     saveDB();
     renderAll();
@@ -1021,12 +1050,20 @@ const WH = (() => {
     fillWarehouseSelects();
     renderAll();
   }
-  function delWarehouse(id) {
+  async function delWarehouse(id) {
     if (!canEdit()) return denyEdit();
     const used = (db.moves || []).some(m => m.warehouseId === id);
     if (used) { alert('Не можна видалити: по складу є рух матеріалів'); return; }
     if ((db.warehouses || []).length <= 1) { alert('Має залишитись хоча б один склад'); return; }
     if (!confirm('Видалити склад?')) return;
+    try {
+      if (window.nexusData) {
+        await nexusData.deleteWarehouseLocation(id, (db.items || []).map(item => item.id));
+      }
+    } catch (error) {
+      alert('Помилка видалення складу з Supabase: ' + (error.message || error));
+      return;
+    }
     db.warehouses = db.warehouses.filter(w => w.id !== id);
     saveDB();
     renderAll();
@@ -1260,7 +1297,26 @@ const WH = (() => {
     if (currentTab === 'warehouses') renderWarehouses();
   }
 
-  function init() {
+  async function syncFromSupabase() {
+    if (!window.nexusData) return;
+    let cloud = await nexusData.listWarehouse();
+    const empty = ['warehouses', 'items', 'moves', 'orders'].every(key => !cloud[key].length);
+    const hasLocal = ['warehouses', 'items', 'moves', 'orders'].some(key => (db[key] || []).length);
+    if (empty && hasLocal) {
+      if (!db.warehouses.length) ensureWarehouses();
+      await nexusData.syncWarehouseSnapshot(db);
+      cloud = await nexusData.listWarehouse();
+    }
+    ['warehouses', 'items', 'moves', 'orders'].forEach(key => {
+      const merged = new Map((db[key] || []).map(item => [item.id, item]));
+      (cloud[key] || []).forEach(item => merged.set(item.id, item));
+      db[key] = Array.from(merged.values());
+    });
+    writeLocalDB();
+    cloudReady = true;
+  }
+
+  async function init() {
     if (window.NexusCore && NexusCore.requireModule && !NexusCore.requireModule('warehouse')) return;
     if (!initAuth()) return;
     initTheme();
@@ -1268,6 +1324,12 @@ const WH = (() => {
     if (!db.items) db.items = [];
     if (!db.orders) db.orders = [];
     if (!db.warehouses) db.warehouses = [];
+    try {
+      await syncFromSupabase();
+    } catch (error) {
+      alert('Помилка завантаження складу із Supabase: ' + (error.message || error));
+      cloudReady = true;
+    }
     ensureWarehouses();
     fillCatFilters();
     fillSupplierSelects();

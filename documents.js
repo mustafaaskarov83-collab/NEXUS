@@ -47,6 +47,36 @@ const Doc = (() => {
     try { localStorage.setItem(DOC_KEY, JSON.stringify(db)); } catch(e){}
   }
 
+  async function syncDocument(doc) {
+    if (!window.nexusData) return;
+    if (doc.type === 'addendum' && doc.parentContractId) {
+      const parent = db.docs.find(item => item.id === doc.parentContractId);
+      if (parent) await nexusData.upsertDocument(parent);
+    }
+    await nexusData.upsertDocument(doc);
+  }
+
+  async function syncFromSupabase() {
+    if (!window.nexusData) return;
+    let rows = await nexusData.listDocuments();
+    if (!rows.length && db.docs.length) {
+      const ordered = db.docs.slice().sort((a, b) =>
+        (a.type === 'addendum' ? 1 : 0) - (b.type === 'addendum' ? 1 : 0)
+      );
+      for (const doc of ordered) await syncDocument(doc);
+      rows = await nexusData.listDocuments();
+    }
+    const merged = new Map(db.docs.map(doc => [doc.id, doc]));
+    rows.forEach(doc => merged.set(doc.id, doc));
+    db.docs = Array.from(merged.values());
+    saveDB();
+    render();
+  }
+
+  function reportCloudError(error) {
+    alert('Помилка синхронізації документів із Supabase: ' + (error.message || error));
+  }
+
   function getCurrentUser() {
     try {
       const raw = localStorage.getItem(SESSION_KEY);
@@ -405,7 +435,9 @@ const Doc = (() => {
         db.docs.push(doc);
         alert('✅ Додаток додано');
       }
-      saveDB(); reset(); collapseForm(); render(); return;
+      saveDB();
+      syncDocument(doc).catch(reportCloudError);
+      reset(); collapseForm(); render(); return;
     }
 
     const name = document.getElementById('f-name').value.trim();
@@ -462,6 +494,7 @@ const Doc = (() => {
       alert('✅ Документ додано');
     }
     saveDB();
+    syncDocument(doc).catch(reportCloudError);
     // скинути фільтри, щоб новий документ точно було видно
     const search = document.getElementById('search'); if (search) search.value = '';
     const ftype = document.getElementById('filter-type'); if (ftype) ftype.value = '';
@@ -526,11 +559,17 @@ const Doc = (() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  function del(id) {
+  async function del(id) {
     if (!canEdit()) { denyEdit(); return; }
     const doc = db.docs.find(x => x.id === id);
     if (!doc) return;
     if (!confirm('Видалити «' + doc.name + '»?')) return;
+    try {
+      if (window.nexusData) await nexusData.deleteDocument(id);
+    } catch (error) {
+      reportCloudError(error);
+      return;
+    }
     db.docs = db.docs.filter(x => x.id !== id);
     saveDB();
     render();
@@ -800,6 +839,14 @@ const Doc = (() => {
         if (!d.docs) throw new Error('Невірний формат');
         db = d;
         saveDB();
+        if (window.nexusData) {
+          (async () => {
+            const ordered = db.docs.slice().sort((a, b) =>
+              (a.type === 'addendum' ? 1 : 0) - (b.type === 'addendum' ? 1 : 0)
+            );
+            for (const doc of ordered) await syncDocument(doc);
+          })().catch(reportCloudError);
+        }
         render();
         alert('✅ Імпортовано: ' + d.docs.length + ' документів');
       } catch(e) { alert('Помилка: ' + e.message); }
@@ -808,17 +855,28 @@ const Doc = (() => {
     ev.target.value = '';
   }
 
-  function clearAll() {
+  async function clearAll() {
     if (!canEdit()) { denyEdit(); return; }
     if (!confirm('Видалити ВСІ документи?')) return;
     if (!confirm('Точно видалити ' + db.docs.length + ' документів?')) return;
+    try {
+      if (window.nexusData) {
+        const ordered = db.docs.slice().sort((a, b) =>
+          (a.type === 'addendum' ? 0 : 1) - (b.type === 'addendum' ? 0 : 1)
+        );
+        for (const doc of ordered) await nexusData.deleteDocument(doc.id);
+      }
+    } catch (error) {
+      reportCloudError(error);
+      return;
+    }
     db.docs = [];
     saveDB();
     render();
     alert('🗑️ Документи очищено');
   }
 
-  function init() {
+  async function init() {
     if (window.NexusCore && NexusCore.requireModule && !NexusCore.requireModule('documents')) return;
     if (!initAuth()) return;
     initTheme();
@@ -826,6 +884,11 @@ const Doc = (() => {
     fillClientSelect('');
     reset();
     render();
+    try {
+      await syncFromSupabase();
+    } catch (error) {
+      reportCloudError(error);
+    }
     setInterval(fillEmployeeSelect, 15000);
   }
 

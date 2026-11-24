@@ -39,6 +39,24 @@ const Inv = (() => {
     try { localStorage.setItem(INV_KEY, JSON.stringify(db)); } catch(e){}
   }
 
+  function reportCloudError(error) {
+    alert('Помилка синхронізації інвентарю із Supabase: ' + (error.message || error));
+  }
+
+  async function syncFromSupabase() {
+    if (!window.nexusData) return;
+    let rows = await nexusData.listInventory();
+    if (!rows.length && db.items.length) {
+      for (const item of db.items) await nexusData.upsertInventoryItem(item);
+      rows = await nexusData.listInventory();
+    }
+    const merged = new Map(db.items.map(item => [item.id, item]));
+    rows.forEach(item => merged.set(item.id, item));
+    db.items = Array.from(merged.values());
+    saveDB();
+    render();
+  }
+
   function getCurrentUser() {
     try {
       const raw = localStorage.getItem(SESSION_KEY);
@@ -208,6 +226,7 @@ const Inv = (() => {
     }
 
     saveDB();
+    if (window.nexusData) nexusData.upsertInventoryItem(item).catch(reportCloudError);
     closeForm();
     render();
   }
@@ -237,11 +256,17 @@ const Inv = (() => {
     if (m) m.classList.add('open');
   }
 
-  function del(id) {
+  async function del(id) {
     if (!canEdit()) { denyEdit(); return; }
     const item = db.items.find(x => x.id === id);
     if (!item) return;
     if (!confirm('Видалити «' + item.name + '»?')) return;
+    try {
+      if (window.nexusData) await nexusData.deleteInventoryItem(id);
+    } catch (error) {
+      reportCloudError(error);
+      return;
+    }
     db.items = db.items.filter(x => x.id !== id);
     saveDB();
     render();
@@ -483,6 +508,11 @@ const Inv = (() => {
         if (!d.items) throw new Error('Невірний формат');
         db = d;
         saveDB();
+        if (window.nexusData) {
+          (async () => {
+            for (const item of db.items) await nexusData.upsertInventoryItem(item);
+          })().catch(reportCloudError);
+        }
         render();
         alert('✅ Імпортовано: ' + d.items.length + ' предметів');
       } catch(e) { alert('Помилка: ' + e.message); }
@@ -491,22 +521,35 @@ const Inv = (() => {
     ev.target.value = '';
   }
 
-  function clearAll() {
+  async function clearAll() {
     if (!canEdit()) { denyEdit(); return; }
     if (!confirm('Видалити ВЕСЬ інвентар? Цю дію неможливо скасувати.')) return;
     if (!confirm('Точно видалити всі ' + db.items.length + ' предметів?')) return;
+    try {
+      if (window.nexusData) {
+        for (const item of db.items) await nexusData.deleteInventoryItem(item.id);
+      }
+    } catch (error) {
+      reportCloudError(error);
+      return;
+    }
     db.items = [];
     saveDB();
     render();
     alert('🗑️ Інвентар очищено');
   }
 
-  function init() {
+  async function init() {
     if (window.NexusCore && NexusCore.requireModule && !NexusCore.requireModule('inventory')) return;
     if (!initAuth()) return;
     initTheme();
     fillEmployeeSelect();
     render();
+    try {
+      await syncFromSupabase();
+    } catch (error) {
+      reportCloudError(error);
+    }
     setInterval(fillEmployeeSelect, 15000);
   }
 

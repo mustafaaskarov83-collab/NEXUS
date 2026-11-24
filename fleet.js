@@ -82,8 +82,16 @@ const Fleet = (() => {
     } catch (e) {}
     return { vehicles: [], fuel: [], cards: [], service: [], meta: { version: '1.0', created: new Date().toISOString().slice(0, 10) } };
   }
-  function saveDB() {
+  function writeLocalDB() {
     try { localStorage.setItem(FLEET_KEY, JSON.stringify(db)); } catch (e) {}
+  }
+  function saveDB() {
+    writeLocalDB();
+    if (window.nexusData) {
+      nexusData.syncFleetSnapshot(db).catch(error =>
+        alert('Помилка синхронізації автопарку із Supabase: ' + (error.message || error))
+      );
+    }
   }
   function uid(prefix) {
     return (prefix || 'id') + '_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -469,11 +477,17 @@ const Fleet = (() => {
     if (m) m.classList.add('open');
   }
 
-  function delVehicle(id) {
+  async function delVehicle(id) {
     if (!canEdit()) return denyEdit();
     const v = vehById(id);
     if (!v) return;
     if (!confirm('Видалити авто «' + v.plate + '» разом із заправками та сервісом по ньому?')) return;
+    try {
+      if (window.nexusData) await nexusData.deleteFleetVehicle(id);
+    } catch (error) {
+      alert('Помилка видалення авто з Supabase: ' + (error.message || error));
+      return;
+    }
     db.vehicles = db.vehicles.filter(x => x.id !== id);
     db.fuel = (db.fuel || []).filter(f => f.vehicleId !== id);
     db.service = (db.service || []).filter(s => s.vehicleId !== id);
@@ -818,9 +832,15 @@ const Fleet = (() => {
     if (m) m.classList.add('open');
   }
 
-  function delFuel(id) {
+  async function delFuel(id) {
     if (!canEdit()) return denyEdit();
     if (!confirm('Видалити запис заправки?')) return;
+    try {
+      if (window.nexusData) await nexusData.deleteFleetFuel(id);
+    } catch (error) {
+      alert('Помилка видалення заправки з Supabase: ' + (error.message || error));
+      return;
+    }
     db.fuel = (db.fuel || []).filter(x => x.id !== id);
     saveDB();
     renderFuel();
@@ -1071,11 +1091,17 @@ const Fleet = (() => {
     const m = document.getElementById('card-form-modal');
     if (m) m.classList.add('open');
   }
-  function delCard(id) {
+  async function delCard(id) {
     if (!canEdit()) return denyEdit();
     const c = cardById(id);
     if (!c) return;
     if (!confirm('Видалити картку «' + c.number + '»? Заправки залишаться.')) return;
+    try {
+      if (window.nexusData) await nexusData.deleteFleetCard(id);
+    } catch (error) {
+      alert('Помилка видалення картки з Supabase: ' + (error.message || error));
+      return;
+    }
     db.cards = (db.cards || []).filter(x => x.id !== id);
     saveDB();
     renderCards();
@@ -1682,9 +1708,15 @@ const Fleet = (() => {
     const m = document.getElementById('svc-form-modal');
     if (m) m.classList.add('open');
   }
-  function delService(id) {
+  async function delService(id) {
     if (!canEdit()) return denyEdit();
     if (!confirm('Видалити запис сервісу?')) return;
+    try {
+      if (window.nexusData) await nexusData.deleteFleetService(id);
+    } catch (error) {
+      alert('Помилка видалення сервісу з Supabase: ' + (error.message || error));
+      return;
+    }
     db.service = (db.service || []).filter(x => x.id !== id);
     saveDB();
     renderService();
@@ -1849,7 +1881,29 @@ const Fleet = (() => {
     XLSX.writeFile(wb, 'nexus-fleet-service.xlsx');
   }
 
-  function init() {
+  async function syncFromSupabase() {
+    if (!window.nexusData) return;
+    let cloud = await nexusData.listFleet();
+    const empty = ['vehicles', 'cards', 'fuel', 'service'].every(key => !cloud[key].length);
+    const hasLocal = ['vehicles', 'cards', 'fuel', 'service'].some(key => (db[key] || []).length);
+    if (empty && hasLocal && canEdit()) {
+      await nexusData.syncFleetSnapshot(db);
+      cloud = await nexusData.listFleet();
+    }
+    ['vehicles', 'cards', 'fuel', 'service'].forEach(key => {
+      const merged = new Map((db[key] || []).map(item => [item.id, item]));
+      (cloud[key] || []).forEach(item => merged.set(item.id, item));
+      db[key] = Array.from(merged.values());
+    });
+    writeLocalDB();
+    renderVehicles();
+    renderFuel();
+    renderCards();
+    renderService();
+    renderStats();
+  }
+
+  async function init() {
     if (window.NexusCore && NexusCore.requireModule && !NexusCore.requireModule('fleet')) return;
     if (!initAuth()) return;
     initTheme();
@@ -1859,6 +1913,11 @@ const Fleet = (() => {
     resetVehicle();
     resetFuel();
     setPeriodMonth();
+    try {
+      await syncFromSupabase();
+    } catch (error) {
+      alert('Помилка завантаження автопарку із Supabase: ' + (error.message || error));
+    }
     if (window.NexusCore && NexusCore.enforceReadOnly) NexusCore.enforceReadOnly();
   }
 

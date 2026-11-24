@@ -42,6 +42,21 @@
     write(MAIL_KEY, { messages: list, updatedAt: new Date().toISOString() });
   }
 
+  async function syncFromSupabase(user) {
+    if (!window.nexusData) return;
+    let rows = await nexusData.listMailMessages();
+    if (!rows.length) {
+      const localSent = loadMail().filter(message =>
+        message.type === 'internal' && message.fromId === user.id
+      );
+      for (const message of localSent) await nexusData.upsertMailMessage(message);
+      rows = await nexusData.listMailMessages();
+    }
+    const merged = new Map(loadMail().map(message => [message.id, message]));
+    rows.forEach(message => merged.set(message.id, message));
+    saveMail(Array.from(merged.values()));
+  }
+
   /** Merge system notifications into "system" folder view */
   function systemMessages(user) {
     const ntf = read('nexus_notifications_v1', []);
@@ -170,14 +185,29 @@
     const reply = document.getElementById('btn-reply');
     if (reply) reply.onclick = () => openCompose({ toId: m.fromId, subject: 'Re: ' + (m.subject || '') });
     const arch = document.getElementById('btn-archive');
-    if (arch) arch.onclick = () => {
+    if (arch) arch.onclick = async () => {
       const all = loadMail();
       const i = all.findIndex(x => x.id === id);
-      if (i >= 0) { all[i].archived = !all[i].archived; saveMail(all); renderList(user); openMessage(user, id); }
+      if (i >= 0) {
+        all[i].archived = !all[i].archived;
+        if (all[i].fromId === user.id && window.nexusData) {
+          try { await nexusData.upsertMailMessage(all[i]); }
+          catch (error) { alert('Помилка оновлення повідомлення в Supabase: ' + (error.message || error)); return; }
+        }
+        saveMail(all);
+        renderList(user);
+        openMessage(user, id);
+      }
     };
     const del = document.getElementById('btn-del');
-    if (del) del.onclick = () => {
+    if (del) del.onclick = async () => {
       if (!confirm('Видалити повідомлення?')) return;
+      try {
+        if (window.nexusData && m.type === 'internal') await nexusData.deleteMailMessage(id);
+      } catch (error) {
+        alert('Помилка видалення повідомлення в Supabase: ' + (error.message || error));
+        return;
+      }
       saveMail(loadMail().filter(x => x.id !== id));
       selectedId = null;
       document.getElementById('mail-read').innerHTML = '<div class="empty-read">Оберіть повідомлення</div>';
@@ -232,6 +262,11 @@
     const list = loadMail();
     list.push(msg);
     saveMail(list);
+    if (window.nexusData) {
+      nexusData.upsertMailMessage(msg).catch(error =>
+        alert('Помилка надсилання повідомлення в Supabase: ' + (error.message || error))
+      );
+    }
     if (window.NexusCore && NexusCore.notify) {
       NexusCore.notify('Нове повідомлення від ' + msg.fromName + ': ' + subject, 'info', { userId: to.id });
     }
@@ -288,7 +323,7 @@
     };
   }
 
-  function init() {
+  async function init() {
     const user = currentUser();
     if (!user) {
       document.getElementById('auth-ov').style.display = '';
@@ -316,6 +351,11 @@
     document.getElementById('compose-modal').onclick = e => { if (e.target.id === 'compose-modal') closeCompose(); };
 
     initTheme();
+    try {
+      await syncFromSupabase(user);
+    } catch (error) {
+      alert('Помилка завантаження повідомлень із Supabase: ' + (error.message || error));
+    }
     renderList(user);
     if (window.NexusCore && NexusCore.enforceReadOnly) NexusCore.enforceReadOnly();
   }

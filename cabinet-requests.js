@@ -120,7 +120,15 @@ const CabRequests = (() => {
   }
 
   function saveSubs(items) {
-    return write(SUB_KEY, { items: items });
+    const saved = write(SUB_KEY, { items: items });
+    if (window.nexusData) {
+      items.forEach(item => {
+        nexusData.upsertHrRequest(item).catch(error =>
+          alert('Помилка збереження заявки в Supabase: ' + (error.message || error))
+        );
+      });
+    }
+    return saved;
   }
 
   function canApproveDirector(user) {
@@ -596,10 +604,16 @@ const CabRequests = (() => {
     openSubmission(id);
   }
 
-  function removeDraft(id) {
+  async function removeDraft(id) {
     const s = getSub(id);
     if (!s || s.status !== 'draft') return;
     if (!confirm('Видалити чернетку?')) return;
+    try {
+      if (window.nexusData) await nexusData.deleteHrRequest(id);
+    } catch (error) {
+      alert('Помилка видалення заявки з Supabase: ' + (error.message || error));
+      return;
+    }
     saveSubs(loadSubs().filter(x => x.id !== id));
     closeModal();
     renderCabinetCard();
@@ -673,8 +687,35 @@ const CabRequests = (() => {
     renderCabinetCard();
   }
 
-  function init() {
+  async function syncFromSupabase() {
+    if (!window.nexusData) return;
+    const cloud = await nexusData.listHrRequests();
+    const localTemplates = templates();
+    const templateMap = new Map(localTemplates.map(template => [template.id, template]));
+    if (!cloud.templates.length && localTemplates.length) {
+      for (const template of localTemplates) await nexusData.upsertHrRequestTemplate(template);
+    } else {
+      cloud.templates.forEach(template => templateMap.set(template.id, template));
+      if (cloud.templates.length) write(TPL_KEY, { templates: Array.from(templateMap.values()) });
+    }
+
+    const localSubs = loadSubs();
+    if (!cloud.requests.length && localSubs.length) {
+      for (const submission of localSubs) await nexusData.upsertHrRequest(submission);
+    } else if (cloud.requests.length) {
+      const requestMap = new Map(localSubs.map(submission => [submission.id, submission]));
+      cloud.requests.forEach(submission => requestMap.set(submission.id, submission));
+      write(SUB_KEY, { items: Array.from(requestMap.values()) });
+    }
+  }
+
+  async function init() {
     bind();
+    try {
+      await syncFromSupabase();
+    } catch (error) {
+      alert('Помилка завантаження заявок із Supabase: ' + (error.message || error));
+    }
     render();
     // hook after portal cabinet
     const prev = window.Portal && Portal.renderCabinet;

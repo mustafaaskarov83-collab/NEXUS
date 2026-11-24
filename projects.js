@@ -186,7 +186,11 @@ const Projects = (() => {
   // ОТПРАВКА В SUPABASE (В ФОНЕ)
   // ==========================================
   if (window.nexusData) {
-    nexusData.upsertProject(p).catch(e => {
+    nexusData.upsertProject(p).then(result => {
+      if (Array.isArray(result?.warnings) && result.warnings.length) {
+        alert('Проект збережено в Supabase. ' + result.warnings.join(' '));
+      }
+    }).catch(e => {
       alert('Помилка збереження в Supabase: ' + (e.message || e));
     });
   }
@@ -272,9 +276,15 @@ async function syncFromSupabase() {
         manager: p.metadata?.manager || '',
         start: p.start_date || '',
         end: p.end_date || '',
-        contractId: p.contract_id || '',
+        contractId: p.contract_id || p.metadata?.legacyContractId || '',
         contractName: p.metadata?.contractName || '',
+        contractNum: p.metadata?.contractNum || '',
+        addendumId: p.addendum_id || p.metadata?.legacyAddendumId || '',
+        addendumNum: p.metadata?.addendumNum || '',
+        addendumName: p.metadata?.addendumName || '',
         customer: p.metadata?.customer || '',
+        amountSource: p.metadata?.amountSource || 'contract',
+        addendumAmount: p.metadata?.addendumAmount || 0,
         createdAt: p.created_at,
         updatedAt: p.updated_at
         , contractAmount: p.planned_amount || 0

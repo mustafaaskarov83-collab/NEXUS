@@ -63,6 +63,50 @@ const Fin = (() => {
     try { localStorage.setItem(FIN_KEY, JSON.stringify(db)); } catch(e){}
   }
 
+  function allCategories() {
+    return [...(db.categories.income || []), ...(db.categories.expense || [])];
+  }
+
+  function reportCloudError(error) {
+    alert('Помилка синхронізації фінансів із Supabase: ' + (error.message || error));
+  }
+
+  async function syncFromSupabase() {
+    if (!window.nexusData) return;
+    let cloud = await nexusData.listFinance();
+    if (!cloud.transactions.length && db.ops.length) {
+      for (const type of ['income', 'expense']) {
+        for (const category of db.categories[type] || []) {
+          await nexusData.upsertFinanceCategory(category, type);
+        }
+      }
+      for (const operation of db.ops) {
+        await nexusData.upsertFinanceTransaction(operation, allCategories());
+      }
+      cloud = await nexusData.listFinance();
+    }
+
+    const mergedOps = new Map(db.ops.map(operation => [operation.id, operation]));
+    cloud.transactions.forEach(operation => mergedOps.set(operation.id, operation));
+    db.ops = Array.from(mergedOps.values());
+
+    const mergedCategories = { income: new Map(), expense: new Map() };
+    for (const type of ['income', 'expense']) {
+      (db.categories[type] || []).forEach(category => mergedCategories[type].set(category.id, category));
+    }
+    cloud.categories.forEach(category => {
+      if (mergedCategories[category.type]) mergedCategories[category.type].set(category.id, category);
+    });
+    db.categories = {
+      income: Array.from(mergedCategories.income.values()),
+      expense: Array.from(mergedCategories.expense.values())
+    };
+    saveDB();
+    fillCategoryFilter();
+    renderCatPreview();
+    render();
+  }
+
   function getCurrentUser() {
     try {
       const raw = localStorage.getItem(SESSION_KEY);
@@ -497,6 +541,9 @@ const Fin = (() => {
     }
 
     saveDB();
+    if (window.nexusData) {
+      nexusData.upsertFinanceTransaction(op, allCategories()).catch(reportCloudError);
+    }
     // скинути фільтри списку, щоб нову операцію було видно
     const search = document.getElementById('search'); if (search) search.value = '';
     const ftype = document.getElementById('filter-type'); if (ftype) ftype.value = '';
@@ -538,11 +585,17 @@ const Fin = (() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  function del(id) {
+  async function del(id) {
     if (!canEdit()) { denyEdit(); return; }
     const op = db.ops.find(x => x.id === id);
     if (!op) return;
     if (!confirm('Видалити операцію на ' + formatMoney(op.amount) + ' ₴?')) return;
+    try {
+      if (window.nexusData) await nexusData.deleteFinanceTransaction(id);
+    } catch (error) {
+      reportCloudError(error);
+      return;
+    }
     db.ops = db.ops.filter(x => x.id !== id);
     saveDB();
     render();
@@ -650,6 +703,9 @@ const Fin = (() => {
     if (!db.categories[type]) db.categories[type] = [];
     db.categories[type].push({ id, name });
     saveDB();
+    if (window.nexusData) {
+      nexusData.upsertFinanceCategory({ id, name }, type).catch(reportCloudError);
+    }
     inp.value = '';
     renderCatManager();
     fillCategoryFilter();
@@ -658,13 +714,19 @@ const Fin = (() => {
     renderCatPreview();
   }
 
-  function delCategory(type, id) {
+  async function delCategory(type, id) {
     if (!canEdit()) { denyEdit(); return; }
     const used = db.ops.some(o => o.categoryId === id);
     if (used) {
       if (!confirm('Категорія використовується в операціях.\nВидалити все одно? Операції залишаться з посиланням на видалену категорію.')) return;
     } else {
       if (!confirm('Видалити категорію?')) return;
+    }
+    try {
+      if (window.nexusData) await nexusData.deleteFinanceCategory(id);
+    } catch (error) {
+      reportCloudError(error);
+      return;
     }
     db.categories[type] = db.categories[type].filter(c => c.id !== id);
     saveDB();
@@ -723,6 +785,18 @@ const Fin = (() => {
         db = d;
         if (!db.categories) db.categories = JSON.parse(JSON.stringify(DEFAULT_CATS));
         saveDB();
+        if (window.nexusData) {
+          (async () => {
+            for (const type of ['income', 'expense']) {
+              for (const category of db.categories[type] || []) {
+                await nexusData.upsertFinanceCategory(category, type);
+              }
+            }
+            for (const operation of db.ops || []) {
+              await nexusData.upsertFinanceTransaction(operation, allCategories());
+            }
+          })().catch(reportCloudError);
+        }
         fillCategoryFilter();
         renderCatPreview();
         render();
@@ -733,17 +807,25 @@ const Fin = (() => {
     ev.target.value = '';
   }
 
-  function clearAll() {
+  async function clearAll() {
     if (!canEdit()) { denyEdit(); return; }
     if (!confirm('Видалити ВСІ операції?')) return;
     if (!confirm('Точно видалити ' + db.ops.length + ' операцій?')) return;
+    try {
+      if (window.nexusData) {
+        for (const operation of db.ops) await nexusData.deleteFinanceTransaction(operation.id);
+      }
+    } catch (error) {
+      reportCloudError(error);
+      return;
+    }
     db.ops = [];
     saveDB();
     render();
     alert('🗑️ Операції очищено');
   }
 
-  function init() {
+  async function init() {
     if (window.NexusCore && NexusCore.requireModule && !NexusCore.requireModule('finance')) return;
     if (!initAuth()) return;
     initTheme();
@@ -753,6 +835,11 @@ const Fin = (() => {
     fillDocumentSelect('');
     renderCatPreview();
     render();
+    try {
+      await syncFromSupabase();
+    } catch (error) {
+      reportCloudError(error);
+    }
     setInterval(fillCategoryFilter, 15000);
   }
 

@@ -284,6 +284,9 @@ const Tasks = (() => {
         task.status = newStatus;
         task.updatedAt = new Date().toISOString().slice(0,10);
         saveDB();
+        if (window.nexusData) {
+          nexusData.upsertTask(task).catch(e => alert('Помилка збереження статусу задачі: ' + (e.message || e)));
+        }
         render();
       });
     });
@@ -402,14 +405,19 @@ const Tasks = (() => {
     render();
   }
 
-  function del(id) {
+  async function del(id) {
     if (!canEdit()) { denyEdit(); return; }
     const t = db.tasks.find(x => x.id === id);
     if (!t) return;
     if (!confirm('Видалити задачу «' + t.title + '»?')) return;
+    try {
+      if (window.nexusData) await nexusData.deleteTask(id);
+    } catch (error) {
+      alert('Помилка видалення задачі в Supabase: ' + (error.message || error));
+      return;
+    }
     db.tasks = db.tasks.filter(x => x.id !== id);
     saveDB();
-    if (window.nexusData) nexusData.deleteTask(id).catch(e => alert('Помилка видалення задачі: ' + (e.message || e)));
     closeForm();
     closeDetail();
     render();
@@ -453,29 +461,44 @@ const Tasks = (() => {
     renderKanban();
   }
 
-  function init() {
+  async function init() {
     if (window.NexusCore && NexusCore.requireModule && !NexusCore.requireModule('tasks')) return;
     if (!initAuth()) return;
     initTheme();
     fillEmployeeFilter();
     render();
     if (window.nexusData) {
-      nexusData.listTasks().then(rows => {
-        db.tasks = rows.map(t => ({
-          id: t.id,
-          title: t.title,
-          description: t.description || '',
-          status: t.status || 'backlog',
-          priority: t.priority || 'normal',
-          deadline: t.deadline || '',
-          employeeId: t.assignee_id || '',
-          projectId: t.project_id || '',
-          createdAt: t.created_at ? String(t.created_at).slice(0,10) : '',
-          updatedAt: t.updated_at ? String(t.updated_at).slice(0,10) : ''
-        }));
-        saveDB();
-        render();
-      }).catch(e => console.error('[NEXUS] tasks sync:', e));
+      try {
+        let rows = await nexusData.listTasks();
+        if (!rows.length && db.tasks.length) {
+          for (const task of db.tasks) await nexusData.upsertTask(task);
+          rows = await nexusData.listTasks();
+        }
+        if (rows.length) {
+          const merged = new Map(db.tasks.map(task => [task.id, task]));
+          rows.forEach(row => {
+            const localData = row.metadata?.localData || {};
+            merged.set(row.id, {
+              ...localData,
+              id: row.id,
+              title: row.title,
+              description: row.description || '',
+              status: row.status || 'backlog',
+              priority: row.priority || 'normal',
+              deadline: row.deadline || '',
+              employeeId: row.assignee_id || localData.employeeId || '',
+              projectId: row.project_id || localData.projectId || '',
+              createdAt: row.created_at ? String(row.created_at).slice(0,10) : localData.createdAt || '',
+              updatedAt: row.updated_at ? String(row.updated_at).slice(0,10) : localData.updatedAt || ''
+            });
+          });
+          db.tasks = Array.from(merged.values());
+          saveDB();
+          render();
+        }
+      } catch (error) {
+        alert('Помилка завантаження задач із Supabase: ' + (error.message || error));
+      }
     }
     setInterval(fillEmployeeFilter, 15000);
   }
