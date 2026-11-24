@@ -28,6 +28,20 @@
     return rpc('nexus_list_employees');
   }
 
+  async function listDepartments() {
+    return rpc('nexus_list_departments');
+  }
+
+  async function upsertDepartment(department) {
+    return rpc('nexus_upsert_department', {
+      p_id: department.id,
+      p_name: department.name,
+      p_code: department.code || null,
+      p_parent_id: department.parentId || null,
+      p_branch_id: department.branchId || null
+    });
+  }
+
   async function upsertEmployee(employee) {
     return rpc('nexus_upsert_employee', {
       p_id: employee.id,
@@ -211,6 +225,8 @@
     uuid,
     rpc,
     listEmployees,
+    listDepartments,
+    upsertDepartment,
     upsertEmployee,
     deleteEmployee,
     listProjects,

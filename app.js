@@ -969,6 +969,47 @@ function renderDepartments(){
   renderDepartmentSelects();
 }
 
+const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+async function syncDepartmentToCloud(department){
+  if(!window.nexusData)return department.id;
+  const cloudDepartments=await nexusData.listDepartments();
+  const departments=Array.isArray(cloudDepartments)?cloudDepartments:[];
+  const normalizedCode=String(department.code||'').trim().toLowerCase();
+  const existing=departments.find(d=>d.id===department.id)||
+    (normalizedCode?departments.find(d=>String(d.code||'').trim().toLowerCase()===normalizedCode):null);
+  const previousId=department.id;
+  if(existing)department.id=existing.id;
+  else if(!UUID_RE.test(department.id))department.id=nexusData.uuid();
+
+  if(previousId!==department.id){
+    db.departments.forEach(d=>{if(d.parentId===previousId)d.parentId=department.id;});
+    db.employees.forEach(e=>{if(e.departmentId===previousId)e.departmentId=department.id;});
+    save();
+  }
+
+  await nexusData.upsertDepartment({
+    ...department,
+    parentId:UUID_RE.test(department.parentId||'')?department.parentId:null,
+    branchId:UUID_RE.test(department.branchId||'')?department.branchId:null
+  });
+  if(previousId!==department.id){
+    renderDepartments();
+    renderEmp();
+  }
+  return department.id;
+}
+
+async function saveEmployeeToCloud(employee){
+  if(!window.nexusData)return;
+  if(employee.departmentId){
+    const department=db.departments.find(d=>d.id===employee.departmentId);
+    if(!department)throw new Error('Не знайдено відділ співробітника.');
+    employee.departmentId=await syncDepartmentToCloud(department);
+  }
+  await nexusData.upsertEmployee(employee);
+}
+
 function saveDepartment(){
   if(!reqEdit())return;
   const code=$('#dep-code').value.trim().toUpperCase();
@@ -980,17 +1021,22 @@ function saveDepartment(){
   }
   const duplicate=(db.departments||[]).some(d=>d.id!==editId&&String(d.code).toLowerCase()===code.toLowerCase());
   if(duplicate){alert('Відділ з таким кодом уже існує.');return}
+  let department;
   if(editId){
-    const d=db.departments.find(x=>x.id===editId);
-    if(!d)return;
-    d.code=code;d.name=name;d.updatedAt=today();
+    department=db.departments.find(x=>x.id===editId);
+    if(!department)return;
+    department.code=code;department.name=name;department.updatedAt=today();
   }else{
-    db.departments.push({id:uid(),code,name,createdAt:today(),updatedAt:today()});
+    department={id:window.nexusData?.uuid()||uid(),code,name,createdAt:today(),updatedAt:today()};
+    db.departments.push(department);
   }
   save();
   closeDepartmentForm();
   renderDepartments();
   renderEmp($('#search').value);
+  if(window.nexusData){
+    syncDepartmentToCloud(department).catch(error=>alert('Помилка збереження відділу: '+(error.message||error)));
+  }
 }
 
 function editDepartment(id){
@@ -1067,7 +1113,7 @@ function closeEmployeeForm(){
   const m=$('#emp-form-modal'); if(m) m.classList.remove('open');
 }
 
-function addEmp(){
+async function addEmp(){
   if(!reqEdit())return;
   const n=$('#en').value.trim(),h=$('#eh').value,departmentId=$('#ed').value;
   if(!n||!h){alert(t('aFill'));return}
@@ -1094,14 +1140,16 @@ function addEmp(){
     createdAt:today()
   };
   
+  if(window.nexusData){
+    try{
+      await saveEmployeeToCloud(newEmp);
+    }catch(error){
+      alert('Помилка збереження співробітника: '+(error.message||error));
+      return;
+    }
+  }
   db.employees.push(newEmp);
   save();
-
-  // --- ОТПРАВКА В SUPABASE ---
-  if (window.nexusData) {
-    nexusData.upsertEmployee(newEmp).catch(e => alert('Помилка збереження співробітника: ' + (e.message || e)));
-  }
-  // ---------------------------
 
   closeEmployeeForm();
   $('#en').value='';$('#ep').value='';$('#eh').value='';$('#eb').value='';
@@ -1183,13 +1231,22 @@ function closeModal(){
   try { renderEmp(); refreshSel(); renderDash(); } catch(_){}
 }
 
-function saveEmployeeDepartment(){
+async function saveEmployeeDepartment(){
   if(!reqEdit())return;
   const e=db.employees.find(x=>x.id===curEmpId);if(!e)return;
   const depId=$('#emp-department').value;
   if(!depId){alert('Оберіть відділ для співробітника.');return}
   e.departmentId=depId;
-  save();renderEmp();renderModal();
+  save();
+  if(window.nexusData){
+    try{
+      await saveEmployeeToCloud(e);
+      save();
+    }catch(error){
+      alert('Помилка збереження співробітника: '+(error.message||error));
+    }
+  }
+  renderEmp();renderModal();
 }
 
 function saveEmployeePosition(){
