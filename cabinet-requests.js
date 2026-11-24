@@ -1,5 +1,11 @@
 /* NEXUS — заявки в особистому кабінеті
  * Шаблон → чернетка → на PM → на директора → схвалено (друк) / відхилено
+ *
+ * v1.1 — виправлено:
+ *  • запити до Supabase лише за наявної сесії (прибрано помилку 42501 на екрані входу)
+ *  • автоматична синхронізація після входу (onAuthStateChange) — без F5
+ *  • у хмару надсилається лише змінена заявка, а не весь масив щоразу
+ *  • помилки БД → console.warn + мʼяке сповіщення, без сирих alert
  */
 const CabRequests = (() => {
   'use strict';
@@ -10,6 +16,14 @@ const CabRequests = (() => {
   const USERS_KEY = 'nexus_users_v1';
   const SESSION_KEY = 'nexus_session_v1';
 
+  /* ── стан синхронізації ── */
+  let hasSession = false;
+  let cloudSynced = false;
+  let initialized = false;
+  let authSubscribed = false;
+  let pushTimer = null;
+  const pendingIds = new Set();
+
   const STATUS = {
     draft: { label: 'Чернетка', cls: 'cab-req-status--draft' },
     pending_pm: { label: 'Очікує PM', cls: 'cab-req-status--pm' },
@@ -17,6 +31,58 @@ const CabRequests = (() => {
     approved: { label: 'Схвалено', cls: 'cab-req-status--ok' },
     rejected: { label: 'Відхилено', cls: 'cab-req-status--no' }
   };
+
+  /* ── інфраструктура ── */
+  function notify(message, type) {
+    if (window.NexusCore && NexusCore.notify) {
+      try { NexusCore.notify(message, type || 'info'); return; } catch (e) {}
+    }
+    console.info('[NEXUS] ' + message);
+  }
+
+  function cloudError(action, error) {
+    const detail = (error && (error.message || error)) || 'невідома помилка';
+    console.warn('[NEXUS] ' + action + ':', detail);
+    notify(action + '. Спробуємо ще раз після оновлення сесії.', 'error');
+  }
+
+  function supabase() {
+    return window.nexusSupabase || window.supabaseClient || null;
+  }
+
+  async function refreshSession() {
+    const sb = supabase();
+    if (!sb || !sb.auth) { hasSession = false; return false; }
+    try {
+      const { data } = await sb.auth.getSession();
+      hasSession = !!(data && data.session);
+    } catch (e) {
+      hasSession = false;
+    }
+    return hasSession;
+  }
+
+  function subscribeAuth() {
+    if (authSubscribed) return;
+    const sb = supabase();
+    if (!sb || !sb.auth || typeof sb.auth.onAuthStateChange !== 'function') return;
+    authSubscribed = true;
+    try {
+      sb.auth.onAuthStateChange((event, session) => {
+        const was = hasSession;
+        hasSession = !!session;
+        if (hasSession && (!was || !cloudSynced)) {
+          syncFromSupabase()
+            .then(() => { cloudSynced = true; render(); })
+            .catch(err => cloudError('Не вдалося завантажити заявки', err));
+        }
+        if (!hasSession) cloudSynced = false;
+        render();
+      });
+    } catch (e) {
+      console.warn('[NEXUS] onAuthStateChange недоступний:', e);
+    }
+  }
 
   function read(key, fb) {
     try {
@@ -32,7 +98,7 @@ const CabRequests = (() => {
       localStorage.setItem(key, JSON.stringify(val));
       return true;
     } catch (e) {
-      alert('Не вдалося зберегти дані');
+      notify('Не вдалося зберегти дані локально', 'error');
       return false;
     }
   }
@@ -119,16 +185,42 @@ const CabRequests = (() => {
     return Array.isArray(s.items) ? s.items : [];
   }
 
-  function saveSubs(items) {
+  /* ── збереження: локально одразу, у хмару — лише змінені записи ── */
+  function saveSubs(items, changedIds) {
     const saved = write(SUB_KEY, { items: items });
-    if (window.nexusData) {
-      items.forEach(item => {
-        nexusData.upsertHrRequest(item).catch(error =>
-          alert('Помилка збереження заявки в Supabase: ' + (error.message || error))
-        );
-      });
-    }
+    if (Array.isArray(changedIds)) changedIds.forEach(id => id && pendingIds.add(id));
+    schedulePush();
     return saved;
+  }
+
+  function schedulePush() {
+    if (!pendingIds.size) return;
+    if (pushTimer) clearTimeout(pushTimer);
+    pushTimer = setTimeout(flushPush, 400);
+  }
+
+  async function flushPush() {
+    pushTimer = null;
+    if (!pendingIds.size) return;
+    if (!window.nexusData) { pendingIds.clear(); return; }
+
+    const ok = await refreshSession();
+    if (!ok) return; // немає сесії — залишаємо в черзі, надішлемо після входу
+
+    const ids = Array.from(pendingIds);
+    pendingIds.clear();
+    const items = loadSubs();
+
+    for (const id of ids) {
+      const item = items.find(x => x.id === id);
+      if (!item) continue;
+      try {
+        await nexusData.upsertHrRequest(item);
+      } catch (error) {
+        pendingIds.add(id);
+        cloudError('Не вдалося зберегти заявку в Supabase', error);
+      }
+    }
   }
 
   function canApproveDirector(user) {
@@ -206,7 +298,6 @@ const CabRequests = (() => {
     if (roleOf(user) === 'admin') return true;
     if (roleOf(user) !== 'manager') return false;
     if (!sub) {
-      // Чи є хоч одна заявка, яку цей PM може підписати
       return inboxPm(user).length > 0 || projectsManagedBy(user).length > 0;
     }
     const managed = projectsManagedBy(user).map(p => p.id);
@@ -291,8 +382,6 @@ const CabRequests = (() => {
     }
 
     if (inboxBtn) {
-      const n = (canApprovePm(user) ? inboxPm().length : 0) + (canApproveDirector(user) ? inboxDirector().length : 0);
-      // avoid double-count if admin sees both queues - count unique ids
       const ids = new Set();
       if (canApprovePm(user)) inboxPm().forEach(x => ids.add(x.id));
       if (canApproveDirector(user)) inboxDirector().forEach(x => ids.add(x.id));
@@ -326,7 +415,7 @@ const CabRequests = (() => {
 
   function openNew() {
     const user = getUser();
-    if (!user) { alert('Увійдіть у систему'); return; }
+    if (!user) { notify('Увійдіть у систему', 'error'); return; }
     const tpls = templates().filter(t => (t.fullText || '').trim() || t.name);
     if (!tpls.length) {
       openModal('Нова заявка',
@@ -353,6 +442,7 @@ const CabRequests = (() => {
 
   function startFromTemplate(tplId) {
     const user = getUser();
+    if (!user) { notify('Увійдіть у систему', 'error'); return; }
     const p = personFromUser();
     let title = 'Заявка';
     let text = 'Я, {{ПІБ}}, прошу …\n\nПрізвище: {{Прізвище}}\nІм\'я: {{Ім\'я}}\nПо батькові: {{ПоБатькові}}\n';
@@ -386,7 +476,7 @@ const CabRequests = (() => {
     };
     sub.projectIds = employeeProjectIds(sub);
     items.push(sub);
-    saveSubs(items);
+    saveSubs(items, [sub.id]);
     if (window.NexusCore && NexusCore.audit) {
       NexusCore.audit('request.create', 'request', { id: sub.id, title });
     }
@@ -400,7 +490,7 @@ const CabRequests = (() => {
 
   function openSubmission(id) {
     const s = getSub(id);
-    if (!s) { alert('Заявку не знайдено'); return; }
+    if (!s) { notify('Заявку не знайдено', 'error'); return; }
     const user = getUser();
     const isOwner = user && (s.userId === user.id || (linkedEmployee(user) && s.employeeId === linkedEmployee(user).id));
     const editable = isOwner && s.status === 'draft';
@@ -501,8 +591,8 @@ const CabRequests = (() => {
     items[i].title = (document.getElementById('cab-req-title')?.value || '').trim() || 'Заявка';
     items[i].text = document.getElementById('cab-req-text')?.value || '';
     items[i].updatedAt = now();
-    saveSubs(items);
-    alert('Збережено');
+    saveSubs(items, [id]);
+    notify('Збережено', 'success');
     renderCabinetCard();
     openSubmission(id);
   }
@@ -515,12 +605,12 @@ const CabRequests = (() => {
     const u0 = getUser();
     const ownerOk = u0 && (items[i].userId === u0.id || (linkedEmployee(u0) && items[i].employeeId === linkedEmployee(u0).id));
     if (!ownerOk && roleOf(u0) !== 'admin') {
-      alert('Лише автор заявки або адміністратор може відправити чернетку.');
+      notify('Лише автор заявки або адміністратор може відправити чернетку.', 'error');
       return;
     }
     const title = (document.getElementById('cab-req-title')?.value || items[i].title || '').trim();
     const text = document.getElementById('cab-req-text')?.value ?? items[i].text;
-    if (!text.trim()) { alert('Заповніть текст заявки'); return; }
+    if (!text.trim()) { notify('Заповніть текст заявки', 'error'); return; }
     if (!confirm('Відправити заявку на погодження project manager?')) return;
     items[i].title = title;
     items[i].text = text;
@@ -529,13 +619,11 @@ const CabRequests = (() => {
     items[i].updatedAt = now();
     items[i].rejectReason = '';
     items[i].projectIds = employeeProjectIds(items[i]);
-    saveSubs(items);
+    saveSubs(items, [id]);
     if (window.NexusCore && NexusCore.audit) {
       NexusCore.audit('request.submit', 'request', { id });
     }
-    if (window.NexusCore && NexusCore.notify) {
-      NexusCore.notify('Заявку відправлено на погодження PM', 'success');
-    }
+    notify('Заявку відправлено на погодження PM', 'success');
     renderCabinetCard();
     openSubmission(id);
   }
@@ -545,18 +633,22 @@ const CabRequests = (() => {
     const i = items.findIndex(x => x.id === id);
     if (i < 0 || items[i].status !== 'pending_pm') return;
     if (!canApprovePm(getUser(), items[i])) {
-      alert('Немає права підпису: ви не є project manager проекту цього співробітника. Підписати може PM його проекту або директор (admin).');
+      notify('Немає права підпису: ви не є project manager проекту цього співробітника.', 'error');
       return;
     }
     const u = getUser();
+    if (items[i].dirBy && items[i].dirBy === u.id) {
+      notify('Одна людина не може підписати обидва етапи.', 'error');
+      return;
+    }
     items[i].status = 'pending_director';
     items[i].pmBy = u.id;
     items[i].pmName = u.fullName || u.username;
     items[i].pmAt = now();
     items[i].updatedAt = now();
-    saveSubs(items);
+    saveSubs(items, [id]);
     if (window.NexusCore && NexusCore.audit) NexusCore.audit('request.pm_approve', 'request', { id });
-    if (window.NexusCore && NexusCore.notify) NexusCore.notify('Заявку схвалено PM → директор', 'success');
+    notify('Заявку схвалено PM → директор', 'success');
     renderCabinetCard();
     openSubmission(id);
   }
@@ -567,14 +659,18 @@ const CabRequests = (() => {
     const i = items.findIndex(x => x.id === id);
     if (i < 0 || items[i].status !== 'pending_director') return;
     const u = getUser();
+    if (items[i].pmBy && items[i].pmBy === u.id) {
+      notify('Одна людина не може підписати обидва етапи.', 'error');
+      return;
+    }
     items[i].status = 'approved';
     items[i].dirBy = u.id;
     items[i].dirName = u.fullName || u.username;
     items[i].dirAt = now();
     items[i].updatedAt = now();
-    saveSubs(items);
+    saveSubs(items, [id]);
     if (window.NexusCore && NexusCore.audit) NexusCore.audit('request.dir_approve', 'request', { id });
-    if (window.NexusCore && NexusCore.notify) NexusCore.notify('Заявку повністю схвалено — можна друкувати', 'success');
+    notify('Заявку повністю схвалено — можна друкувати', 'success');
     renderCabinetCard();
     openSubmission(id);
   }
@@ -588,7 +684,7 @@ const CabRequests = (() => {
     const u = getUser();
     if (stage === 'pm') {
       if (items[i].status !== 'pending_pm') return;
-      if (!canApprovePm(u, items[i])) { alert('Немає права відхилити цю заявку (не ваш проект).'); return; }
+      if (!canApprovePm(u, items[i])) { notify('Немає права відхилити цю заявку (не ваш проект).', 'error'); return; }
     }
     if (stage === 'director') {
       if (items[i].status !== 'pending_director') return;
@@ -598,7 +694,7 @@ const CabRequests = (() => {
     items[i].rejectReason = reason || ('Відхилено (' + stage + ')');
     items[i].rejectedBy = u ? (u.fullName || u.username) : stage;
     items[i].updatedAt = now();
-    saveSubs(items);
+    saveSubs(items, [id]);
     if (window.NexusCore && NexusCore.audit) NexusCore.audit('request.reject', 'request', { id, stage });
     renderCabinetCard();
     openSubmission(id);
@@ -608,25 +704,31 @@ const CabRequests = (() => {
     const s = getSub(id);
     if (!s || s.status !== 'draft') return;
     if (!confirm('Видалити чернетку?')) return;
-    try {
-      if (window.nexusData) await nexusData.deleteHrRequest(id);
-    } catch (error) {
-      alert('Помилка видалення заявки з Supabase: ' + (error.message || error));
-      return;
+
+    const ok = await refreshSession();
+    if (ok && window.nexusData) {
+      try {
+        await nexusData.deleteHrRequest(id);
+      } catch (error) {
+        cloudError('Не вдалося видалити заявку з Supabase', error);
+        return; // не видаляємо локально, щоб не розійтися з базою
+      }
     }
-    saveSubs(loadSubs().filter(x => x.id !== id));
+    pendingIds.delete(id);
+    saveSubs(loadSubs().filter(x => x.id !== id), []);
     closeModal();
     renderCabinetCard();
+    notify('Чернетку видалено', 'success');
   }
 
   function printApproved(id) {
     const s = getSub(id);
     if (!s || s.status !== 'approved') {
-      alert('Друк дозволено лише після схвалення project manager і директора.');
+      notify('Друк дозволено лише після схвалення project manager і директора.', 'error');
       return;
     }
     const w = window.open('', '_blank');
-    if (!w) { alert('Дозвольте спливаючі вікна'); return; }
+    if (!w) { notify('Дозвольте спливаючі вікна', 'error'); return; }
     const stamp = 'Схвалено: PM — ' + esc(s.pmName || '') + ' (' + esc(String(s.pmAt || '').slice(0, 16)) + '); ' +
       'Директор — ' + esc(s.dirName || '') + ' (' + esc(String(s.dirAt || '').slice(0, 16)) + ')';
     w.document.write(
@@ -651,7 +753,6 @@ const CabRequests = (() => {
     if (canApproveDirector(user)) {
       inboxDirector().forEach(s => rows.push({ s, stage: 'Директор' }));
     }
-    // unique by id prefer showing
     const seen = new Set();
     rows = rows.filter(r => {
       if (seen.has(r.s.id)) return false;
@@ -689,6 +790,9 @@ const CabRequests = (() => {
 
   async function syncFromSupabase() {
     if (!window.nexusData) return;
+    const ok = await refreshSession();
+    if (!ok) return; // без сесії не звертаємось до БД
+
     const cloud = await nexusData.listHrRequests();
     const localTemplates = templates();
     const templateMap = new Map(localTemplates.map(template => [template.id, template]));
@@ -707,25 +811,37 @@ const CabRequests = (() => {
       cloud.requests.forEach(submission => requestMap.set(submission.id, submission));
       write(SUB_KEY, { items: Array.from(requestMap.values()) });
     }
+    cloudSynced = true;
   }
 
   async function init() {
+    if (initialized) return;
+    initialized = true;
+
     bind();
-    try {
-      await syncFromSupabase();
-    } catch (error) {
-      alert('Помилка завантаження заявок із Supabase: ' + (error.message || error));
+    subscribeAuth();
+
+    const ok = await refreshSession();
+    if (ok) {
+      try {
+        await syncFromSupabase();
+      } catch (error) {
+        cloudError('Не вдалося завантажити заявки', error);
+      }
     }
+
     render();
-    // hook after portal cabinet
-    const prev = window.Portal && Portal.renderCabinet;
-    if (window.Portal && !Portal.__cabReqHooked) {
-      Portal.__cabReqHooked = true;
-      const orig = Portal.renderCabinet.bind(Portal);
-      // can't easily replace exported freeze - just poll / listen
-    }
+    schedulePush();
+
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) render();
+      if (document.hidden) return;
+      render();
+      refreshSession().then(has => {
+        if (has && !cloudSynced) {
+          syncFromSupabase().then(render).catch(err => cloudError('Не вдалося завантажити заявки', err));
+        }
+        if (has) schedulePush();
+      });
     });
   }
 
@@ -736,19 +852,17 @@ const CabRequests = (() => {
     setTimeout(render, 200);
   }
 
-  // re-render when portal refreshes cabinet (MutationObserver light)
+  // мʼякий ре-рендер, коли портал оновлює кабінет
   setInterval(() => {
     const el = document.getElementById('cab-requests-body');
     if (el && el.innerHTML.indexOf('Завантаження') >= 0) render();
   }, 1500);
 
-
   /**
    * API для NEXUS AI / зовнішніх скриптів.
-   * opts: { dateFrom, dateTo, title?, text?, submit?, silent? }
+   * opts: { dateFrom, dateTo, title?, text?, submit?, forceApprove? }
    * dateFrom/dateTo: YYYY-MM-DD або DD.MM.YYYY
    * submit: true → одразу на погодження PM (pending_pm)
-   * Повне схвалення PM+директор можливе лише з їхніх облікових записів (або admin може форсувати forceApprove).
    */
   function createVacationRequest(opts) {
     opts = opts || {};
@@ -780,10 +894,10 @@ const CabRequests = (() => {
       text =
         'Я, ' + (p.fullName || user.fullName || user.username) +
         (p.position ? ', ' + p.position : '') +
-        ', прошу надати мені щорічну відпустку з ' + dateFrom + ' по ' + dateTo + ' включно.\\n\\n' +
-        'Прізвище: ' + (p.lastName || '') + '\\n' +
-        "Ім'я: " + (p.firstName || '') + '\\n' +
-        'По батькові: ' + (p.middleName || '') + '\\n\\n' +
+        ', прошу надати мені щорічну відпустку з ' + dateFrom + ' по ' + dateTo + ' включно.\n\n' +
+        'Прізвище: ' + (p.lastName || '') + '\n' +
+        "Ім'я: " + (p.firstName || '') + '\n' +
+        'По батькові: ' + (p.middleName || '') + '\n\n' +
         'Прошу погодити заявку project manager та директором.';
     }
     text = applyPlaceholders(text, p);
@@ -813,74 +927,61 @@ const CabRequests = (() => {
     };
     sub.projectIds = employeeProjectIds(sub);
     items.push(sub);
-    saveSubs(items);
+
+    let submitted = false;
+    let forceNote = '';
+
+    if (opts.submit) {
+      sub.status = 'pending_pm';
+      sub.submittedAt = now();
+      sub.updatedAt = now();
+      submitted = true;
+      if (window.NexusCore && NexusCore.audit) {
+        NexusCore.audit('request.submit', 'request', { id: sub.id, source: 'ai' });
+      }
+      notify('Заявку відправлено на погодження PM', 'success');
+    }
+
+    if (opts.forceApprove && roleOf(user) === 'admin') {
+      sub.status = 'approved';
+      sub.submittedAt = sub.submittedAt || now();
+      sub.pmAt = now();
+      sub.pmName = user.fullName || user.username;
+      sub.pmBy = user.id;
+      sub.dirAt = now();
+      sub.dirName = user.fullName || user.username;
+      sub.dirBy = user.id;
+      sub.updatedAt = now();
+      forceNote = ' Адмін форсував повне схвалення (PM+директор).';
+      notify('Заявку повністю схвалено (AI / admin)', 'success');
+    }
+
+    saveSubs(items, [sub.id]);
     if (window.NexusCore && NexusCore.audit) {
       NexusCore.audit('request.create', 'request', { id: sub.id, title: sub.title, source: 'ai' });
     }
 
-    let submitted = false;
-    let forceNote = '';
-    if (opts.submit) {
-      const i = items.findIndex(x => x.id === sub.id);
-      if (i >= 0) {
-        items[i].status = 'pending_pm';
-        items[i].submittedAt = now();
-        items[i].updatedAt = now();
-        items[i].projectIds = employeeProjectIds(items[i]);
-        saveSubs(items);
-        submitted = true;
-        if (window.NexusCore && NexusCore.audit) {
-          NexusCore.audit('request.submit', 'request', { id: sub.id, source: 'ai' });
-        }
-        if (window.NexusCore && NexusCore.notify) {
-          NexusCore.notify('Заявку відправлено на погодження PM', 'success');
-        }
-      }
-    }
-
-    // forceApprove: only admin — optional skip of full chain for demo (not default)
-    if (opts.forceApprove && roleOf(user) === 'admin') {
-      const i = items.findIndex(x => x.id === sub.id);
-      if (i >= 0) {
-        items[i].status = 'approved';
-        items[i].submittedAt = items[i].submittedAt || now();
-        items[i].pmAt = now();
-        items[i].pmName = user.fullName || user.username;
-        items[i].pmBy = user.id;
-        items[i].dirAt = now();
-        items[i].dirName = user.fullName || user.username;
-        items[i].dirBy = user.id;
-        items[i].updatedAt = now();
-        saveSubs(items);
-        forceNote = ' Адмін форсував повне схвалення (PM+директор).';
-        if (window.NexusCore && NexusCore.notify) {
-          NexusCore.notify('Заявку повністю схвалено (AI / admin)', 'success');
-        }
-      }
-    }
-
     try { renderCabinetCard(); } catch (e) {}
-    try { if (typeof render === 'function') render(); } catch (e) {}
 
+    const stored = loadSubs().find(x => x.id === sub.id) || sub;
     return {
       ok: true,
       id: sub.id,
       title: sub.title,
-      status: (loadSubs().find(x => x.id === sub.id) || sub).status,
+      status: stored.status,
       dateFrom: dateFrom,
       dateTo: dateTo,
       employeeName: sub.employeeName,
       submitted: submitted,
       message:
         'Створено заявку «' + sub.title + '» для ' + sub.employeeName +
-        ' (' + dateFrom + ' — ' + dateTo + '). Статус: ' +
-        (loadSubs().find(x => x.id === sub.id) || sub).status +
+        ' (' + dateFrom + ' — ' + dateTo + '). Статус: ' + stored.status +
         (submitted ? ' Відправлено на погодження project manager (далі — директор).' : ' Чернетка — можна відправити на погодження вручну.') +
         forceNote
     };
   }
 
-  return { render, closeModal, openNew, openSubmission, openInbox, printApproved, createVacationRequest };
+  return { render, closeModal, openNew, openSubmission, openInbox, printApproved, createVacationRequest, sync: syncFromSupabase };
 
 })();
 
