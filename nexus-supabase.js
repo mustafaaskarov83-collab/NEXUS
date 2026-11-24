@@ -21,9 +21,10 @@
   window.supabaseClient = window.nexusSupabase;
 
   // NEXUS data facade: schema('hr').from('x') -> public view hr_x (RLS applies)
-  const FACADE = {
-    hr: ['leave_records','payroll_payments','sick_leave_records','request_templates','requests'],
-    projects: ['tasks'],
+    const FACADE = {
+    hr: ['employees','leave_records','payroll_payments','sick_leave_records','request_templates','requests'],
+    projects: ['projects','tasks'],
+    crm: ['parties','activities'],
     documents: ['documents'],
     finance: ['categories','accounts','transactions'],
     inventory: ['items'],
