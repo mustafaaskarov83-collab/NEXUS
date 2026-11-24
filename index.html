@@ -27,20 +27,16 @@
       </div>
     </div>
     <h2 class="portal-auth-t" id="portal-auth-t">Вхід до системи NEXUS</h2>
-    <p class="portal-auth-h" id="portal-auth-h">Введіть облікові дані</p>
+    <p class="portal-auth-h" id="portal-auth-h">Увійдіть за логіном і паролем, виданими адміністратором</p>
     <div class="portal-auth-err" id="portal-auth-err"></div>
     <form id="portal-auth-form" onsubmit="event.preventDefault();Portal.submitAuth()">
       <div class="portal-auth-f">
-        <label for="portal-au">Ім'я користувача</label>
+        <label for="portal-au">Ім’я користувача</label>
         <input id="portal-au" type="text" autocomplete="username" autocapitalize="off" spellcheck="false">
       </div>
       <div class="portal-auth-f">
         <label for="portal-ap">Пароль</label>
         <input id="portal-ap" type="password" autocomplete="current-password">
-      </div>
-      <div class="portal-auth-f" id="portal-conf-f" style="display:none">
-        <label for="portal-ac">Підтвердіть пароль</label>
-        <input id="portal-ac" type="password" autocomplete="new-password">
       </div>
       <button type="submit" class="portal-auth-btn" id="portal-auth-btn">Увійти</button>
     </form>
@@ -579,7 +575,7 @@
       <div id="user-form-wrap" style="display:none;margin-top:18px;padding:16px;border:1px solid var(--border);border-radius:14px;background:var(--g50)">
         <div style="font-weight:700;margin-bottom:12px" id="user-form-title">Новий користувач</div>
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
-          <div class="ff"><label>Логін *</label><input id="u-login" autocomplete="off"></div>
+          <div class="ff"><label>Ім’я користувача *</label><input id="u-login" autocomplete="username" autocapitalize="off"></div>
           <div class="ff"><label>ПІБ</label><input id="u-name" autocomplete="off"></div>
           <div class="ff"><label>Роль</label>
             <select id="u-role" onchange="Portal.onUserRoleChange()">
@@ -588,13 +584,13 @@
               <option value="admin">Адміністратор</option>
             </select>
           </div>
-          <div class="ff"><label>Пароль <span id="u-pass-hint">*</span></label><input id="u-pass" type="password" autocomplete="new-password" placeholder="мін. 6 символів"></div>
+          <div class="ff"><label>Пароль <span id="u-pass-hint">*</span></label><input id="u-pass" type="password" autocomplete="new-password" placeholder="мін. 8 символів"></div>
           <div class="ff" style="grid-column:1 / -1">
-            <label>Співробітник з кадрового обліку *</label>
+            <label>Співробітник з кадрового обліку</label>
             <select id="u-employee" onchange="Portal.onEmployeeSelect()">
               <option value="">— оберіть співробітника —</option>
             </select>
-            <div class="tsm tmu" style="margin-top:6px">Користувач отримуватиме задачі, авто, інвентар і сповіщення саме цього співробітника.</div>
+            <div class="tsm tmu" style="margin-top:6px">Необов’язково. Якщо співробітника ще немає в кадровому обліку, його можна прив’язати пізніше.</div>
           </div>
         </div>
         <div style="margin-top:14px;font-weight:700;font-size:13px">Доступ до модулів</div>
@@ -620,6 +616,10 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="nexus-supabase.js"></script>
+<script src="nexus-supabase-auth.js"></script>
+<script src="nexus-data.js"></script>
 <script src="nexus-core.js"></script>
 <script src="portal.js"></script>
 <script src="cabinet-requests.js"></script>
@@ -645,62 +645,5 @@
 })();
 </script>
 
-  <!-- Подключение библиотеки Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <script>
-    // ВСТАВЛЕН ПРАВИЛЬНЫЙ URL С ДВУМЯ БУКВАМИ FF
-    const SUPABASE_URL = 'https://csuxnzvuxybffrmkrjus.supabase.co';
-    
-    // ВСТАВЛЕН ПРАВИЛЬНЫЙ КЛЮЧ С ЦИФРОЙ 5 В КОНЦЕ
-    const SUPABASE_KEY = 'sb_publishable_P8ijcthJq-2s1SNK7cfv9Q_AGk_VSCv'; 
-
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log('Supabase успешно инициализирован!', supabaseClient);
-  </script>
-
-  <!-- СКРИПТ СИНХРОНИЗАЦИИ ПОЛЬЗОВАТЕЛЕЙ ИЗ ОБЛАКА -->
-  <script>
-    async function syncUsersFromCloud() {
-      if (localStorage.getItem('nexus_users_v1')) return; 
-      
-      console.log('Пользователи не найдены локально. Ищем в облаке...');
-      const { data, error } = await supabaseClient.from('users').select('*');
-      
-      // Если есть ошибка подключения (например, неверный ключ)
-      if (error) {
-        console.error('❌ Ошибка подключения к Supabase:', error.message);
-        return;
-      }
-      
-      if (data && data.length > 0) {
-        console.log('✅ Найдено пользователей в облаке:', data.length);
-        
-        const localUsers = data.map(u => ({
-          id: u.id,
-          username: u.username,
-          fullName: u.full_name,
-          role: u.role,
-          modules: u.modules ? JSON.parse(u.modules) : [],
-          salt: u.salt,
-          hash: u.hash,
-          employeeId: u.employee_id,
-          createdAt: u.created_at,
-          updatedAt: u.updated_at
-        }));
-        
-        localStorage.setItem('nexus_users_v1', JSON.stringify(localUsers));
-        console.log('Данные сохранены. Перезагрузка...');
-        window.location.reload();
-      } else {
-        console.log('⚠️ В базе данных пока нет пользователей.');
-      }
-    }
-    
-    // Запускаем сразу
-    syncUsersFromCloud();
-  </script>
-
 </body>
 </html>
-console.log('Key length:', SUPABASE_KEY.length);

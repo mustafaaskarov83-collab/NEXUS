@@ -149,7 +149,7 @@ const Projects = (() => {
   if(!code||!name){alert('Вкажіть код і назву проекту');return}
   const prev=editingId?db.projects.find(x=>x.id===editingId)||null:null;
   const p={
-    id:editingId||'prj_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+    id:editingId||(window.nexusData?.uuid()||crypto.randomUUID()),
     code:code||('PRJ-'+Date.now()),
     name:name,
     contractId:contractId,
@@ -185,30 +185,10 @@ const Projects = (() => {
   // ==========================================
   // ОТПРАВКА В SUPABASE (В ФОНЕ)
   // ==========================================
-  if (typeof supabaseClient !== 'undefined' || window.supabaseClient) {
-    const client = window.supabaseClient || supabaseClient;
-    client.from('projects').upsert({
-      id: p.id,
-      code: p.code || null,
-      name: p.name,
-      description: p.description || null,
-      status: p.status || null,
-      manager: p.manager || null,
-      start_date: p.start || null,
-      end_date: p.end || null,
-      contract_id: p.contractId || null,
-      contract_name: p.contractName || null,
-      customer: p.customer || null,
-      planned_amount: p.contractAmount || null,
-      currency: p.currency || 'UAH',
-      updated_at: p.updatedAt || new Date().toISOString(),
-      created_at: p.createdAt || new Date().toISOString()
-    }).then(({error}) => {
-      if (error) console.error('❌ Ошибка сохранения в Supabase (projects):', error.message);
-      else console.log('✅ Проект успешно сохранен в Supabase');
+  if (window.nexusData) {
+    nexusData.upsertProject(p).catch(e => {
+      alert('Помилка збереження в Supabase: ' + (e.message || e));
     });
-  } else {
-    console.warn('supabaseClient не найден, сохранено только локально.');
   }
   // ==========================================
 
@@ -237,11 +217,8 @@ const Projects = (() => {
     fillProjectSelectors();
     
     // 2. Удаляем из Supabase (исправленная проверка)
-    if(typeof supabaseClient !== 'undefined'){
-      supabaseClient.from('projects').delete().eq('id', id).then(({error})=>{
-        if(error) console.error('❌ Ошибка удаления из Supabase:', error.message);
-        else console.log('🗑️ Проект успешно удален из Supabase!');
-      });
+    if(window.nexusData){
+      nexusData.deleteProject(id).catch(e => alert('Помилка видалення в Supabase: ' + (e.message || e)));
     }
   }
 } 
@@ -278,50 +255,39 @@ const Projects = (() => {
 window.Projects=Projects;document.addEventListener('DOMContentLoaded',Projects.init);
 // --- НАЧАЛО ИНТЕГРАЦИИ С SUPABASE ---
 async function syncFromSupabase() {
-    console.log('Загрузка проектов из Supabase...');
-    
-    // 1. Запрашиваем данные из таблицы projects
-    const { data, error } = await supabaseClient.from('projects').select('*');
-    
-    if (error) {
-        console.error('Ошибка загрузки из Supabase:', error);
-        return;
+    if (!window.nexusData) return;
+    let data;
+    try {
+      data = await nexusData.listProjects();
+    } catch (error) {
+      console.error('Ошибка загрузки проектов:', error);
+      return;
     }
-
-    // 2. Преобразуем данные из Supabase в формат, который понимает ваш сайт
-    // ЗДЕСЬ МЫ ДОБАВИЛИ ВСЕ НОВЫЕ ПОЛЯ
-    const cloudProjects = data.map(p => ({
+    const cloudProjects = (Array.isArray(data) ? data : []).map(p => ({
         id: p.id.toString(),
         code: p.code || '',
         name: p.name,
         description: p.description || '',
         status: p.status || 'planning',
-        manager: p.manager || '',
+        manager: p.metadata?.manager || '',
         start: p.start_date || '',
         end: p.end_date || '',
         contractId: p.contract_id || '',
-        contractName: p.contract_name || '',
-        customer: p.customer || '',
+        contractName: p.metadata?.contractName || '',
+        customer: p.metadata?.customer || '',
         createdAt: p.created_at,
         updatedAt: p.updated_at
+        , contractAmount: p.planned_amount || 0
+        , currency: p.currency || 'UAH'
+        , metadata: p.metadata || {}
     }));
-
-    // 3. Читаем текущую базу из localStorage
     let db = { projects: [], meta: {} };
     try {
         const saved = localStorage.getItem('nexus_projects_v1');
         if (saved) db = JSON.parse(saved);
     } catch(e) {}
-
-    // 4. Заменяем локальные проекты на те, что пришли из облака
     db.projects = cloudProjects;
-    
-    // 5. Сохраняем обратно в localStorage
     localStorage.setItem('nexus_projects_v1', JSON.stringify(db));
-    
-    console.log(`Успешно синхронизировано ${cloudProjects.length} проектов.`);
-    
-    // 6. Перезагружаем страницу, чтобы интерфейс отрисовал новые данные
     if (window.location.search.indexOf('synced=true') === -1) {
         window.location.href = window.location.pathname + '?synced=true';
     }

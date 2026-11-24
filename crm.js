@@ -58,7 +58,7 @@ const CRM = (() => {
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
-  function uid(p) { return (p || 'id') + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function uid(p) { return window.nexusData?.uuid() || ((p || 'id') + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)); }
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
@@ -267,6 +267,9 @@ const CRM = (() => {
       db.clients.push(item);
     }
     saveDB();
+    if (window.nexusData) {
+      nexusData.upsertCrmParty(item).catch(e => alert('Помилка збереження CRM у Supabase: ' + (e.message || e)));
+    }
     if (window.NexusCore && NexusCore.audit) {
       NexusCore.audit(editingId ? 'crm.client.update' : 'crm.client.create', 'client', { id: item.id, name: item.name });
     }

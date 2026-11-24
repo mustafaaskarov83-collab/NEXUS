@@ -377,7 +377,7 @@ const Tasks = (() => {
     if (!title) { alert('Вкажіть назву задачі'); return; }
 
     const task = {
-      id: editingId || 'task_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36),
+      id: editingId || (window.nexusData?.uuid() || 'task_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36)),
       title,
       description: document.getElementById('t-desc').value.trim(),
       status: document.getElementById('t-status').value,
@@ -397,6 +397,7 @@ const Tasks = (() => {
     }
 
     saveDB();
+    if (window.nexusData) nexusData.upsertTask(task).catch(e => alert('Помилка збереження задачі: ' + (e.message || e)));
     closeForm();
     render();
   }
@@ -408,6 +409,7 @@ const Tasks = (() => {
     if (!confirm('Видалити задачу «' + t.title + '»?')) return;
     db.tasks = db.tasks.filter(x => x.id !== id);
     saveDB();
+    if (window.nexusData) nexusData.deleteTask(id).catch(e => alert('Помилка видалення задачі: ' + (e.message || e)));
     closeForm();
     closeDetail();
     render();
@@ -457,6 +459,24 @@ const Tasks = (() => {
     initTheme();
     fillEmployeeFilter();
     render();
+    if (window.nexusData) {
+      nexusData.listTasks().then(rows => {
+        db.tasks = rows.map(t => ({
+          id: t.id,
+          title: t.title,
+          description: t.description || '',
+          status: t.status || 'backlog',
+          priority: t.priority || 'normal',
+          deadline: t.deadline || '',
+          employeeId: t.assignee_id || '',
+          projectId: t.project_id || '',
+          createdAt: t.created_at ? String(t.created_at).slice(0,10) : '',
+          updatedAt: t.updated_at ? String(t.updated_at).slice(0,10) : ''
+        }));
+        saveDB();
+        render();
+      }).catch(e => console.error('[NEXUS] tasks sync:', e));
+    }
     setInterval(fillEmployeeFilter, 15000);
   }
 

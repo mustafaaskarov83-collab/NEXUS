@@ -17,7 +17,7 @@
   function write(key, v) {
     try { localStorage.setItem(key, JSON.stringify(v)); return true; } catch (e) { return false; }
   }
-  function uid() { return 'ev_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function uid() { return window.nexusData?.uuid() || ('ev_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)); }
   function iso(d) {
     const x = d instanceof Date ? d : new Date(d);
     const m = String(x.getMonth() + 1).padStart(2, '0');
@@ -321,6 +321,18 @@
       });
     }
     saveCustomEvents(list);
+    if (window.nexusData) {
+      const ev = editingId ? list.find(x => x.id === editingId) : list[list.length - 1];
+      if (ev) nexusData.upsertCalendarEvent({
+        id: ev.id,
+        title: ev.title,
+        startAt: ev.start + 'T12:00:00Z',
+        endAt: ev.end + 'T12:00:00Z',
+        allDay: true,
+        reminder: ev.remind == null ? {} : { minutes: Number(ev.remind) },
+        metadata: { note: ev.note || '', userId: ev.userId || null }
+      }).catch(e => alert('Помилка збереження події: ' + (e.message || e)));
+    }
     if (window.NexusCore && NexusCore.audit) NexusCore.audit(editingId ? 'calendar.update' : 'calendar.create', 'event', { title, start });
     closeEventModal();
     refresh();
@@ -329,6 +341,7 @@
   function deleteEvent() {
     if (!editingId || !confirm('Видалити подію?')) return;
     saveCustomEvents(loadCustomEvents().filter(x => x.id !== editingId));
+    if (window.nexusData) nexusData.deleteCalendarEvent(editingId).catch(e => alert('Помилка видалення події: ' + (e.message || e)));
     if (window.NexusCore && NexusCore.audit) NexusCore.audit('calendar.delete', 'event', { id: editingId });
     closeEventModal();
     refresh();
@@ -429,6 +442,22 @@
     document.getElementById('event-modal').onclick = e => { if (e.target.id === 'event-modal') closeEventModal(); };
 
     initTheme();
+    if (window.nexusData) {
+      nexusData.listCalendarEvents().then(rows => {
+        const custom = rows.map(e => ({
+          id: e.id,
+          userId: e.owner_user_id,
+          title: e.title,
+          start: String(e.start_at).slice(0,10),
+          end: e.end_at ? String(e.end_at).slice(0,10) : String(e.start_at).slice(0,10),
+          note: e.metadata?.note || '',
+          remind: e.reminder?.minutes ?? null,
+          createdAt: e.created_at
+        }));
+        saveCustomEvents(custom);
+        refresh();
+      }).catch(e => console.error('[NEXUS] calendar sync:', e));
+    }
     refresh();
     if (window.NexusCore && NexusCore.enforceReadOnly) NexusCore.enforceReadOnly();
   }

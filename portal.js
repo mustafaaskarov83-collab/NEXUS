@@ -13,23 +13,7 @@ const Portal = (() => {
   const HR_KEY = 'nexus_hr_ua_v2';
   const INV_KEY = 'nexus_inventory_v1';
   const SESSION_TTL = 12 * 60 * 60 * 1000;
-  let authMode = 'login';
 
-  /* Той самий хеш, що в app.js (HR) — спільні користувачі */
-  function hp(pwd, salt) {
-    const s = pwd + '::' + salt + '::nexus_v3';
-    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
-    for (let i = 0; i < s.length; i++) {
-      const c = s.charCodeAt(i);
-      h1 = Math.imul(h1 ^ c, 2654435761);
-      h2 = Math.imul(h2 ^ c, 1597334677);
-    }
-    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-    return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
-  }
-  function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
-  
   function loadUsers() {
     try {
       const r = localStorage.getItem(USERS_KEY);
@@ -44,6 +28,11 @@ const Portal = (() => {
     try {
       localStorage.setItem(SESSION_KEY, JSON.stringify({ userId, expiresAt: Date.now() + SESSION_TTL }));
     } catch (e) {}
+  }
+
+  function authDisplayName(profile, username) {
+    const name = String(profile?.display_name || '').trim();
+    return name && !/@login\.nexus\.invalid$/i.test(name) ? name : username;
   }
 
   /* --- Кто вошёл (из сессии) --- */
@@ -77,117 +66,74 @@ const Portal = (() => {
     if (err) err.textContent = '';
   }
   function setAuthMode(mode) {
-    authMode = mode;
     const title = document.getElementById('portal-auth-t');
     const hint = document.getElementById('portal-auth-h');
     const conf = document.getElementById('portal-conf-f');
     const btn = document.getElementById('portal-auth-btn');
-    if (mode === 'setup') {
-      if (title) title.textContent = 'Перше налаштування';
-      if (hint) hint.textContent = 'Створіть обліковий запис адміністратора';
-      if (conf) conf.style.display = '';
-      if (btn) btn.textContent = 'Створити адміністратора';
-    } else {
-      if (title) title.textContent = 'Вхід до системи NEXUS';
-      if (hint) hint.textContent = 'Введіть облікові дані';
-      if (conf) conf.style.display = 'none';
-      if (btn) btn.textContent = 'Увійти';
-    }
+    if (title) title.textContent = 'Вхід до системи NEXUS';
+    if (hint) hint.textContent = 'Увійдіть за логіном і паролем, виданими адміністратором';
+    if (conf) conf.style.display = 'none';
+    if (btn) btn.textContent = 'Увійти';
   }
 
-  // ФУНКЦИЯ АВТОРИЗАЦИИ (ПЕРЕПИСАНА ПОД SUPABASE)
   async function submitAuth() {
     const username = (document.getElementById('portal-au')?.value || '').trim();
     const password = document.getElementById('portal-ap')?.value || '';
-    const confirm = document.getElementById('portal-ac')?.value || '';
     const err = document.getElementById('portal-auth-err');
     const setErr = m => { if (err) err.textContent = m; };
     const btn = document.getElementById('portal-auth-btn');
 
-    if (!username || username.length < 3) { setErr('Логін мінімум 3 символи'); return; }
-    if (!/^[a-zA-Z0-9_.\-]+$/.test(username)) { setErr('Тільки латиниця, цифри, _ . -'); return; }
-    if (!password || password.length < 6) { setErr('Мінімум 6 символів'); return; }
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]{1,30}[a-zA-Z0-9]$/.test(username) || username.includes('..')) {
+      setErr('Логін має містити 3–32 латинські літери, цифри або символи _ . -');
+      return;
+    }
+    if (!password) { setErr('Введіть пароль'); return; }
+    if (!window.nexusAuth) { setErr('Supabase Auth не підключено'); return; }
 
-    let users = loadUsers();
-    
-    // Блокируем кнопку на время запроса
-    if(btn) { btn.disabled = true; btn.textContent = 'Зачекайте...'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Зачекайте...'; }
 
     try {
-      if (authMode === 'setup' || !users.length) {
-        if (password !== confirm) { setErr('Паролі не збігаються'); return; }
-        const salt = uid() + uid();
-        const nu = {
-          id: uid(), username, fullName: username, role: 'admin',
-          modules: ['*'],
-          salt, hash: hp(password, salt),
-          createdAt: new Date().toISOString().slice(0, 10)
-        };
-        
-        // 1. СНАЧАЛА ПИШЕМ В SUPABASE
-        if (window.supabaseClient) {
-          const { error } = await supabaseClient.from('users').upsert({
-            id: nu.id, username: nu.username, full_name: nu.fullName,
-            role: nu.role, modules: nu.modules,          // jsonb — отправляем массив
-            salt: nu.salt, hash: nu.hash, created_at: nu.createdAt
-          });
-          if (error) throw new Error('Помилка бази даних: ' + error.message);
-        }
-
-        // 2. ЕСЛИ УСПЕШНО - ОБНОВЛЯЕМ ЛОКАЛЬНЫЙ КЭШ
-        users = [nu];
-        saveUsers(users);
-        setSession(nu.id);
-        hideAuth();
-        afterLogin();
+      let current = await nexusAuth.signIn(username, password);
+      if (!current.session) {
+        setErr("Невірне ім'я користувача або пароль");
         return;
       }
 
-      // ВХОД
-      let found = null;
-
-      if (window.supabaseClient) {
-        // 1. ИЩЕМ ПОЛЬЗОВАТЕЛЯ В SUPABASE (А НЕ В LOCALSTORAGE)
-        const { data, error } = await supabaseClient.from('users').select('*').ilike('username', username).single();
-        
-        if (error || !data) {
-          setErr("Невірне ім'я або пароль");
-          return;
-        }
-        
-        found = {
-          id: data.id, username: data.username, fullName: data.full_name,
-          role: data.role,
-          modules: Array.isArray(data.modules)
-            ? data.modules
-            : (typeof data.modules === 'string' ? JSON.parse(data.modules || '[]') : []),
-          salt: data.salt, hash: data.hash
-        };
-      } else {
-        // Fallback (если Supabase не загрузился)
-        found = users.find(x => String(x.username || '').toLowerCase() === username.toLowerCase());
+      if (!current.context?.membership) {
+        await nexusAuth.createTenant('NEXUS ERP', 'Основна компанія', null);
+        current = await nexusAuth.getSession();
       }
 
-      if (!found || hp(password, found.salt) !== found.hash) {
-        setErr("Невірне ім'я або пароль");
-        return;
+      if (!current.context?.membership) {
+        throw new Error('Для облікового запису не налаштовано доступ до компанії');
       }
-
-      // 2. ЕСЛИ ПАРОЛЬ ВЕРНЫЙ - ОБНОВЛЯЕМ КЭШ И ПУСКАЕМ
-      const localIdx = users.findIndex(u => u.id === found.id);
-      if (localIdx >= 0) users[localIdx] = found;
-      else users.push(found);
-      saveUsers(users);
-
-      setSession(found.id);
+      const authUser = current.user;
+      const preferences = current.profile?.preferences || {};
+      const authCache = {
+        id: authUser.id,
+        username: authUser.app_metadata?.username || nexusAuth.normalizeUsername(username),
+        fullName: authDisplayName(current.profile, username),
+        role: preferences.nexus_role || (current.context.permissions.includes('tenant.manage') ? 'admin' : 'manager'),
+        modules: preferences.nexus_modules || [],
+        employeeId: preferences.employee_id || null,
+        createdAt: authUser.created_at
+      };
+      saveUsers([authCache]);
+      setSession(authUser.id);
       hideAuth();
       afterLogin();
-
     } catch (e) {
       console.error(e);
-      setErr('Помилка з\'єднання з базою даних');
+      const message = String(e?.message || e || '').trim();
+      if (/invalid login credentials|invalid credentials/i.test(message)) {
+        setErr("Невірне ім'я користувача або пароль");
+      } else if (/fetch|network|failed to fetch/i.test(message)) {
+        setErr('Не вдалося підключитися до Supabase. Перевірте інтернет-з’єднання.');
+      } else {
+        setErr(message || 'Невідома помилка авторизації');
+      }
     } finally {
-      if(btn) { btn.disabled = false; btn.textContent = authMode === 'setup' ? 'Створити адміністратора' : 'Увійти'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Увійти'; }
     }
   }
 
@@ -206,16 +152,35 @@ const Portal = (() => {
       }
     } catch (e) {}
   }
-  function initAuthGate() {
-    const users = loadUsers();
-    if (!users.length) {
-      setAuthMode('setup');
-      showAuth();
-      return false;
-    }
-    if (getCurrentUser()) {
-      hideAuth();
-      return true;
+  async function initAuthGate() {
+    if (window.nexusAuth) {
+      try {
+        let current = await nexusAuth.getSession();
+        if (current.session) {
+          if (!current.context?.membership) {
+            await nexusAuth.createTenant('NEXUS ERP', 'Основна компанія', null);
+            current = await nexusAuth.getSession();
+          }
+          if (!current.context?.membership) throw new Error('Для облікового запису не налаштовано доступ до компанії');
+          const authUser = current.user;
+          const preferences = current.profile?.preferences || {};
+          const authCache = {
+            id: authUser.id,
+            username: authUser.app_metadata?.username || '',
+            fullName: authDisplayName(current.profile, authUser.app_metadata?.username || 'Користувач'),
+            role: preferences.nexus_role || (current.context.permissions.includes('tenant.manage') ? 'admin' : 'manager'),
+            modules: preferences.nexus_modules || [],
+            employeeId: preferences.employee_id || null,
+            createdAt: authUser.created_at
+          };
+          saveUsers([authCache]);
+          setSession(authUser.id);
+          hideAuth();
+          return true;
+        }
+      } catch (e) {
+        console.error('[NEXUS] Не вдалося перевірити Supabase-сесію:', e);
+      }
     }
     setAuthMode('login');
     showAuth();
@@ -237,8 +202,9 @@ const Portal = (() => {
       localStorage.removeItem(SESSION_KEY);
       sessionStorage.removeItem(SESSION_KEY);
     } catch (e) {}
+    if (window.nexusAuth) nexusAuth.signOut();
     closeUserMenu();
-    setAuthMode(loadUsers().length ? 'login' : 'setup');
+    setAuthMode('login');
     showAuth();
     renderUser();
   }
@@ -503,7 +469,7 @@ const Portal = (() => {
         if (!user && card.getAttribute('data-auth') === '1') {
           e.preventDefault();
           try { sessionStorage.setItem('nexus_redirect_after_login', href); } catch (err) {}
-          setAuthMode(loadUsers().length ? 'login' : 'setup');
+          setAuthMode('login');
           showAuth('🔒 Увійдіть, щоб відкрити модуль');
           return;
         }
@@ -628,7 +594,7 @@ const Portal = (() => {
     };
   }
 
-  function init() {
+  async function init() {
     // При відкритті index — спочатку вікно входу «Вхід до системи NEXUS».
     // Після успішної авторизації показується головна сторінка порталу.
     initTheme();
@@ -637,7 +603,7 @@ const Portal = (() => {
     setInterval(tickClock, 30000);
     setInterval(renderQuickStats, 10000);
 
-    if (!initAuthGate()) return;
+    if (!(await initAuthGate())) return;
     renderVersion();
     renderGreeting();
     renderUser();
@@ -651,6 +617,7 @@ const Portal = (() => {
 
   /* --- Module access --- */
   let editingUserId = null;
+  let managedUsers = [];
 
   function moduleDefs() {
     if (window.NexusCore && NexusCore.MODULE_DEFS) return NexusCore.MODULE_DEFS;
@@ -726,27 +693,14 @@ const Portal = (() => {
   async function renderUsersList() {
     const el = document.getElementById('users-list');
     if (!el) return;
-
-    let users = [];
-    
-    // 1. Запрашиваем актуальный список ВСЕХ пользователей из базы
-    if (window.supabaseClient) {
-      const { data, error } = await supabaseClient.from('users').select('*');
-      if (!error && data) {
-        users = data.map(u => ({
-          id: u.id, username: u.username, fullName: u.full_name,
-          role: u.role, modules: u.modules ? JSON.parse(u.modules) : [],
-          employeeId: u.employee_id, createdAt: u.created_at,
-          salt: u.salt, hash: u.hash // Нужны для корректной работы
-        }));
-        // Обновляем локальный кэш, чтобы он не отставал
-        saveUsers(users);
-      } else {
-        console.error('Ошибка загрузки юзеров:', error);
-        users = loadUsers(); // fallback на локальные
-      }
-    } else {
-      users = loadUsers(); // fallback
+    el.innerHTML = '<div class="tm">Завантаження списку користувачів...</div>';
+    try {
+      const result = await nexusAuth.manageUsers({ action: 'list' });
+      managedUsers = Array.isArray(result.users) ? result.users : [];
+    } catch (e) {
+      console.error('[NEXUS] Не вдалося завантажити користувачів:', e);
+      el.innerHTML = '<div class="tm">Помилка завантаження: ' + escHtml(e.message || e) + '</div>';
+      return;
     }
 
     const emps = loadHrEmployees();
@@ -754,13 +708,13 @@ const Portal = (() => {
     emps.forEach(e => { empMap[e.id] = e; });
     const roleMap = { admin: 'Адміністратор', manager: 'Менеджер', viewer: 'Перегляд' };
     
-    if (!users.length) {
+    if (!managedUsers.length) {
       el.innerHTML = '<div class="tm">Користувачів немає</div>';
       return;
     }
     
     let h = '<table class="users-table"><thead><tr><th>Логін</th><th>ПІБ</th><th>Співробітник (HR)</th><th>Роль</th><th>Модулі</th><th></th></tr></thead><tbody>';
-    users.forEach(u => {
+    managedUsers.forEach(u => {
       let modsLabel;
       if (u.role === 'admin' || (Array.isArray(u.modules) && u.modules.includes('*'))) {
         modsLabel = 'Усі модулі';
@@ -774,18 +728,17 @@ const Portal = (() => {
         ? empMap[u.employeeId].fullName + (empMap[u.employeeId].position ? ' — ' + empMap[u.employeeId].position : '')
         : (u.employeeId ? 'ID: ' + u.employeeId + ' (не знайдено)' : '— не привʼязано —');
       const linkedClass = u.employeeId && empMap[u.employeeId] ? '' : ' style="color:#f59e0b"';
+      const actions = u.id === (getCurrentUser() || {}).id || u.status === 'suspended'
+        ? ''
+        : '<button class="btn bs bsm" type="button" onclick="Portal.editUser(\'' + u.id + '\')">✏️</button> ' +
+          '<button class="btn bd bsm" type="button" onclick="Portal.deleteUser(\'' + u.id + '\')">×</button>';
       h += '<tr>' +
         '<td><b>' + escHtml(u.username) + '</b></td>' +
         '<td>' + escHtml(u.fullName || '—') + '</td>' +
         '<td' + linkedClass + '>' + escHtml(linked) + '</td>' +
-        '<td>' + escHtml(roleMap[u.role] || u.role) + '</td>' +
+        '<td>' + escHtml(roleMap[u.role] || u.role) + (u.status === 'suspended' ? ' · Вимкнено' : '') + '</td>' +
         '<td style="max-width:220px">' + escHtml(modsLabel) + '</td>' +
-        '<td style="white-space:nowrap">' +
-          '<button class="btn bs bsm" type="button" onclick="Portal.editUser(\'' + u.id + '\')">✏️</button> ' +
-          (u.id !== (getCurrentUser() || {}).id
-            ? '<button class="btn bd bsm" type="button" onclick="Portal.deleteUser(\'' + u.id + '\')">×</button>'
-            : '') +
-        '</td></tr>';
+        '<td style="white-space:nowrap">' + actions + '</td></tr>';
     });
     h += '</tbody></table>';
     el.innerHTML = h;
@@ -825,9 +778,8 @@ const Portal = (() => {
     const sel = document.getElementById('u-employee');
     if (!sel) return;
     const emps = loadHrEmployees();
-    const users = loadUsers();
     const taken = new Set(
-      users
+      managedUsers
         .filter(u => u.employeeId && u.id !== editingUserId)
         .map(u => u.employeeId)
     );
@@ -867,7 +819,7 @@ const Portal = (() => {
     document.getElementById('u-name').value = '';
     document.getElementById('u-role').value = 'manager';
     document.getElementById('u-pass').value = '';
-    document.getElementById('u-pass-hint').textContent = '*';
+    document.getElementById('u-pass-hint').textContent = '* (мін. 8 символів)';
     fillEmployeeSelect('');
     renderModuleChecks(moduleDefs().map(m => m.id), false);
   }
@@ -879,7 +831,7 @@ const Portal = (() => {
   }
 
   function editUser(id) {
-    const u = loadUsers().find(x => x.id === id);
+    const u = managedUsers.find(x => x.id === id);
     if (!u) return;
     editingUserId = id;
     document.getElementById('user-form-wrap').style.display = '';
@@ -889,7 +841,7 @@ const Portal = (() => {
     document.getElementById('u-name').value = u.fullName || '';
     document.getElementById('u-role').value = u.role || 'manager';
     document.getElementById('u-pass').value = '';
-    document.getElementById('u-pass-hint').textContent = '(залиште порожнім, щоб не змінювати)';
+    document.getElementById('u-pass-hint').textContent = '(введіть, щоб скинути пароль; мін. 8 символів)';
     fillEmployeeSelect(u.employeeId || '');
     const isAdmin = u.role === 'admin';
     let mods = Array.isArray(u.modules) ? u.modules.slice() : moduleDefs().map(m => m.id);
@@ -906,27 +858,25 @@ const Portal = (() => {
     }
   }
 
-  // ФУНКЦИЯ СОХРАНЕНИЯ ПОЛЬЗОВАТЕЛЯ (ПЕРЕПИСАНА ПОД SUPABASE)
   async function saveUser() {
     const me = getCurrentUser();
     if (!me || me.role !== 'admin') { alert('Лише адміністратор'); return; }
-    const login = (document.getElementById('u-login')?.value || '').trim();
+    const isEditing = Boolean(editingUserId);
+    const login = (document.getElementById('u-login')?.value || '').trim().toLowerCase();
     const name = (document.getElementById('u-name')?.value || '').trim();
     const role = document.getElementById('u-role')?.value || 'manager';
     const pass = document.getElementById('u-pass')?.value || '';
     const employeeId = (document.getElementById('u-employee')?.value || '').trim();
     
-    if (!login || login.length < 3) { alert('Логін мінімум 3 символи'); return; }
-    if (!/^[a-zA-Z0-9_.\-]+$/.test(login)) { alert('Логін: лише латиниця, цифри, _ . -'); return; }
-    if (!employeeId) {
-      alert('Оберіть співробітника з кадрового обліку — без цього користувач не отримає особисті задачі, авто та сповіщення');
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]{1,30}[a-zA-Z0-9]$/.test(login) || login.includes('..')) {
+      alert('Логін має містити 3–32 латинські літери, цифри або символи _ . -; крапка не може бути на краю чи повторюватися');
       return;
     }
-    const emp = loadHrEmployees().find(e => e.id === employeeId);
-    if (!emp) { alert('Обраного співробітника не знайдено в кадровому обліку'); return; }
-
-    let users = loadUsers();
-    const takenBy = users.find(u => u.employeeId === employeeId && u.id !== editingUserId);
+    if (!editingUserId && pass.length < 8) { alert('Пароль мінімум 8 символів'); return; }
+    if (editingUserId && pass && pass.length < 8) { alert('Новий пароль має містити мінімум 8 символів'); return; }
+    const emp = employeeId ? loadHrEmployees().find(e => e.id === employeeId) : null;
+    if (employeeId && !emp) { alert('Обраного співробітника не знайдено в кадровому обліку'); return; }
+    const takenBy = managedUsers.find(u => u.employeeId === employeeId && employeeId && u.id !== editingUserId);
     if (takenBy) {
       alert('Цей співробітник уже привʼязаний до користувача «' + (takenBy.username || '') + '»');
       return;
@@ -939,100 +889,43 @@ const Portal = (() => {
       if (!modules.length) { alert('Оберіть хоча б один модуль'); return; }
     }
 
-    const displayName = name || emp.fullName || login;
-    let finalUser = null;
-
-    if (editingUserId) {
-      const i = users.findIndex(x => x.id === editingUserId);
-      if (i < 0) return;
-      if (pass) {
-        if (pass.length < 6) { alert('Пароль мінімум 6 символів'); return; }
-        const salt = uid() + uid();
-        users[i].salt = salt;
-        users[i].hash = hp(pass, salt);
+    const payload = {
+      action: editingUserId ? 'update' : 'create',
+      userId: editingUserId,
+      username: login,
+      fullName: name || (emp && emp.fullName) || login,
+      employeeId: employeeId || null,
+      role,
+      modules
+    };
+    try {
+      const result = await nexusAuth.manageUsers(payload);
+      if (isEditing && pass) {
+        await nexusAuth.manageUsers({ action: 'reset_password', userId: result.userId || editingUserId, password: pass });
       }
-      users[i].fullName = displayName;
-      users[i].role = role;
-      users[i].modules = modules;
-      users[i].employeeId = employeeId;
-      users[i].updatedAt = new Date().toISOString().slice(0, 10);
-      finalUser = users[i];
-    } else {
-      if (!pass || pass.length < 6) { alert('Пароль мінімум 6 символів'); return; }
-      if (users.some(x => String(x.username).toLowerCase() === login.toLowerCase())) {
-        alert('Такий логін вже існує'); return;
-      }
-      const salt = uid() + uid();
-      finalUser = {
-        id: uid(), username: login, fullName: displayName, role, modules,
-        employeeId,
-        salt, hash: hp(pass, salt),
-        createdAt: new Date().toISOString().slice(0, 10)
-      };
-      users.push(finalUser);
+      if (window.NexusCore && NexusCore.audit) NexusCore.audit('users.save', 'user', { id: result.userId || editingUserId, role, modules, employeeId });
+      cancelUserForm();
+      await renderUsersList();
+      alert(isEditing ? 'Зміни збережено' : 'Користувача створено. Передайте йому логін і пароль безпечним способом.');
+    } catch (e) {
+      console.error('[NEXUS] Не вдалося зберегти користувача:', e);
+      alert('Не вдалося зберегти користувача: ' + (e.message || e));
     }
-
-    // 1. ПИШЕМ В SUPABASE
-    if (window.supabaseClient && finalUser) {
-      try {
-        const { error } = await supabaseClient.from('users').upsert({
-          id: finalUser.id,
-          username: finalUser.username,
-          full_name: finalUser.fullName,
-          role: finalUser.role,
-          modules: finalUser.modules,          // jsonb — отправляем массив
-          salt: finalUser.salt,
-          hash: finalUser.hash,
-          employee_id: finalUser.employeeId || null,
-          created_at: finalUser.createdAt,
-          updated_at: finalUser.updatedAt || new Date().toISOString()
-        });
-        if (error) throw error;
-        console.log('✅ Користувач збережений в Supabase');
-      } catch(e) {
-        console.error('❌ Помилка Supabase:', e);
-        alert('Помилка збереження в базу даних: ' + e.message);
-        return; // Прерываем, если база не приняла
-      }
-    }
-
-    // 2. ОБНОВЛЯЕМ ЛОКАЛЬНЫЙ КЭШ
-    saveUsers(users);
-    
-    if (window.NexusCore && NexusCore.audit) NexusCore.audit('users.save', 'user', { id: finalUser.id, role, modules, employeeId });
-    
-    cancelUserForm();
-    await renderUsersList(); // Ждем обновления списка
-    applyModuleAccess();
-    try { renderCabinet(); } catch (e) {}
-    alert('Збережено. Користувач привʼязаний до співробітника «' + emp.fullName + '»');
   }
 
-  // ФУНКЦИЯ УДАЛЕНИЯ (ПЕРЕПИСАНА ПОД SUPABASE)
   async function deleteUser(id) {
     const me = getCurrentUser();
     if (!me || me.role !== 'admin') return;
     if (id === me.id) { alert('Не можна видалити себе'); return; }
-    if (!confirm('Видалити користувача?')) return;
-
-    // 1. УДАЛЯЕМ ИЗ SUPABASE
-    if (window.supabaseClient) {
-      try {
-        const { error } = await supabaseClient.from('users').delete().eq('id', id);
-        if (error) throw error;
-        console.log('🗑️ Користувач видалений з Supabase');
-      } catch(e) {
-        console.error('❌ Помилка видалення з Supabase:', e);
-        alert('Не вдалося видалити з бази даних. Можливо, немає зв\'язку.');
-        return;
-      }
+    if (!confirm('Вимкнути обліковий запис? Користувач втратить доступ до системи.')) return;
+    try {
+      await nexusAuth.manageUsers({ action: 'suspend', userId: id });
+      if (window.NexusCore && NexusCore.audit) NexusCore.audit('users.suspend', 'user', { id });
+      await renderUsersList();
+    } catch (e) {
+      console.error('[NEXUS] Не вдалося вимкнути користувача:', e);
+      alert('Не вдалося вимкнути користувача: ' + (e.message || e));
     }
-
-    // 2. ОБНОВЛЯЕМ ЛОКАЛЬНЫЙ КЭШ
-    let users = loadUsers().filter(x => x.id !== id);
-    saveUsers(users);
-    if (window.NexusCore && NexusCore.audit) NexusCore.audit('users.delete', 'user', { id });
-    await renderUsersList(); // Ждем обновления
   }
 
 

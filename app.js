@@ -1079,7 +1079,7 @@ function addEmp(){
   const ctrSigned=($('#e-ctr-signed')&&$('#e-ctr-signed').value)||h||'';
   const ctrEnd=($('#e-ctr-end')&&$('#e-ctr-end').value)||'';
   const ctrType=ctrEnd?'fixed':'indefinite';
-  const newId=uid();
+  const newId=window.nexusData?.uuid()||uid();
   
   const newEmp = {
     id:newId,fullName:n,position:$('#ep').value.trim(),departmentId,
@@ -1098,28 +1098,8 @@ function addEmp(){
   save();
 
   // --- ОТПРАВКА В SUPABASE ---
-  if (window.supabaseClient) {
-    const payload = {
-      id: newEmp.id,
-      full_name: newEmp.fullName,
-      position: newEmp.position || null,
-      department_id: newEmp.departmentId || null,
-      department: newEmp.departmentId || null,
-      hire_date: newEmp.hireDate || null,
-      birth_date: newEmp.birthDate || null,
-      status: 'active',
-      category: newEmp.category || null,
-      base_leave_days: newEmp.baseLeaveDays || null,
-      project_ids: newEmp.projectIds || [],
-      contract: newEmp.contract || null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    supabaseClient.from('employees').upsert(payload)
-      .then(({error}) => {
-        if (error) console.error('❌ Ошибка Supabase (employees):', error.message);
-        else console.log('✅ Сотрудник сохранен в Supabase');
-      });
+  if (window.nexusData) {
+    nexusData.upsertEmployee(newEmp).catch(e => alert('Помилка збереження співробітника: ' + (e.message || e)));
   }
   // ---------------------------
 
@@ -1140,11 +1120,8 @@ function delEmp(id){
   save();renderDepartments();renderEmp();refreshSel();renderDash();
 
   // --- УДАЛЕНИЕ ИЗ SUPABASE ---
-  if (window.supabaseClient) {
-    supabaseClient.from('employees').delete().eq('id', id).then(({error}) => {
-      if(error) console.error('❌ Ошибка удаления из Supabase:', error.message);
-      else console.log('🗑️ Сотрудник удален из Supabase!');
-    });
+  if (window.nexusData) {
+    nexusData.deleteEmployee(id).catch(e => alert('Помилка видалення співробітника: ' + (e.message || e)));
   }
   // ---------------------------
 }
@@ -2354,12 +2331,12 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 // --- СИНХРОНИЗАЦИЯ СОТРУДНИКОВ ИЗ SUPABASE (v2) ---
 async function syncEmployeesFromCloud() {
-  if (!window.supabaseClient) return;
-  console.log('Синхронизация сотрудников из Supabase...');
-  const { data, error } = await supabaseClient.from('employees').select('*');
-
-  if (error) {
-    console.error('❌ Ошибка загрузки сотрудников:', error.message);
+  if (!window.nexusData) return;
+  let data;
+  try {
+    data = await nexusData.listEmployees();
+  } catch (error) {
+    console.error('❌ Ошибка загрузки сотрудников:', error.message || error);
     return;
   }
 
