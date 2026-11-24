@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS ENGENEERING - Кадровий облік</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--primary:#1e40af;--primary-l:#3b82f6;--primary-d:#1e3a8a;--primary-bg:#eff6ff;--success:#059669;--success-bg:#ecfdf5;--warn:#d97706;--warn-bg:#fffbeb;--danger:#dc2626;--danger-bg:#fef2f2;--g50:#f8fafc;--g100:#f1f5f9;--g200:#e2e8f0;--g300:#cbd5e1;--g500:#64748b;--g700:#334155;--g900:#0f172a;--r:8px;--rl:12px;--sh:0 1px 3px rgba(0,0,0,.08);--shl:0 10px 25px rgba(0,0,0,.1);--f:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;--m:'SF Mono',Consolas,monospace}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--f);background:var(--g100);color:var(--g900);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+/* AUTH */
+.auth-ov{position:fixed;inset:0;background:linear-gradient(135deg,#1e3a8a,#1e40af,#3b82f6);display:flex;align-items:center;justify-content:center;z-index:10000;padding:24px 16px;overflow-y:auto}
+.auth-ov.hidden{display:none}
+.auth-card{background:#fff;border-radius:16px;box-shadow:0 25px 50px rgba(0,0,0,.25);max-width:440px;width:100%;padding:36px 32px 24px;animation:fade .35s}
+@keyframes fade{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--g100)}
+.auth-brand svg{color:var(--primary);flex-shrink:0}
+.auth-brand-n{font-size:17px;font-weight:800;color:var(--primary-d)}
+.auth-brand-s{font-size:12px;color:var(--g500);margin-top:2px}
+.auth-t{font-size:22px;font-weight:700;margin-bottom:6px}
+.auth-h{font-size:13px;color:var(--g500);margin-bottom:20px;line-height:1.5}
+.auth-f{margin-bottom:16px}
+.auth-f label{display:block;font-size:12px;font-weight:600;color:var(--g700);margin-bottom:6px}
+.auth-f input{width:100%;padding:11px 14px;border:1.5px solid var(--g200);border-radius:var(--r);font-size:14px;font-family:inherit;transition:.15s}
+.auth-f input:focus{outline:none;border-color:var(--primary-l);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.auth-sub{width:100%;justify-content:center;padding:12px 18px;font-size:14px;margin-top:8px}
+.auth-err{padding:10px 14px;background:var(--danger-bg);border:1px solid #fecaca;border-radius:var(--r);color:var(--danger);font-size:13px;margin-bottom:16px}
+.auth-err:empty{display:none}
+.auth-foot{margin-top:20px;padding-top:16px;border-top:1px solid var(--g100);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.auth-langs{display:flex;gap:3px;background:var(--g100);padding:3px;border-radius:20px}
+.auth-lb{background:none;border:none;color:var(--g500);padding:5px 11px;border-radius:16px;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;transition:.15s}
+.auth-lb:hover{color:var(--primary)}
+.auth-lb.active{background:#fff;color:var(--primary-d);box-shadow:var(--sh)}
+.auth-v{font-size:11px;color:var(--g500);font-family:var(--m)}
+.pwd-s{margin-top:6px;height:3px;background:var(--g200);border-radius:2px;overflow:hidden}
+.pwd-sb{height:100%;width:0;transition:.25s}
+.pwd-sb.weak{background:var(--danger);width:33%}
+.pwd-sb.medium{background:var(--warn);width:66%}
+.pwd-sb.strong{background:var(--success);width:100%}
+/* APP */
+#app{display:none}
+#app.vis{display:block}
+.hd{background:linear-gradient(135deg,var(--primary-d),var(--primary));color:#fff;padding:0 24px;position:sticky;top:0;z-index:100;box-shadow:var(--shl)}
+.hd-in{max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px;gap:16px}
+.hd-br{display:flex;align-items:center;gap:12px;font-size:16px;font-weight:700;flex-shrink:0}
+.hd-br svg{opacity:.9;flex-shrink:0}
+.hd-br .bn{font-weight:800;letter-spacing:.5px;background:linear-gradient(90deg,#fff,#bfdbfe);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hd-br .bs{margin:0 10px;opacity:.5;font-weight:300}
+.hd-br .bsub{font-weight:500;opacity:.9}
+.hd-r{display:flex;align-items:center;gap:14px}
+.langs{display:flex;gap:3px;background:rgba(255,255,255,.12);padding:3px;border-radius:20px}
+.lb{background:none;border:none;color:rgba(255,255,255,.75);padding:5px 11px;border-radius:16px;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit}
+.lb:hover{color:#fff;background:rgba(255,255,255,.1)}
+.lb.active{background:#fff;color:var(--primary-d)}
+.hd-u{display:flex;align-items:center;gap:10px;padding:5px 12px 5px 5px;background:rgba(255,255,255,.1);border-radius:22px;cursor:pointer;border:none;color:inherit;font-family:inherit;transition:.15s}
+.hd-u:hover{background:rgba(255,255,255,.18)}
+.hd-av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#f59e0b);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#78350f;flex-shrink:0}
+.hd-ui{text-align:left;line-height:1.15}
+.hd-un{font-size:12.5px;font-weight:600}
+.hd-ur{font-size:10.5px;opacity:.75}
+.um{position:absolute;top:68px;right:24px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);box-shadow:var(--shl);min-width:220px;z-index:200;overflow:hidden;display:none;color:var(--g900)}
+.um.open{display:block;animation:fade .15s}
+.um-h{padding:12px 16px;border-bottom:1px solid var(--g100);background:var(--g50)}
+.um-n{font-weight:700;font-size:13.5px}
+.um-r{font-size:11px;color:var(--g500);margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
+.um-i{display:flex;align-items:center;gap:10px;width:100%;padding:11px 16px;border:none;background:none;cursor:pointer;font-size:13px;font-family:inherit;color:var(--g700);text-align:left}
+.um-i:hover{background:var(--g50)}
+.um-i.dg{color:var(--danger)}
+.um-i.dg:hover{background:var(--danger-bg)}
+.nav{background:#fff;border-bottom:1px solid var(--g200);position:sticky;top:60px;z-index:99}
+.nav-in{max-width:1400px;margin:0 auto;display:flex;gap:4px;padding:0 24px;overflow-x:auto;scrollbar-width:none}
+.nav-in::-webkit-scrollbar{display:none}
+.nb{background:none;border:none;padding:14px 18px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--g500);border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit;display:flex;align-items:center;gap:6px}
+.nb:hover{color:var(--primary);background:var(--primary-bg)}
+.nb.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+.nb[hidden]{display:none}
+.mn{max-width:1400px;margin:0 auto;padding:24px}
+.tp{display:none}
+.tp.active{display:block;animation:fade .2s}
+.c{background:#fff;border:1px solid var(--g200);border-radius:var(--rl);padding:24px;margin-bottom:20px;box-shadow:var(--sh)}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--g100);gap:12px;flex-wrap:wrap}
+.ct{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.cs{font-size:12px;color:var(--g500);margin-top:2px}
+.fr{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.fr:last-child{margin-bottom:0}
+.ff{flex:1;min-width:180px;display:flex;flex-direction:column;gap:5px}
+.ffn{flex:0 0 140px;min-width:140px}
+.ff label{font-size:12px;font-weight:600;color:var(--g700)}
+.ff label .rq{color:var(--danger);margin-left:2px}
+input,select,textarea{padding:9px 12px;border:1.5px solid var(--g200);border-radius:var(--r);font-size:13.5px;font-family:inherit;background:#fff;width:100%;color:var(--g900);transition:.15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary-l);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.btn{padding:9px 18px;border:none;border-radius:var(--r);cursor:pointer;font-size:13.5px;font-weight:600;font-family:inherit;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:.15s}
+.btn:active{transform:scale(.97)}
+.bp{background:var(--primary);color:#fff}
+.bp:hover{background:var(--primary-d)}
+.bs{background:var(--g100);color:var(--g700)}
+.bs:hover{background:var(--g200)}
+.bd{background:var(--danger-bg);color:var(--danger)}
+.bd:hover{background:#fee2e2}
+.bxs{padding:3px 8px;font-size:11px;border-radius:5px}
+.bsm{padding:5px 12px;font-size:12px}
+table.dt{width:100%;border-collapse:collapse;font-size:13px}
+.dt th{background:var(--g50);padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--g200)}
+.dt td{padding:11px 14px;border-bottom:1px solid var(--g100);vertical-align:middle}
+.dt tr:hover td{background:var(--g50)}
+.dt tr:last-child td{border-bottom:none}
+.bg{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700}
+.bg-g{background:var(--success-bg);color:var(--success)}
+.bg-b{background:var(--primary-bg);color:var(--primary)}
+.bg-o{background:var(--warn-bg);color:var(--warn)}
+.bg-r{background:var(--danger-bg);color:var(--danger)}
+.bg-gr{background:var(--g100);color:var(--g500)}
+.bg-p{background:#f3e8ff;color:#7e22ce}
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.sc{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:16px}
+.scl{font-size:11px;font-weight:600;color:var(--g500);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.scv{font-size:22px;font-weight:800;line-height:1.2}
+.scv-b{color:var(--primary)}
+.scv-g{color:var(--success)}
+.scv-o{color:var(--warn)}
+.scv-r{color:var(--danger)}
+.dz{border:2px dashed var(--g300);border-radius:var(--rl);padding:40px 24px;text-align:center;cursor:pointer;background:var(--g50);transition:.2s}
+.dz:hover,.dz.dg{border-color:var(--primary-l);background:var(--primary-bg)}
+.dzi{font-size:40px;margin-bottom:12px;opacity:.6}
+.dzt{font-size:15px;font-weight:600;margin-bottom:4px}
+.dzh{font-size:12.5px;color:var(--g500)}
+.mo{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);display:none;z-index:1000;overflow-y:auto;padding:32px 16px}
+.mo.open{display:block}
+.md{background:#fff;border-radius:14px;max-width:960px;margin:0 auto;box-shadow:var(--shl);animation:fade .25s}
+.md.sm{max-width:480px}
+.md-h{padding:20px 24px;border-bottom:1px solid var(--g200);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;border-radius:14px 14px 0 0;z-index:10}
+.md-t{font-size:18px;font-weight:700}
+.md-x{background:none;border:none;font-size:24px;cursor:pointer;color:var(--g500);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.md-x:hover{background:var(--g100);color:var(--g900)}
+.md-b{padding:24px}
+.res{background:linear-gradient(135deg,var(--primary-bg),#f0f9ff);border:1px solid #bfdbfe;border-radius:var(--rl);padding:20px;margin-top:20px}
+.rr{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13.5px;border-bottom:1px dashed rgba(191,219,254,.5)}
+.rr:last-child{border-bottom:none}
+.rr.t{border-top:2px solid var(--primary-l);margin-top:8px;padding-top:12px;font-size:17px;font-weight:800;color:var(--primary-d)}
+.rl{color:var(--g700)}
+.rv{font-weight:700;font-family:var(--m)}
+.ll{display:flex;flex-direction:column;gap:10px}
+.li{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);text-decoration:none;color:inherit;transition:.15s}
+.li:hover{border-color:var(--primary-l);background:var(--primary-bg);box-shadow:var(--sh)}
+.li-i{font-size:20px;flex-shrink:0;margin-top:1px}
+.li-t{font-weight:600;font-size:13.5px;color:var(--primary-d)}
+.li-d{font-size:12px;color:var(--g500);margin-top:2px}
+.li-n{font-family:var(--m);font-size:11.5px;color:var(--g500)}
+.cc{padding:14px 16px;border-radius:var(--r);font-size:13px;margin-top:12px}
+.cc-ok{background:var(--success-bg);border:1px solid #a7f3d0;color:#065f46}
+.cc-w{background:var(--warn-bg);border:1px solid #fde68a;color:#92400e}
+.tm{text-align:center;color:var(--g500);padding:40px 20px;font-style:italic;font-size:13px}
+.tmi{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--g50);border-radius:6px;margin-bottom:6px;font-size:13px}
+.tmu{color:var(--g500)}.tsm{font-size:12px}.tmn{font-family:var(--m)}
+.m8{margin-top:8px}.m16{margin-top:16px}.mb16{margin-bottom:16px}
+.fg{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+@media(max-width:768px){
+  .mn{padding:16px}.c{padding:16px}.ff{min-width:100%}.ffn{flex:1}
+  .sg{grid-template-columns:repeat(2,1fr)}
+  .hd-in{height:auto;padding:10px 0;flex-wrap:wrap}
+  .hd-br{font-size:13px}
+  .dt th,.dt td{padding:8px 10px}
+  .hd-ui{display:none}.um{right:12px;left:12px;min-width:0}
+  .auth-card{padding:28px 22px 20px}.mo{padding:12px}
+}
+@media(max-width:480px){
+  .hd-br .bsub,.hd-br .bs{display:none}.langs{display:none}
+}
+@media print{
+  .hd,.nav,.btn,.md-x,.langs,.um,.auth-ov{display:none!important}
+  .c{box-shadow:none;border:1px solid #ccc;break-inside:avoid}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-ov" class="auth-ov">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M9 12h6M9 16h6M9 8h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/>
+      </svg>
+      <div>
+        <div class="auth-brand-n">NEXUS ENGENEERING</div>
+        <div class="auth-brand-s" id="auth-brand-sub">Кадровий облік</div>
+      </div>
+    </div>
+    <h2 class="auth-t" id="auth-t">Вхід до системи</h2>
+    <p class="auth-h" id="auth-h">Введіть облікові дані</p>
+    <div class="auth-err" id="auth-err"></div>
+    <form id="auth-form" onsubmit="event.preventDefault();Auth.submit()">
+      <div class="auth-f"><label id="lbl-user">Ім'я користувача</label>
+        <input id="au" type="text" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
+      <div class="auth-f"><label id="lbl-pwd">Пароль</label>
+        <input id="ap" type="password" autocomplete="current-password">
+        <div class="pwd-s" id="pwd-s" style="display:none"><div class="pwd-sb" id="pwd-sb"></div></div></div>
+      <div class="auth-f" id="conf-f" style="display:none"><label id="lbl-conf">Підтвердіть пароль</label>
+        <input id="ac" type="password" autocomplete="new-password"></div>
+      <button type="submit" class="btn bp auth-sub" id="auth-btn"><span id="auth-btn-t">Увійти</span></button>
+    </form>
+    <div class="auth-foot">
+      <div class="auth-langs">
+        <button class="auth-lb" data-lang="uk">УКР</button>
+        <button class="auth-lb" data-lang="ru">РУС</button>
+        <button class="auth-lb" data-lang="tr">TÜR</button>
+      </div>
+      <div class="auth-v">NEXUS v3.2</div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header class="hd">
+    <div class="hd-in">
+      <div class="hd-br">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 12h6M9 16h6M9 8h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/>
+        </svg>
+        <span><b class="bn">NEXUS ENGENEERING</b><span class="bs">|</span><span class="bsub" id="brand-sub">Кадровий облік</span></span>
+      </div>
+      <div class="hd-r">
+        <div class="langs">
+          <button class="lb" data-lang="uk">УКР</button>
+          <button class="lb" data-lang="ru">РУС</button>
+          <button class="lb" data-lang="tr">TÜR</button>
+        </div>
+        <button class="hd-u" onclick="Auth.toggleMenu(event)">
+          <div class="hd-av" id="av">?</div>
+          <div class="hd-ui">
+            <div class="hd-un" id="hun">—</div>
+            <div class="hd-ur" id="hur">—</div>
+          </div>
+        </button>
+      </div>
+    </div>
+    <div class="um" id="um">
+      <div class="um-h"><div class="um-n" id="umn">—</div><div class="um-r" id="umr">—</div></div>
+      <button class="um-i" onclick="Auth.openChangePwd()">🔑 <span id="um-cp">Змінити пароль</span></button>
+      <button class="um-i dg" onclick="Auth.logout()">🚪 <span id="um-lo">Вийти</span></button>
+    </div>
+  </header>
+
+  <nav class="nav">
+    <div class="nav-in">
+      <button class="nb active" data-tab="dashboard">📊 <span id="nb-dash">Панель</span></button>
+      <button class="nb" data-tab="employees">👥 <span id="nb-emp">Співробітники</span></button>
+      <button class="nb" data-tab="import" data-role="edit">📂 <span id="nb-imp">Імпорт Excel</span></button>
+      <button class="nb" data-tab="calc">🧮 <span id="nb-calc">Розрахунок</span></button>
+      <button class="nb" data-tab="laws">⚖️ <span id="nb-laws">Законодавство</span></button>
+      <button class="nb" data-tab="settings" data-role="settings">⚙️ <span id="nb-set">Налаштування</span></button>
+    </div>
+  </nav>
+
+  <main class="mn">
+    <!-- DASHBOARD -->
+    <section id="tp-dashboard" class="tp active">
+      <div class="c">
+        <div class="ch"><div>
+          <div class="ct">📊 <span id="t-dash">Загальна статистика</span></div>
+          <div class="cs"><span id="t-dash-sub">Огляд станом на</span> <span id="dash-date"></span></div>
+        </div></div>
+        <div class="sg" id="stats"></div>
+      </div>
+      <div class="c">
+        <div class="ch"><div class="ct">📋 <span id="t-up">Найближчі відпустки</span></div></div>
+        <div id="upcoming"></div>
+      </div>
+    </section>
+
+    <!-- EMPLOYEES -->
+    <section id="tp-employees" class="tp">
+      <div class="c" data-role="edit">
+        <div class="ch"><div class="ct">➕ <span id="t-add">Додати співробітника</span></div></div>
+        <div class="fr">
+          <div class="ff" style="flex:2"><label><span id="l-name">ПІБ</span> <span class="rq">*</span></label>
+            <input id="en" placeholder="Прізвище Ім'я По батькові"></div>
+          <div class="ff"><label id="l-pos">Посада</label><input id="ep" placeholder="Менеджер"></div>
+        </div>
+        <div class="fr">
+          <div class="ff"><label><span id="l-hire">Дата прийняття</span> <span class="rq">*</span></label>
+            <input type="date" id="eh"></div>
+          <div class="ff"><label id="l-birth">Дата народження</label><input type="date" id="eb"></div>
+          <div class="ff"><label id="l-cat">Категорія</label>
+            <select id="ec">
+              <option value="standard" id="c1">Звичайна (24 к.д.)</option>
+              <option value="disabled_1_2" id="c2">Інвалідність I–II (30 к.д.)</option>
+              <option value="disabled_3" id="c3">Інвалідність III (26 к.д.)</option>
+              <option value="minor" id="c4">Неповнолітній (31 к.д.)</option>
+              <option value="teacher" id="c5">Педагог (56 к.д.)</option>
+            </select></div>
+          <div class="ff ffn"><label id="l-leave">Відпустка (к.д.)</label>
+            <input type="number" id="el" value="24" min="1" max="60"></div>
+        </div>
+        <div class="fg m16">
+          <button class="btn bp" onclick="App.addEmployee()" id="btn-add">Додати</button>
+          <button class="btn bs" onclick="App.loadDemo()" id="btn-demo">Демо-дані</button>
+        </div>
+      </div>
+      <div class="c">
+        <div class="ch">
+          <div class="ct">👥 <span id="t-list">Список співробітників</span></div>
+          <div class="fg">
+            <input id="search" placeholder="Пошук..." style="width:200px" oninput="App.filterEmp()">
+            <span class="bg bg-b" id="emp-count">0</span>
+          </div>
+        </div>
+        <div id="emp-list"></div>
+      </div>
+    </section>
+
+    <!-- IMPORT -->
+    <section id="tp-import" class="tp">
+      <div class="c">
+        <div class="ch"><div>
+          <div class="ct">📂 <span id="t-imp">Імпорт персоналу з Excel</span></div>
+          <div class="cs" id="t-imp-sub">Підтримуються .xlsx, .xls, .csv</div>
+        </div></div>
+        <div class="dz" id="dz">
+          <div class="dzi">📂</div>
+          <div class="dzt" id="t-dz">Перетягніть Excel-файл сюди</div>
+          <div class="dzh" id="t-dzh">або натисніть, щоб вибрати</div>
+          <input type="file" id="xls-in" accept=".xlsx,.xls,.csv" style="display:none">
+        </div>
+        <div class="m16">
+          <div class="tsm tmu mb16" id="t-cols">Колонки: ПІБ, Посада, Дата прийняття, Дата народження, Тривалість, Категорія.</div>
+          <button class="btn bs bsm" onclick="App.downloadTemplate()" id="t-tpl">📥 Шаблон Excel</button>
+        </div>
+        <div id="imp-status"></div>
+        <div id="xls-preview"></div>
+      </div>
+      <div class="c">
+        <div class="ch"><div class="ct">📤 <span id="t-exp">Експорт даних</span></div></div>
+        <div class="fg">
+          <button class="btn bs" onclick="App.exportExcel()" id="t-exx">📊 Excel</button>
+          <button class="btn bs" onclick="App.exportJSON()" id="t-exj">💾 JSON</button>
+          <button class="btn bs" onclick="document.getElementById('json-in').click()" id="t-inj">📥 Імпорт JSON</button>
+          <input type="file" id="json-in" accept=".json" style="display:none" onchange="App.importJSON(event)">
+        </div>
+      </div>
+    </section>
+
+    <!-- CALCULATOR -->
+    <section id="tp-calc" class="tp">
+      <div class="c">
+        <div class="ch"><div>
+          <div class="ct">🧮 <span id="t-calc">Калькулятор відпускних</span></div>
+          <div class="cs" id="t-calc-sub">Розрахунок за Порядком № 100</div>
+        </div></div>
+        <div class="fr">
+          <div class="ff"><label id="l-cEmp">Співробітник</label><select id="ce"></select></div>
+          <div class="ff"><label id="l-cStart">Дата початку</label><input type="date" id="cs"></div>
+          <div class="ff ffn"><label id="l-cDays">Днів</label><input type="number" id="cd" value="14" min="1" max="60"></div>
+          <div class="ff ffn"><label>&nbsp;</label>
+            <button class="btn bp" onclick="App.runCalc()" id="btn-calc">Розрахувати</button></div>
+        </div>
+        <div id="calc-out"></div>
+      </div>
+      <div class="c">
+        <div class="ch"><div class="ct">📅 <span id="t-comp">Компенсація при звільненні</span></div></div>
+        <div class="fr">
+          <div class="ff"><label id="l-mEmp">Співробітник</label><select id="me"></select></div>
+          <div class="ff"><label id="l-mDate">Дата звільнення</label><input type="date" id="md"></div>
+          <div class="ff ffn"><label>&nbsp;</label>
+            <button class="btn bp" onclick="App.runComp()" id="btn-comp">Розрахувати</button></div>
+        </div>
+        <div id="comp-out"></div>
+      </div>
+    </section>
+
+    <!-- LAWS -->
+    <section id="tp-laws" class="tp">
+      <div class="c">
+        <div class="ch">
+          <div><div class="ct">⚖️ <span id="t-laws">Офіційні джерела</span></div>
+            <div class="cs" id="t-laws-sub">Портал Верховної Ради України</div></div>
+          <button class="btn bs bsm" onclick="App.checkAll()" id="btn-check">🔍 Перевірити</button>
+        </div>
+        <div class="ll" id="laws-list"></div>
+      </div>
+      <div class="c">
+        <div class="ch"><div>
+          <div class="ct">📖 <span id="t-ref">Довідник норм</span></div>
+          <div class="cs" id="t-ref-sub">Ключові норми в розрахунках</div>
+        </div></div>
+        <table class="dt" id="norms-table">
+          <thead><tr><th id="th-n">Норма</th><th id="th-v">Значення</th><th id="th-b">Підстава</th></tr></thead>
+          <tbody id="norms-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="tp-settings" class="tp">
+      <div class="c">
+        <div class="ch"><div>
+          <div class="ct">👤 <span id="t-users">Користувачі системи</span></div>
+          <div class="cs" id="t-users-sub">Керування доступом</div>
+        </div></div>
+        <div id="users-list"></div>
+        <div class="m16" id="add-user-bl">
+          <button class="btn bs" onclick="Auth.openAddUser()" id="btn-add-u">➕ Додати користувача</button>
+        </div>
+      </div>
+      <div class="c">
+        <div class="ch"><div class="ct">⚙️ <span id="t-set">Загальні налаштування</span></div></div>
+        <div class="fr">
+          <div class="ff ffn"><label id="l-base">Базова відпустка (к.д.)</label>
+            <input type="number" id="set-base" value="24" min="1"></div>
+          <div class="ff"><label id="l-mode">Режим свят</label>
+            <select id="set-hol">
+              <option value="0" id="m1">Воєнний стан — святкові не виключаються</option>
+              <option value="1" id="m2">Мирний час — святкові виключаються</option>
+            </select></div>
+          <div class="ff ffn"><label>&nbsp;</label>
+            <button class="btn bp" onclick="App.saveSettings()" id="btn-save">Зберегти</button></div>
+        </div>
+        <div class="tsm tmu m8" id="t-mil">Під час воєнного стану ст. 73 КЗпП не застосовується.</div>
+      </div>
+      <div class="c">
+        <div class="ch"><div class="ct">🎉 <span id="t-hol">Святкові дні</span></div></div>
+        <div class="tsm tmu mb16" id="t-hol-sub">Формат MM-DD. Використовується лише в мирний час.</div>
+        <div id="hol-list"></div>
+        <div class="fr m16" style="align-items:flex-end">
+          <div class="ff ffn"><label id="l-hAdd">Додати (MM-DD)</label>
+            <input id="new-hol" placeholder="01-01" maxlength="5"></div>
+          <button class="btn bs" onclick="App.addHoliday()" id="btn-hAdd">Додати</button>
+        </div>
+      </div>
+      <div class="c">
+        <div class="ch"><div class="ct">💾 <span id="t-data">Управління даними</span></div></div>
+        <div class="fg">
+          <button class="btn bs" onclick="App.exportJSON()" id="t-dEx">Експорт JSON</button>
+          <button class="btn bs" onclick="document.getElementById('json-in2').click()" id="t-dIm">Імпорт JSON</button>
+          <input type="file" id="json-in2" accept=".json" style="display:none" onchange="App.importJSON(event)">
+          <button class="btn bd" onclick="App.clearAll()" id="t-clear">🗑️ Очистити все</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- MODALS -->
+<div class="mo" id="emp-modal" onclick="if(event.target===this)App.closeModal()">
+  <div class="md"><div class="md-h"><div class="md-t" id="emp-mt"></div>
+    <button class="md-x" onclick="App.closeModal()">×</button></div>
+    <div class="md-b" id="emp-mb"></div></div>
+</div>
+<div class="mo" id="user-modal" onclick="if(event.target===this)Auth.closeUserModal()">
+  <div class="md sm"><div class="md-h"><div class="md-t" id="user-mt"></div>
+    <button class="md-x" onclick="Auth.closeUserModal()">×</button></div>
+    <div class="md-b" id="user-mb"></div></div>
+</div>
+
+<script>
+/* ============ I18N ============ */
+const L={
+uk:{brand:'Кадровий облік',lang:'Українська',
+login:'Вхід до системи',loginH:'Введіть облікові дані',setup:'Перше налаштування',setupH:'Створіть обліковий запис адміністратора',
+user:'Ім\'я користувача',pwd:'Пароль',pwdC:'Підтвердіть пароль',loginB:'Увійти',setupB:'Створити адміністратора',
+logout:'Вийти',chPwd:'Змінити пароль',users:'Користувачі',usersH:'Керування доступом',addU:'Додати користувача',
+role:'Роль',roleA:'Адміністратор',roleM:'Менеджер',roleV:'Перегляд',you:'ви',
+errInv:'Невірне ім\'я або пароль',errShort:'Мінімум 6 символів',errMatch:'Паролі не збігаються',
+errExist:'Користувач існує',errFill:'Заповніть поля',errUL:'Логін мінімум 3 символи',
+errUC:'Тільки латиниця, цифри, _ . -',errLastA:'Не можна видалити останнього адміна',
+errSelf:'Не можна видалити себе',errCur:'Невірний поточний пароль',
+okPwd:'Пароль змінено',okAddU:'Користувача додано',okDelU:'Користувача видалено',
+confDelU:'Видалити "{name}"?',expired:'Сесія завершена',denied:'Недостатньо прав',
+navDash:'Панель',navEmp:'Співробітники',navImp:'Імпорт Excel',navCalc:'Розрахунок',navLaws:'Законодавство',navSet:'Налаштування',
+dashT:'Загальна статистика',dashS:'Огляд станом на',upc:'Найближчі відпустки',
+sEmp:'Всього',sEarn:'Зароблено днів',sUsed:'Використано',sLeft:'Залишок',sLeave:'У відпустці',
+noUpc:'Немає запланованих відпусток',
+addT:'Додати співробітника',name:'ПІБ',pos:'Посада',hire:'Дата прийняття',birth:'Дата народження',
+cat:'Категорія',leave:'Відпустка (к.д.)',addB:'Додати',demoB:'Демо-дані',listT:'Список співробітників',
+noEmp:'Співробітників немає',noFind:'Нічого не знайдено',
+c1:'Звичайна (24 к.д.)',c2:'Інвалідність I–II (30 к.д.)',c3:'Інвалідність III (26 к.д.)',c4:'Неповнолітній (31 к.д.)',c5:'Педагог (56 к.д.)',
+tName:'ПІБ',tPos:'Посада',tHire:'Прийнято',tLeave:'Відпустка',tEarn:'Зароблено',tUsed:'Використано',
+tLeft:'Залишок',tStat:'Статус',tCard:'Картка',tEmp:'Співробітник',tStart:'Початок',tEnd:'Кінець',tDays:'Днів',
+stOk:'ОК',stAcc:'Накопичення',stViol:'⚠ Порушення',
+impT:'Імпорт персоналу з Excel',impS:'Формати .xlsx, .xls, .csv',dropT:'Перетягніть Excel-файл',
+dropH:'або натисніть для вибору',cols:'Колонки: ПІБ, Посада, Дата прийняття, Дата народження, Відпустка, Категорія.',
+tpl:'📥 Шаблон Excel',expT:'Експорт даних',expX:'📊 Excel',expJ:'💾 JSON',impJ:'📥 Імпорт JSON',
+reading:'⏳ Читання...',imported:'✅ Імпортовано: {n}',skip:'Пропущено: {n}.',warns:'⚠️ Попередження:',
+impErr:'❌ Помилка: {msg}',impReadErr:'Не вдалося прочитати',preview:'Предпросмотр:',
+rowErr:'Рядок {n}: дата «{val}»',fileEmpty:'Файл порожній',noCols:'Не знайдено колонки ПІБ',
+noValid:'Немає коректних рядків.',
+calcT:'Калькулятор відпускних',calcS:'Порядок № 100',cEmp:'Співробітник',cStart:'Дата початку',
+cDays:'Днів',cB:'Розрахувати',cSel:'— виберіть —',cPer:'Розрахунковий період',cTotal:'Сума виплат',
+cCal:'Календарних днів',cHol:'Святкових днів',cCalc:'Днів для розрахунку',cAvg:'Середньоденна',
+cPay:'Відпускні за {n} к.д.',cur:'грн',
+compT:'Компенсація при звільненні',mDate:'Дата звільнення',mEarn:'Зароблено днів',mUsed:'Використано',
+mDays:'Днів для компенсації',mComp:'Компенсація',
+lawsT:'Офіційні джерела',lawsS:'Портал ВРУ',checkB:'🔍 Перевірити',refT:'Довідник норм',
+refS:'Ключові норми',nN:'Норма',nV:'Значення',nB:'Підстава',
+l504:'Закон «Про відпустки»',l504d:'Всі види відпусток',lkz:'КЗпП України',lkzd:'Загальні норми',
+lp100:'Порядок № 100',lp100d:'Середня зарплата',l2136:'Воєнний стан',l2136d:'Спецправила',
+l2352:'Оптимізація',l2352d:'Зміни 2022–2026',lportal:'Портал ВРУ',lportald:'CSV, JSON, XML',
+n1:'Мінімальна щорічна',n2:'Інвалідність I–II',n3:'Інвалідність III',n4:'Неповнолітні',
+n5:'Педагоги',n6:'Максимальна',n7:'Мінімальна безперервна',n8:'Перший рік',n8v:'після 6 міс.',
+n9:'Розрахунковий період',n9v:'12 міс.',n10:'Без ЗП у стажі',n10v:'до 15 к.д./рік',
+b6:'ст. 6 Закону № 504/96-ВР',b10:'ст. 10',b12:'ст. 12',b25:'ст. 25–26',bp100:'п. 2 Порядку № 100',
+setT:'Загальні налаштування',setBase:'Базова відпустка (к.д.)',setMode:'Режим свят',
+setM1:'Воєнний стан — святкові не виключаються',setM2:'Мирний час — святкові виключаються',
+setSave:'Зберегти',setMil:'Під час воєнного стану ст. 73 КЗпП не застосовується.',
+holT:'Святкові дні',holS:'Формат MM-DD. Лише для мирного часу.',holAdd:'Додати (MM-DD)',holB:'Додати',
+dataT:'Управління даними',dataClear:'🗑️ Очистити все',
+modal:'Картка співробітника',mHired:'Прийнято',mLeave:'Відпустка',mEarn:'Зароблено',mUsed:'Використано',
+mLeft:'Залишок',mPerY:'к.д./рік',mOk:'✅ Відповідає нормам',mViol:'⚠ Порушення:',
+mUsedL:'📅 Використані відпустки',mPay:'💰 Виплати',mYear:'Рік',mMonth:'Місяць',mAmt:'Сума, грн',
+mPerT:'📋 Не враховуються до стажу',mPerH:'Без ЗП: 15 к.д./рік. Догляд до 3 років — не враховується.',
+mUnp:'Без ЗП',mPar:'Догляд за дитиною',mType:'Тип',mUnp2:'Без збереження ЗП',mPar2:'Догляд за дитиною',
+mNoRec:'Немає записів',mNoPay:'Немає виплат',mNoPer:'Немає періодів',mAdd:'Додати',
+aFill:'Заповніть ПІБ та дату',aDel:'Видалити "{name}"?',aDemo:'Демо завантажено',aSave:'Збережено',
+aImp:'Імпортовано',aClear:'Очищено',aConfClear:'Видалити ВСІ дані?',aNoExp:'Немає даних',
+aFmt:'Формат: MM-DD',aErrSave:'Помилка збереження',aBadFile:'Невірний файл',
+aReadErr:'Помилка читання: ',aViol:'Порушення:\n\n',aAllOk:'✅ Всі відповідають нормам',
+aFillAll:'Заповніть поля',aFillYMA:'Заповніть рік/місяць/суму',aDates:'Вкажіть дати',
+comp_std:'Тривалість {n} к.д. < 24',comp_12:'Мінімум 30 к.д. (ст. 6)',
+comp_3:'Мінімум 26 к.д. (ст. 6)',comp_min:'Мінімум 31 к.д.',comp_tch:'Мінімум 56 к.д.',
+plEmp:'{n} співробітників'
+},
+ru:{brand:'Кадровый учёт',lang:'Русский',
+login:'Вход в систему',loginH:'Введите учётные данные',setup:'Первоначальная настройка',setupH:'Создайте учётную запись администратора',
+user:'Имя пользователя',pwd:'Пароль',pwdC:'Подтвердите пароль',loginB:'Войти',setupB:'Создать администратора',
+logout:'Выйти',chPwd:'Изменить пароль',users:'Пользователи',usersH:'Управление доступом',addU:'Добавить пользователя',
+role:'Роль',roleA:'Администратор',roleM:'Менеджер',roleV:'Просмотр',you:'вы',
+errInv:'Неверное имя или пароль',errShort:'Минимум 6 символов',errMatch:'Пароли не совпадают',
+errExist:'Пользователь существует',errFill:'Заполните поля',errUL:'Логин минимум 3 символа',
+errUC:'Только латиница, цифры, _ . -',errLastA:'Нельзя удалить последнего админа',
+errSelf:'Нельзя удалить себя',errCur:'Неверный текущий пароль',
+okPwd:'Пароль изменён',okAddU:'Пользователь добавлен',okDelU:'Пользователь удалён',
+confDelU:'Удалить "{name}"?',expired:'Сессия завершена',denied:'Недостаточно прав',
+navDash:'Панель',navEmp:'Сотрудники',navImp:'Импорт Excel',navCalc:'Расчёт',navLaws:'Законодательство',navSet:'Настройки',
+dashT:'Общая статистика',dashS:'Обзор на',upc:'Ближайшие отпуска',
+sEmp:'Всего',sEarn:'Заработано дней',sUsed:'Использовано',sLeft:'Остаток',sLeave:'В отпуске',
+noUpc:'Нет запланированных отпусков',
+addT:'Добавить сотрудника',name:'ФИО',pos:'Должность',hire:'Дата приёма',birth:'Дата рождения',
+cat:'Категория',leave:'Отпуск (к.д.)',addB:'Добавить',demoB:'Демо-данные',listT:'Список сотрудников',
+noEmp:'Сотрудников нет',noFind:'Ничего не найдено',
+c1:'Обычная (24)',c2:'Инвалид I–II (30)',c3:'Инвалид III (26)',c4:'Несовершеннолетний (31)',c5:'Педагог (56)',
+tName:'ФИО',tPos:'Должность',tHire:'Принят',tLeave:'Отпуск',tEarn:'Заработано',tUsed:'Использовано',
+tLeft:'Остаток',tStat:'Статус',tCard:'Карточка',tEmp:'Сотрудник',tStart:'Начало',tEnd:'Конец',tDays:'Дней',
+stOk:'ОК',stAcc:'Накопление',stViol:'⚠ Нарушение',
+impT:'Импорт персонала',impS:'.xlsx, .xls, .csv',dropT:'Перетащите файл',
+dropH:'или нажмите для выбора',cols:'Колонки: ФИО, Должность, Дата, Рождение, Отпуск, Категория.',
+tpl:'📥 Шаблон',expT:'Экспорт данных',expX:'📊 Excel',expJ:'💾 JSON',impJ:'📥 Импорт JSON',
+reading:'⏳ Чтение...',imported:'✅ Импортировано: {n}',skip:'Пропущено: {n}.',warns:'⚠️ Предупреждения:',
+impErr:'❌ Ошибка: {msg}',impReadErr:'Ошибка чтения',preview:'Предпросмотр:',
+rowErr:'Строка {n}: «{val}»',fileEmpty:'Пустой файл',noCols:'Не найдены колонки ФИО',
+noValid:'Нет валидных строк.',
+calcT:'Калькулятор отпускных',calcS:'Порядок № 100',cEmp:'Сотрудник',cStart:'Дата начала',
+cDays:'Дней',cB:'Рассчитать',cSel:'— выберите —',cPer:'Расчётный период',cTotal:'Выплаты',
+cCal:'Календарных дней',cHol:'Праздничных',cCalc:'Дней для расчёта',cAvg:'Среднедневная',
+cPay:'Отпускные за {n} к.д.',cur:'грн',
+compT:'Компенсация при увольнении',mDate:'Дата увольнения',mEarn:'Заработано',mUsed:'Использовано',
+mDays:'Дней для компенсации',mComp:'Компенсация',
+lawsT:'Официальные источники',lawsS:'Портал ВРУ',checkB:'🔍 Проверить',refT:'Справочник норм',
+refS:'Ключевые нормы',nN:'Норма',nV:'Значение',nB:'Основание',
+l504:'Закон «Об отпусках»',l504d:'Все виды отпусков',lkz:'КЗоТ Украины',lkzd:'Общие нормы',
+lp100:'Порядок № 100',lp100d:'Средняя зарплата',l2136:'Военное положение',l2136d:'Спецправила',
+l2352:'Оптимизация',l2352d:'Изменения 2022–2026',lportal:'Портал ВРУ',lportald:'CSV, JSON, XML',
+n1:'Мин. ежегодный',n2:'Инвалиды I–II',n3:'Инвалиды III',n4:'Несовершеннолетние',
+n5:'Педагоги',n6:'Максимальная',n7:'Мин. непрерывная',n8:'Первый год',n8v:'после 6 мес.',
+n9:'Расчётный период',n9v:'12 мес.',n10:'Без ЗП в стаже',n10v:'до 15 к.д./год',
+b6:'ст. 6 Закона № 504',b10:'ст. 10',b12:'ст. 12',b25:'ст. 25–26',bp100:'п. 2 Порядка № 100',
+setT:'Общие настройки',setBase:'Базовая (к.д.)',setMode:'Режим праздников',
+setM1:'Военное положение',setM2:'Мирное время',
+setSave:'Сохранить',setMil:'Ст. 73 КЗоТ не применяется.',
+holT:'Праздничные дни',holS:'Формат MM-DD.',holAdd:'Добавить (MM-DD)',holB:'Добавить',
+dataT:'Управление данными',dataClear:'🗑️ Очистить',
+modal:'Карточка',mHired:'Принят',mLeave:'Отпуск',mEarn:'Заработано',mUsed:'Использовано',
+mLeft:'Остаток',mPerY:'к.д./год',mOk:'✅ Соответствует',mViol:'⚠ Нарушения:',
+mUsedL:'📅 Использованные отпуска',mPay:'💰 Выплаты',mYear:'Год',mMonth:'Месяц',mAmt:'Сумма',
+mPerT:'📋 Периоды не в стаж',mPerH:'До 15 к.д./год. Уход до 3 лет — не учитывается.',
+mUnp:'Без ЗП',mPar:'Уход за ребёнком',mType:'Тип',mUnp2:'Без ЗП',mPar2:'Уход за ребёнком',
+mNoRec:'Нет записей',mNoPay:'Нет выплат',mNoPer:'Нет периодов',mAdd:'Добавить',
+aFill:'Заполните ФИО и дату',aDel:'Удалить "{name}"?',aDemo:'Демо загружено',aSave:'Сохранено',
+aImp:'Импортировано',aClear:'Очищено',aConfClear:'Удалить ВСЕ данные?',aNoExp:'Нет данных',
+aFmt:'Формат: MM-DD',aErrSave:'Ошибка сохранения',aBadFile:'Неверный файл',
+aReadErr:'Ошибка: ',aViol:'Нарушения:\n\n',aAllOk:'✅ Все соответствуют',
+aFillAll:'Заполните',aFillYMA:'Год/месяц/сумма',aDates:'Укажите даты',
+comp_std:'{n} к.д. < 24',comp_12:'Минимум 30',comp_3:'Минимум 26',comp_min:'Минимум 31',comp_tch:'Минимум 56',
+plEmp:'{n} сотрудников'
+},
+tr:{brand:'Personel Yönetimi',lang:'Türkçe',
+login:'Sisteme Giriş',loginH:'Bilgilerinizi girin',setup:'İlk Kurulum',setupH:'Yönetici hesabı oluşturun',
+user:'Kullanıcı Adı',pwd:'Şifre',pwdC:'Şifreyi Onayla',loginB:'Giriş Yap',setupB:'Yönetici Oluştur',
+logout:'Çıkış',chPwd:'Şifre Değiştir',users:'Kullanıcılar',usersH:'Erişim yönetimi',addU:'Kullanıcı Ekle',
+role:'Rol',roleA:'Yönetici',roleM:'Müdür',roleV:'İzleyici',you:'siz',
+errInv:'Geçersiz bilgiler',errShort:'En az 6 karakter',errMatch:'Şifreler eşleşmiyor',
+errExist:'Kullanıcı var',errFill:'Doldurun',errUL:'En az 3 karakter',
+errUC:'Sadece latin, rakam, _ . -',errLastA:'Son yönetici silinemez',
+errSelf:'Kendinizi silemezsiniz',errCur:'Mevcut şifre yanlış',
+okPwd:'Şifre değişti',okAddU:'Eklendi',okDelU:'Silindi',
+confDelU:'"{name}" silinsin mi?',expired:'Oturum sona erdi',denied:'Yetki yok',
+navDash:'Panel',navEmp:'Çalışanlar',navImp:'Excel',navCalc:'Hesaplama',navLaws:'Mevzuat',navSet:'Ayarlar',
+dashT:'İstatistikler',dashS:'Özet:',upc:'Yaklaşan İzinler',
+sEmp:'Toplam',sEarn:'Kazanılan',sUsed:'Kullanılan',sLeft:'Kalan',sLeave:'İzinde',
+noUpc:'İzin yok',
+addT:'Çalışan Ekle',name:'Ad Soyad',pos:'Pozisyon',hire:'İşe Alınma',birth:'Doğum',
+cat:'Kategori',leave:'İzin',addB:'Ekle',demoB:'Demo',listT:'Çalışanlar',
+noEmp:'Çalışan yok',noFind:'Bulunamadı',
+c1:'Standart (24)',c2:'Engelli I–II (30)',c3:'Engelli III (26)',c4:'Reşit Olmayan (31)',c5:'Eğitim (56)',
+tName:'Ad',tPos:'Pozisyon',tHire:'İşe Alındı',tLeave:'İzin',tEarn:'Kazanıldı',tUsed:'Kullanıldı',
+tLeft:'Kalan',tStat:'Durum',tCard:'Kart',tEmp:'Çalışan',tStart:'Başlangıç',tEnd:'Bitiş',tDays:'Gün',
+stOk:'TAMAM',stAcc:'Birikim',stViol:'⚠ İhlal',
+impT:'Personel İçe Aktar',impS:'.xlsx, .xls, .csv',dropT:'Dosyayı sürükleyin',
+dropH:'veya tıklayın',cols:'Ad, Pozisyon, İşe Alınma, Doğum, İzin, Kategori.',
+tpl:'📥 Şablon',expT:'Dışa Aktar',expX:'📊 Excel',expJ:'💾 JSON',impJ:'📥 JSON',
+reading:'⏳ Okunuyor...',imported:'✅ {n} aktarıldı',skip:'Atlandı: {n}.',warns:'⚠️ Uyarılar:',
+impErr:'❌ Hata: {msg}',impReadErr:'Okunamadı',preview:'Önizleme:',
+rowErr:'Satır {n}: «{val}»',fileEmpty:'Boş',noCols:'Sütun yok',
+noValid:'Geçerli satır yok.',
+calcT:'İzin Ücreti',calcS:'Yönetmelik 100',cEmp:'Çalışan',cStart:'Başlangıç',
+cDays:'Gün',cB:'Hesapla',cSel:'— seçin —',cPer:'Dönem',cTotal:'Ödemeler',
+cCal:'Takvim günü',cHol:'Tatil günü',cCalc:'Hesap günü',cAvg:'Ortalama',
+cPay:'{n} gün izin ücreti',cur:'UAH',
+compT:'Tazminat',mDate:'Çıkış tarihi',mEarn:'Kazanıldı',mUsed:'Kullanıldı',
+mDays:'Tazminat günü',mComp:'Tazminat',
+lawsT:'Kaynaklar',lawsS:'VRU portalı',checkB:'🔍 Kontrol',refT:'Normlar',
+refS:'Temel normlar',nN:'Norm',nV:'Değer',nB:'Dayanak',
+l504:'İzinler Kanunu',l504d:'Temel belge',lkz:'İş Kanunu',lkzd:'Genel',
+lp100:'Yönetmelik 100',lp100d:'Ortalama ücret',l2136:'Sıkıyönetim',l2136d:'Özel kurallar',
+l2352:'Optimizasyon',l2352d:'2022–2026',lportal:'Açık Veri',lportald:'CSV, JSON, XML',
+n1:'Yıllık izin',n2:'Engelli I–II',n3:'Engelli III',n4:'Reşit olmayan',
+n5:'Eğitim',n6:'Maksimum',n7:'Min. kesintisiz',n8:'İlk yıl',n8v:'6 ay sonra',
+n9:'Dönem',n9v:'12 ay',n10:'Ücretsiz izin',n10v:'15 gün/yıl',
+b6:'md. 6 (504/96)',b10:'md. 10',b12:'md. 12',b25:'md. 25–26',bp100:'md. 2 (100)',
+setT:'Ayarlar',setBase:'Temel (gün)',setMode:'Tatil modu',
+setM1:'Sıkıyönetim',setM2:'Barış',
+setSave:'Kaydet',setMil:'md. 73 uygulanmaz.',
+holT:'Tatiller',holS:'Format: MM-DD.',holAdd:'Ekle (MM-DD)',holB:'Ekle',
+dataT:'Veri',dataClear:'🗑️ Temizle',
+modal:'Kart',mHired:'İşe Alındı',mLeave:'İzin',mEarn:'Kazanıldı',mUsed:'Kullanıldı',
+mLeft:'Kalan',mPerY:'gün/yıl',mOk:'✅ Uygun',mViol:'⚠ İhlaller:',
+mUsedL:'📅 Kullanılan İzinler',mPay:'💰 Ödemeler',mYear:'Yıl',mMonth:'Ay',mAmt:'Tutar',
+mPerT:'📋 Sayılmayan Dönemler',mPerH:'15 gün/yıl. Bakım 3 yaş — sayılmaz.',
+mUnp:'Ücretsiz',mPar:'Bakım',mType:'Tür',mUnp2:'Ücretsiz',mPar2:'Bakım',
+mNoRec:'Kayıt yok',mNoPay:'Ödeme yok',mNoPer:'Dönem yok',mAdd:'Ekle',
+aFill:'Ad ve tarihi doldurun',aDel:'"{name}" silinsin mi?',aDemo:'Demo yüklendi',aSave:'Kaydedildi',
+aImp:'İçe aktarıldı',aClear:'Temizlendi',aConfClear:'TÜM veriler silinsin mi?',aNoExp:'Veri yok',
+aFmt:'Format: MM-DD',aErrSave:'Kayıt hatası',aBadFile:'Geçersiz',
+aReadErr:'Hata: ',aViol:'İhlaller:\n\n',aAllOk:'✅ Tümü uygun',
+aFillAll:'Doldurun',aFillYMA:'Yıl/ay/tutar',aDates:'Tarihleri girin',
+comp_std:'{n} < 24',comp_12:'Min. 30',comp_3:'Min. 26',comp_min:'Min. 31',comp_tch:'Min. 56',
+plEmp:'{n} çalışan'
+}};
+
+const LK='nexus_lang_v1';
+let CL=localStorage.getItem(LK)||'uk';
+function t(k,p){const d=L[CL]||L.uk;let s=d[k]!==undefined?d[k]:(L.uk[k]||k);
+if(p)Object.keys(p).forEach(x=>{s=s.replace(new RegExp('\\{'+x+'\\}','g'),p[x])});return s}
+
+/* ============ UTILS ============ */
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+const tISO=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const fISO=s=>new Date(s+'T00:00:00');
+const today=()=>tISO(new Date());
+const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r};
+const fD=s=>{if(!s)return'—';const[y,m,d]=s.split('-');return`${d}.${m}.${y}`};
+const fN=n=>new Intl.NumberFormat(({uk:'uk-UA',ru:'ru-RU',tr:'tr-TR'})[CL]||'uk-UA',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0);
+function eachD(s,e,cb){let d=fISO(s);const end=fISO(e);let g=0;while(d<=end&&g++<50000){cb(tISO(d));d=addD(d,1)}}
+function cntD(s,e){const a=fISO(s),b=fISO(e);if(b<a)return 0;return Math.round((b-a)/86400000)+1}
+function pJ(s,f){try{return JSON.parse(s)||f}catch{return f}}
+
+/* ============ AUTH ============ */
+const Auth=(()=>{
+const UK='nexus_users_v1',SK='nexus_session_v1',TO=30*60*1000;
+let users=[],currentUser=null,timer=null,mode='login';
+
+function hp(pwd,salt){
+  const s=pwd+'::'+salt+'::nexus_v3';
+  let h1=0xdeadbeef,h2=0x41c6ce57;
+  for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);
+    h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677)}
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return(h1>>>0).toString(16).padStart(8,'0')+(h2>>>0).toString(16).padStart(8,'0')
+}
+function gs(){return uid()+uid()+Math.random().toString(36).slice(2)}
+function lu(){try{const r=localStorage.getItem(UK);if(r){const p=JSON.parse(r);if(Array.isArray(p))return p}}catch{}return[]}
+function su(){try{localStorage.setItem(UK,JSON.stringify(users))}catch{}}
+function lsess(){try{const r=localStorage.getItem(SK);return r?JSON.parse(r):null}catch{return null}}
+function ssess(s){try{localStorage.setItem(SK,JSON.stringify(s))}catch{}}
+function csess(){try{localStorage.removeItem(SK);sessionStorage.removeItem(SK)}catch{}if(timer){clearTimeout(timer);timer=null}}
+
+function touch(){if(!currentUser)return;ssess({userId:currentUser.id,expiresAt:Date.now()+TO});resetT()}
+function resetT(){if(timer)clearTimeout(timer);timer=setTimeout(()=>{if(currentUser){logout();showAuth(t('expired'))}},TO)}
+
+function getC(){return currentUser}
+function can(a){if(!currentUser)return false;if(currentUser.role==='admin')return true;
+  if(currentUser.role==='manager')return['read','edit'].includes(a);
+  if(currentUser.role==='viewer')return a==='read';return false}
+
+function init(){
+  users=lu();
+  if(!users.length){setMode('setup');showAuth();return false}
+  const s=lsess();
+  if(s&&s.expiresAt>Date.now()){const u=users.find(x=>x.id===s.userId);
+    if(u){currentUser=u;resetT();hideAuth();onLogin();return true}}
+  setMode('login');showAuth();return false
+}
+function showAuth(msg){$('#auth-ov').classList.remove('hidden');$('#app').classList.remove('vis');
+  if(msg)$('#auth-err').textContent=msg}
+function hideAuth(){$('#auth-ov').classList.add('hidden');$('#app').classList.add('vis');$('#auth-err').textContent=''}
+
+function setMode(m){
+  mode=m;
+  if(m==='setup'){$('#auth-t').textContent=t('setup');$('#auth-h').textContent=t('setupH');
+    $('#conf-f').style.display='flex';$('#auth-btn-t').textContent=t('setupB');$('#pwd-s').style.display='block'}
+  else{$('#auth-t').textContent=t('login');$('#auth-h').textContent=t('loginH');
+    $('#conf-f').style.display='none';$('#auth-btn-t').textContent=t('loginB');$('#pwd-s').style.display='none'}
+  $('#auth-err').textContent='';$('#au').value='';$('#ap').value='';$('#ac').value='';
+  setTimeout(()=>$('#au').focus(),50)
+}
+
+function refreshUI(){
+  if(!$('#auth-ov').classList.contains('hidden')){
+    const title=$('#auth-t').textContent;
+    const isSetup=title.includes('Перше')||title.includes('Первонач')||title.includes('İlk');
+    setMode(isSetup?'setup':'login')
+  }
+  renderUsers();updateHeader()
+}
+
+function vU(u){if(!u||u.length<3)return t('errUL');if(!/^[a-zA-Z0-9_\-\.]+$/.test(u))return t('errUC');return null}
+function vP(p){if(!p||p.length<6)return t('errShort');return null}
+
+function submit(){
+  const u=$('#au').value.trim(),p=$('#ap').value,c=$('#ac').value,e=$('#auth-err');
+  if(!u||!p){e.textContent=t('errFill');return}
+  if(mode==='setup'){
+    const ue=vU(u);if(ue){e.textContent=ue;return}
+    const pe=vP(p);if(pe){e.textContent=pe;return}
+    if(p!==c){e.textContent=t('errMatch');return}
+    if(users.some(x=>x.username.toLowerCase()===u.toLowerCase())){e.textContent=t('errExist');return}
+    const salt=gs(),hash=hp(p,salt);
+    const nu={id:uid(),username:u,fullName:u,role:'admin',salt,hash,createdAt:today()};
+    users.push(nu);su();currentUser=nu;
+    ssess({userId:nu.id,expiresAt:Date.now()+TO});resetT();hideAuth();onLogin();return
+  }
+  const user=users.find(x=>x.username.toLowerCase()===u.toLowerCase());
+  if(!user){e.textContent=t('errInv');return}
+  const hash=hp(p,user.salt);
+  if(hash!==user.hash){e.textContent=t('errInv');return}
+  currentUser=user;ssess({userId:user.id,expiresAt:Date.now()+TO});resetT();hideAuth();onLogin()
+}
+
+function onLogin(){updateHeader();renderUsers();if(window.App&&App.renderAll)App.renderAll();
+  $$('.nb').forEach((b,i)=>b.classList.toggle('active',i===0));
+  $$('.tp').forEach((p,i)=>p.classList.toggle('active',i===0))}
+
+function logout(){currentUser=null;csess();setMode(users.length?'login':'setup');showAuth();$('#um').classList.remove('open')}
+function toggleMenu(e){if(e)e.stopPropagation();$('#um').classList.toggle('open')}
+document.addEventListener('click',e=>{const m=$('#um');if(!m)return;
+  if(!m.contains(e.target)&&!e.target.closest('.hd-u'))m.classList.remove('open')});
+
+function updateHeader(){
+  if(!currentUser)return;
+  const i=(currentUser.fullName||currentUser.username).split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  $('#av').textContent=i;$('#hun').textContent=currentUser.fullName||currentUser.username;
+  $('#hur').textContent=t('role'+currentUser.role.charAt(0).toUpperCase()+currentUser.role.slice(1).replace('manager','M').replace('viewer','V').replace('admin','A'));
+  $('#umn').textContent=currentUser.fullName||currentUser.username;
+  $('#umr').textContent=t('role'+currentUser.role.charAt(0).toUpperCase()+currentUser.role.slice(1).replace('manager','M').replace('viewer','V').replace('admin','A'))
+}
+
+function renderUsers(){
+  const el=$('#users-list');if(!el)return;
+  const isA=currentUser&&currentUser.role==='admin';
+  const ab=$('#add-user-bl');if(ab)ab.style.display=isA?'block':'none';
+  if(!users.length){el.innerHTML='<div class="tm">—</div>';return}
+  let h=`<table class="dt"><thead><tr><th>${t('user')}</th><th>${t('role')}</th><th>${t('tHire')}</th><th></th></tr></thead><tbody>`;
+  users.forEach(u=>{
+    const me=currentUser&&u.id===currentUser.id;
+    const rc=u.role==='admin'?'p':u.role==='manager'?'b':'gr';
+    const canD=isA&&!me&&!(u.role==='admin'&&users.filter(x=>x.role==='admin').length===1);
+    h+=`<tr><td><b>${u.fullName||u.username}</b>${me?`<span class="bg bg-g" style="margin-left:6px">${t('you')}</span>`:''}
+      <div class="tsm tmu tmn">@${u.username}</div></td>
+      <td><span class="bg bg-${rc}">${t('role'+u.role.charAt(0).toUpperCase()+u.role.slice(1).replace('manager','M').replace('viewer','V').replace('admin','A'))}</span></td>
+      <td>${fD(u.createdAt)}</td>
+      <td style="text-align:right">${canD?`<button class="btn bd bxs" onclick="Auth.deleteUser('${u.id}')">×</button>`:''}</td></tr>`
+  });
+  h+='</tbody></table>';el.innerHTML=h
+}
+
+function openAddUser(){
+  if(!can('settings')){alert(t('denied'));return}
+  $('#user-mt').textContent=t('addU');
+  $('#user-mb').innerHTML=`
+    <div class="ff mb16"><label>${t('user')} <span class="rq">*</span></label><input id="nu-u"></div>
+    <div class="ff mb16"><label>${t('pwd')} <span class="rq">*</span></label><input id="nu-p" type="password"></div>
+    <div class="ff mb16"><label>${t('role')}</label><select id="nu-r">
+      <option value="admin">${t('roleA')}</option><option value="manager" selected>${t('roleM')}</option>
+      <option value="viewer">${t('roleV')}</option></select></div>
+    <div class="auth-err" id="nu-err"></div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="Auth.addUser()">${t('addU')}</button>`;
+  $('#user-modal').classList.add('open')
+}
+function closeUserModal(){$('#user-modal').classList.remove('open')}
+
+function addUser(){
+  const u=$('#nu-u').value.trim(),p=$('#nu-p').value,r=$('#nu-r').value,e=$('#nu-err');
+  if(!u||!p){e.textContent=t('errFill');return}
+  const ue=vU(u);if(ue){e.textContent=ue;return}
+  const pe=vP(p);if(pe){e.textContent=pe;return}
+  if(users.some(x=>x.username.toLowerCase()===u.toLowerCase())){e.textContent=t('errExist');return}
+  const salt=gs(),hash=hp(p,salt);
+  users.push({id:uid(),username:u,fullName:u,role:r,salt,hash,createdAt:today()});
+  su();closeUserModal();renderUsers();alert(t('okAddU'))
+}
+
+function deleteUser(id){
+  if(!can('settings')){alert(t('denied'));return}
+  const u=users.find(x=>x.id===id);if(!u)return;
+  if(currentUser&&currentUser.id===id){alert(t('errSelf'));return}
+  if(u.role==='admin'&&users.filter(x=>x.role==='admin').length===1){alert(t('errLastA'));return}
+  if(!confirm(t('confDelU',{name:u.fullName||u.username})))return;
+  users=users.filter(x=>x.id!==id);su();renderUsers();alert(t('okDelU'))
+}
+
+function openChangePwd(){
+  $('#um').classList.remove('open');
+  $('#user-mt').textContent=t('chPwd');
+  $('#user-mb').innerHTML=`
+    <div class="ff mb16"><label>${t('pwd')} (current) <span class="rq">*</span></label><input id="cp-c" type="password"></div>
+    <div class="ff mb16"><label>${t('pwd')} (new) <span class="rq">*</span></label><input id="cp-n" type="password"></div>
+    <div class="ff mb16"><label>${t('pwdC')} <span class="rq">*</span></label><input id="cp-r" type="password"></div>
+    <div class="auth-err" id="cp-err"></div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="Auth.changePwd()">${t('chPwd')}</button>`;
+  $('#user-modal').classList.add('open')
+}
+
+function changePwd(){
+  const o=$('#cp-c').value,n=$('#cp-n').value,c=$('#cp-r').value,e=$('#cp-err');
+  if(!o||!n||!c){e.textContent=t('errFill');return}
+  if(n!==c){e.textContent=t('errMatch');return}
+  const pe=vP(n);if(pe){e.textContent=pe;return}
+  const oh=hp(o,currentUser.salt);
+  if(oh!==currentUser.hash){e.textContent=t('errCur');return}
+  const ns=gs(),nh=hp(n,ns);
+  const i=users.findIndex(x=>x.id===currentUser.id);
+  users[i].salt=ns;users[i].hash=nh;currentUser=users[i];
+  su();closeUserModal();alert(t('okPwd'))
+}
+
+function initTrack(){
+  ['click','keydown','mousemove','touchstart'].forEach(ev=>{
+    document.addEventListener(ev,()=>{if(currentUser)touch()},{passive:true})})
+}
+
+return{init,submit,logout,toggleMenu,can,touch,refreshUI,openAddUser,addUser,deleteUser,
+  closeUserModal,openChangePwd,changePwd:changePwd,getC,initTrack}
+})();
+window.Auth=Auth;
+
+/* ============ APP ============ */
+const App=(()=>{
+const STORAGE='nexus_hr_ua_v2';
+const LAW={MIN:24,D12:30,D3:26,MINOR:31,TCH:56,MAX:59,MINC:14,UNP:15};
+const DEF_HOL=['01-01','03-08','05-01','05-09','06-28','07-15','08-24','10-01','12-25'];
+const CMAP={'піб':'fullName','фио':'fullName','ad soyad':'fullName','adsoyad':'fullName',
+  "прізвище ім'я по батькові":'fullName','прізвище имя по батькові':'fullName',
+  'посада':'position','должность':'position','pozisyon':'position',
+  'дата прийняття':'hireDate','дата прийняття на роботу':'hireDate','дата прийому':'hireDate',
+  'дата приема':'hireDate','işe alınma tarihi':'hireDate',
+  'дата народження':'birthDate','дата рождения':'birthDate','doğum tarihi':'birthDate',
+  'тривалість відпустки':'baseLeaveDays','продолжительность отпуска':'baseLeaveDays','izin süresi':'baseLeaveDays',
+  'категорія':'category','категория':'category','kategori':'category'};
+
+let db=loadDB(),curEmpId=null;
+
+function loadDB(){try{const r=localStorage.getItem(STORAGE);if(r){const p=pJ(r,null);if(p&&p.employees)return p}}catch{}
+  return{employees:[],holidays:[...DEF_HOL],baseLeaveDays:LAW.MIN,useHolidays:false,meta:{created:today(),version:'3.2'}}}
+function save(){try{localStorage.setItem(STORAGE,JSON.stringify(db))}catch{alert(t('aErrSave'))}}
+
+function isH(d){return db.useHolidays&&db.holidays.includes(d.slice(5))}
+function cntH(s,e){let c=0;eachD(s,e,d=>{if(isH(d))c++});return c}
+
+function excD(emp){
+  const ex=new Set();
+  (emp.parentalPeriods||[]).forEach(p=>{if(p.start&&p.end)eachD(p.start,p.end,d=>ex.add(d))});
+  const byY={};
+  (emp.unpaidPeriods||[]).forEach(p=>{if(p.start&&p.end)eachD(p.start,p.end,d=>{const y=d.slice(0,4);(byY[y]=byY[y]||[]).push(d)})});
+  Object.values(byY).forEach(a=>{a.sort();a.slice(LAW.UNP).forEach(d=>ex.add(d))});
+  return ex
+}
+
+function earned(emp,asOf){
+  if(!emp.hireDate)return 0;
+  const end=asOf||today();
+  if(fISO(end)<fISO(emp.hireDate))return 0;
+  const ex=excD(emp);let sd=0,hs=0;
+  eachD(emp.hireDate,end,d=>{if(ex.has(d))return;sd++;if(isH(d))hs++});
+  const b=emp.baseLeaveDays||db.baseLeaveDays;
+  const hy=db.useHolidays?db.holidays.length:0;
+  const den=365-hy;if(den<=0)return 0;
+  return Math.round(b*(sd-hs)/den*100)/100
+}
+function used(emp){return(emp.leaves||[]).filter(l=>l.type==='annual').reduce((s,l)=>s+(Number(l.days)||0),0)}
+
+function calcPay(emp,start,days){
+  const s=fISO(start);
+  const lm=new Date(s.getFullYear(),s.getMonth(),0);
+  let fm=new Date(lm.getFullYear(),lm.getMonth()-11,1);
+  const h=fISO(emp.hireDate);
+  if(h>fm)fm=new Date(h.getFullYear(),h.getMonth(),1);
+  const ps=tISO(fm),pe=tISO(lm);
+  let tot=0;const months=[];let cur=new Date(fm);
+  while(cur<=lm){const y=cur.getFullYear(),m=cur.getMonth()+1;
+    const p=(emp.payments||[]).find(x=>x.year===y&&x.month===m);
+    const a=p?Number(p.amount)||0:0;tot+=a;months.push({y,m,amount:a});cur=new Date(y,m,1)}
+  const cal=cntD(ps,pe),hol=cntH(ps,pe),calc=cal-hol;
+  const avg=calc>0?tot/calc:0;
+  return{ps,pe,months,tot,cal,hol,calc,avg,pay:avg*days}
+}
+
+function comp(emp){
+  const i=[],c=emp.category;
+  if(c==='standard'&&emp.baseLeaveDays<LAW.MIN)i.push(t('comp_std',{n:emp.baseLeaveDays}));
+  if(c==='disabled_1_2'&&emp.baseLeaveDays<LAW.D12)i.push(t('comp_12'));
+  if(c==='disabled_3'&&emp.baseLeaveDays<LAW.D3)i.push(t('comp_3'));
+  if(c==='minor'&&emp.baseLeaveDays<LAW.MINOR)i.push(t('comp_min'));
+  if(c==='teacher'&&emp.baseLeaveDays<LAW.TCH)i.push(t('comp_tch'));
+  return i
+}
+
+function reqEdit(){if(!Auth.can('edit')){alert(t('denied'));return false}return true}
+function reqSet(){if(!Auth.can('settings')){alert(t('denied'));return false}return true}
+
+function applyRoles(){
+  $$('[data-role]').forEach(el=>{
+    const r=el.dataset.role;let s=false;
+    if(r==='edit')s=Auth.can('edit');
+    if(r==='settings')s=Auth.can('settings');
+    el.hidden=!s;if(el.classList.contains('c'))el.style.display=s?'':'none'
+  })
+}
+
+function initTabs(){
+  $$('.nb').forEach(b=>b.addEventListener('click',()=>{
+    $$('.nb').forEach(x=>x.classList.remove('active'));$$('.tp').forEach(p=>p.classList.remove('active'));
+    b.classList.add('active');const p=$('#tp-'+b.dataset.tab);if(p)p.classList.add('active');
+    if(b.dataset.tab==='calc')refreshSel();
+    if(b.dataset.tab==='dashboard')renderDash();
+    if(b.dataset.tab==='settings')Auth.refreshUI()
+  }))
+}
+
+function renderDash(){
+  const emps=db.employees;$('#dash-date').textContent=fD(today());
+  let te=0,tu=0,tl=0,ol=0;
+  emps.forEach(e=>{const er=earned(e),us=used(e);te+=er;tu+=us;tl+=er-us;
+    (e.leaves||[]).forEach(l=>{if(l.start<=today()&&l.end>=today())ol++})});
+  $('#stats').innerHTML=`
+    <div class="sc"><div class="scl">${t('sEmp')}</div><div class="scv scv-b">${emps.length}</div></div>
+    <div class="sc"><div class="scl">${t('sEarn')}</div><div class="scv">${te.toFixed(1)}</div></div>
+    <div class="sc"><div class="scl">${t('sUsed')}</div><div class="scv scv-o">${tu.toFixed(1)}</div></div>
+    <div class="sc"><div class="scl">${t('sLeft')}</div><div class="scv scv-g">${tl.toFixed(1)}</div></div>
+    <div class="sc"><div class="scl">${t('sLeave')}</div><div class="scv">${ol}</div></div>`;
+
+  const up=[];emps.forEach(e=>(e.leaves||[]).forEach(l=>{if(l.start>today())up.push({n:e.fullName,s:l.start,e:l.end,d:l.days})}));
+  up.sort((a,b)=>a.s.localeCompare(b.s));
+  if(up.length){$('#upcoming').innerHTML=`<table class="dt"><thead><tr>
+    <th>${t('tEmp')}</th><th>${t('tStart')}</th><th>${t('tEnd')}</th><th>${t('tDays')}</th></tr></thead><tbody>
+    ${up.map(u=>`<tr><td><b>${u.n}</b></td><td>${fD(u.s)}</td><td>${fD(u.e)}</td>
+    <td><span class="bg bg-b">${u.d}</span></td></tr>`).join('')}</tbody></table>`}
+  else $('#upcoming').innerHTML=`<div class="tm">${t('noUpc')}</div>`
+}
+
+function addEmp(){
+  if(!reqEdit())return;
+  const n=$('#en').value.trim(),h=$('#eh').value;
+  if(!n||!h){alert(t('aFill'));return}
+  db.employees.push({id:uid(),fullName:n,position:$('#ep').value.trim(),
+    hireDate:h,birthDate:$('#eb').value||'',baseLeaveDays:Number($('#el').value)||LAW.MIN,
+    category:$('#ec').value,payments:[],leaves:[],unpaidPeriods:[],parentalPeriods:[],createdAt:today()});
+  save();$('#en').value='';$('#ep').value='';$('#eh').value='';$('#eb').value='';
+  renderEmp();refreshSel();renderDash()
+}
+function delEmp(id){
+  if(!reqEdit())return;
+  const e=db.employees.find(x=>x.id===id);
+  if(!confirm(t('aDel',{name:e.fullName})))return;
+  db.employees=db.employees.filter(x=>x.id!==id);
+  save();renderEmp();refreshSel();renderDash()
+}
+function filterEmp(){renderEmp($('#search').value.toLowerCase().trim())}
+
+function renderEmp(q){
+  const el=$('#emp-list');q=(q||'').toLowerCase().trim();
+  let list=db.employees;if(q)list=list.filter(e=>e.fullName.toLowerCase().includes(q)||(e.position||'').toLowerCase().includes(q));
+  $('#emp-count').textContent=list.length;
+  if(!list.length){el.innerHTML=`<div class="tm">${q?t('noFind'):t('noEmp')}</div>`;return}
+  const ce=Auth.can('edit');
+  let h=`<table class="dt"><thead><tr>
+    <th>${t('tName')}</th><th>${t('tPos')}</th><th>${t('tHire')}</th><th>${t('tLeave')}</th>
+    <th>${t('tEarn')}</th><th>${t('tUsed')}</th><th>${t('tLeft')}</th><th>${t('tStat')}</th><th></th>
+    </tr></thead><tbody>`;
+  list.forEach(e=>{
+    const er=earned(e),us=used(e),left=er-us;
+    const cc=comp(e);
+    const st=cc.length?`<span class="bg bg-r">${t('stViol')}</span>`:left>20?`<span class="bg bg-o">${t('stAcc')}</span>`:`<span class="bg bg-g">${t('stOk')}</span>`;
+    h+=`<tr><td><b>${e.fullName}</b></td><td>${e.position||'—'}</td><td>${fD(e.hireDate)}</td>
+      <td>${e.baseLeaveDays}</td><td class="tmn">${er.toFixed(2)}</td><td class="tmn">${us.toFixed(2)}</td>
+      <td><span class="bg ${left>0?'bg-g':'bg-gr'}">${left.toFixed(2)}</span></td>
+      <td>${st}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn bs bxs" onclick="App.openEmp('${e.id}')">${t('tCard')}</button>
+        ${ce?`<button class="btn bd bxs" onclick="App.delEmp('${e.id}')">×</button>`:''}
+      </td></tr>`
+  });
+  h+='</tbody></table>';el.innerHTML=h
+}
+
+function openEmp(id){curEmpId=id;renderModal();$('#emp-modal').classList.add('open')}
+function closeModal(){$('#emp-modal').classList.remove('open');curEmpId=null;renderEmp();refreshSel();renderDash()}
+
+function renderModal(){
+  const e=db.employees.find(x=>x.id===curEmpId);if(!e)return;
+  const er=earned(e),us=used(e),left=er-us;const cc=comp(e);const cur=t('cur');const canE=Auth.can('edit');
+  $('#emp-mt').textContent=e.fullName;
+
+  const lh=(e.leaves||[]).length?(e.leaves||[]).sort((a,b)=>b.start.localeCompare(a.start)).map(l=>`
+    <div class="tmi"><div><b>${fD(l.start)} — ${fD(l.end)}</b>
+      <span class="bg bg-b" style="margin-left:6px">${l.days}</span></div>
+      ${canE?`<button class="btn bd bxs" onclick="App.delLeave('${l.id}')">×</button>`:''}</div>`).join('')
+    :`<div class="tm">${t('mNoRec')}</div>`;
+
+  const ph=(e.payments||[]).length?(e.payments||[]).sort((a,b)=>b.y-a.y||b.m-a.m).map(p=>`
+    <div class="tmi"><span>${String(p.m).padStart(2,'0')}.${p.y}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <b class="tmn">${fN(p.amount)} ${cur}</b>
+        ${canE?`<button class="btn bd bxs" onclick="App.delPay(${p.y},${p.m})">×</button>`:''}
+      </div></div>`).join(''):`<div class="tm">${t('mNoPay')}</div>`;
+
+  const prh=[
+    ...(e.unpaidPeriods||[]).map((p,i)=>`
+      <div class="tmi"><div><span class="bg bg-gr">${t('mUnp')}</span> ${fD(p.start)} — ${fD(p.end)}</div>
+        ${canE?`<button class="btn bd bxs" onclick="App.delPer('unpaidPeriods',${i})">×</button>`:''}</div>`).join(''),
+    ...(e.parentalPeriods||[]).map((p,i)=>`
+      <div class="tmi"><div><span class="bg bg-gr">${t('mPar')}</span> ${fD(p.start)} — ${fD(p.end)}</div>
+        ${canE?`<button class="btn bd bxs" onclick="App.delPer('parentalPeriods',${i})">×</button>`:''}</div>`).join('')
+  ].join('')||`<div class="tm">${t('mNoPer')}</div>`;
+
+  $('#emp-mb').innerHTML=`
+    <div class="sg mb16">
+      <div class="sc"><div class="scl">${t('mHired')}</div>
+        <div class="scv scv-b" style="font-size:15px">${fD(e.hireDate)}</div></div>
+      <div class="sc"><div class="scl">${t('mLeave')}</div>
+        <div class="scv" style="font-size:15px">${e.baseLeaveDays} ${t('mPerY')}</div></div>
+      <div class="sc"><div class="scl">${t('mEarn')}</div><div class="scv scv-b">${er.toFixed(2)}</div></div>
+      <div class="sc"><div class="scl">${t('mUsed')}</div><div class="scv scv-o">${us.toFixed(2)}</div></div>
+      <div class="sc"><div class="scl">${t('mLeft')}</div>
+        <div class="scv ${left>0?'scv-g':'scv-o'}">${left.toFixed(2)}</div></div>
+    </div>
+    ${cc.length?`<div class="cc cc-w mb16"><b>${t('mViol')}</b><br>${cc.map(c=>'• '+c).join('<br>')}</div>`
+      :`<div class="cc cc-ok mb16">${t('mOk')}</div>`}
+    <h3 style="font-size:14px;margin:20px 0 10px;font-weight:700">${t('mUsedL')}</h3>
+    ${lh}
+    <h3 style="font-size:14px;margin:20px 0 10px;font-weight:700">${t('mPay')}</h3>
+    ${ph}
+    <h3 style="font-size:14px;margin:20px 0 10px;font-weight:700">${t('mPerT')}</h3>
+    <div class="tsm tmu mb16">${t('mPerH')}</div>
+    ${prh}
+    ${canE?`
+      <h3 style="font-size:13px;margin:20px 0 10px;font-weight:700">➕ ${t('mAdd')}</h3>
+      <div class="fr" style="align-items:flex-end">
+        <div class="ff"><label>${t('tStart')}</label><input type="date" id="nl-s"></div>
+        <div class="ff"><label>${t('tEnd')}</label><input type="date" id="nl-e"></div>
+        <div class="ff ffn"><label>&nbsp;</label>
+          <button class="btn bp bsm" onclick="App.addLeave()">${t('mAdd')}</button></div>
+      </div>
+      <div class="fr" style="align-items:flex-end">
+        <div class="ff ffn"><label>${t('mYear')}</label>
+          <input type="number" id="np-y" value="${new Date().getFullYear()}"></div>
+        <div class="ff ffn"><label>${t('mMonth')}</label>
+          <input type="number" id="np-m" min="1" max="12" value="${new Date().getMonth()+1}"></div>
+        <div class="ff"><label>${t('mAmt')}</label><input type="number" id="np-a" placeholder="20000"></div>
+        <div class="ff ffn"><label>&nbsp;</label>
+          <button class="btn bp bsm" onclick="App.addPay()">${t('mAdd')}</button></div>
+      </div>
+      <div class="fr" style="align-items:flex-end">
+        <div class="ff"><label>${t('mType')}</label>
+          <select id="nper-t"><option value="unpaidPeriods">${t('mUnp2')}</option>
+          <option value="parentalPeriods">${t('mPar2')}</option></select></div>
+        <div class="ff"><label>${t('tStart')}</label><input type="date" id="nper-s"></div>
+        <div class="ff"><label>${t('tEnd')}</label><input type="date" id="nper-e"></div>
+        <div class="ff ffn"><label>&nbsp;</label>
+          <button class="btn bp bsm" onclick="App.addPer()">${t('mAdd')}</button></div>
+      </div>`:''}`
+}
+
+function addLeave(){if(!reqEdit())return;const e=db.employees.find(x=>x.id===curEmpId);
+  const s=$('#nl-s').value,en=$('#nl-e').value;
+  if(!s||!en){alert(t('aDates'));return}
+  const d=cntD(s,en)-cntH(s,en);
+  e.leaves.push({id:uid(),start:s,end:en,days:d,type:'annual'});save();renderModal()}
+function delLeave(id){if(!reqEdit())return;const e=db.employees.find(x=>x.id===curEmpId);
+  e.leaves=e.leaves.filter(l=>l.id!==id);save();renderModal()}
+function addPay(){if(!reqEdit())return;const e=db.employees.find(x=>x.id===curEmpId);
+  const y=Number($('#np-y').value),m=Number($('#np-m').value),a=Number($('#np-a').value);
+  if(!y||!m||m<1||m>12||!a){alert(t('aFillYMA'));return}
+  e.payments=(e.payments||[]).filter(p=>!(p.year===y&&p.month===m));
+  e.payments.push({year:y,month:m,amount:a});save();renderModal()}
+function delPay(y,m){if(!reqEdit())return;const e=db.employees.find(x=>x.id===curEmpId);
+  e.payments=(e.payments||[]).filter(p=>!(p.year===y&&p.month===m));save();renderModal()}
+function addPer(){if(!reqEdit())return;const e=db.employees.find(x=>x.id===curEmpId);
+  const t_=$('#nper-t').value,s=$('#nper-s').value,en=$('#nper-e').value;
+  if(!s||!en){alert(t('aDates'));return}
+  (e[t_]=e[t_]||[]).push({start:s,end:en});save();renderModal()}
+function delPer(t_,i){if(!reqEdit())return;const e=db.employees.find(x=>x.id===curEmpId);
+  e[t_].splice(i,1);save();renderModal()}
+
+/* EXCEL */
+function nH(s){return String(s||'').trim().toLowerCase().replace(/\s+/g,' ').replace(/[''`]/g,"'")}
+function pDate(v){if(v==null||v==='')return'';if(typeof v==='number'){const d=new Date(Date.UTC(1899,11,30)+v*86400000);return tISO(d)}
+  const s=String(v).trim();if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  const m=s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2,4})$/);
+  if(m){let[,d,mo,y]=m;if(y.length===2)y=(Number(y)>50?'19':'20')+y;return`${y.padStart(4,'0')}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`}
+  const dt=new Date(s);if(!isNaN(dt))return tISO(dt);return''}
+function pCat(r){const s=nH(r);if(!s)return'standard';
+  if(/інвал|инвал|engel/.test(s))return/3|iii/.test(s)?'disabled_3':'disabled_1_2';
+  if(/неповноліт|несовершеннолет|reşit/.test(s))return'minor';
+  if(/педагог|освіт|учител|eğitim/.test(s))return'teacher';return'standard'}
+
+function fromWB(wb){
+  const sn=wb.SheetNames[0],sh=wb.Sheets[sn];
+  const rows=XLSX.utils.sheet_to_json(sh,{header:1,raw:true,defval:''});
+  if(!rows.length)throw new Error(t('fileEmpty'));
+  let hi=0;for(let i=0;i<Math.min(rows.length,10);i++){
+    if(rows[i].filter(c=>String(c).trim()!=='').length>=2){hi=i;break}}
+  const hs=rows[hi].map(nH);const ci={};
+  hs.forEach((h,i)=>{const k=CMAP[h];if(k&&ci[k]===undefined)ci[k]=i});
+  if(ci.fullName===undefined||ci.hireDate===undefined)throw new Error(t('noCols'));
+  const imp=[],errs=[];
+  for(let r=hi+1;r<rows.length;r++){
+    const row=rows[r];if(!row||row.every(c=>String(c).trim()===''))continue;
+    const fn=String(row[ci.fullName]||'').trim();if(!fn)continue;
+    const hd=pDate(row[ci.hireDate]);
+    if(!hd){errs.push(t('rowErr',{n:r+1,val:row[ci.hireDate]}));continue}
+    const bd=ci.birthDate!==undefined?pDate(row[ci.birthDate]):'';
+    const ct=ci.category!==undefined?pCat(row[ci.category]):'standard';
+    let bl=ci.baseLeaveDays!==undefined?Number(row[ci.baseLeaveDays])||0:0;
+    if(!bl){const mp={disabled_1_2:30,disabled_3:26,minor:31,teacher:56};bl=mp[ct]||db.baseLeaveDays}
+    imp.push({id:uid(),fullName:fn,position:ci.position!==undefined?String(row[ci.position]||'').trim():'',
+      hireDate:hd,birthDate:bd,baseLeaveDays:bl,category:ct,
+      payments:[],leaves:[],unpaidPeriods:[],parentalPeriods:[],createdAt:today()})
+  }
+  if(!imp.length)throw new Error(t('noValid'));
+  let added=0,skip=0;
+  imp.forEach(e=>{const d=db.employees.some(x=>x.fullName.toLowerCase()===e.fullName.toLowerCase()&&x.hireDate===e.hireDate);
+    if(d){skip++;return}db.employees.push(e);added++});
+  save();renderEmp();refreshSel();renderDash();
+  return{added,skip,errs,preview:imp.slice(0,10)}
+}
+
+function handleXls(f){
+  if(!reqEdit())return;
+  const st=$('#imp-status');st.innerHTML=`<div class="tsm tmu m16">${t('reading')}</div>`;$('#xls-preview').innerHTML='';
+  const r=new FileReader();
+  r.onload=e=>{try{const data=new Uint8Array(e.target.result);const wb=XLSX.read(data,{type:'array',cellDates:false});
+    const res=fromWB(wb);
+    let h=`<div class="cc cc-ok m16">${t('imported',{n:res.added})}${res.skip?' '+t('skip',{n:res.skip}):''}</div>`;
+    if(res.errs.length)h+=`<div class="cc cc-w m8">${t('warns')}<br>${res.errs.map(x=>'• '+x).join('<br>')}</div>`;
+    st.innerHTML=h;
+    if(res.preview.length){$('#xls-preview').innerHTML=`<div class="m16">
+      <div class="tsm tmu mb16">${t('preview')}</div>
+      <div style="max-height:300px;overflow:auto;border:1px solid var(--g200);border-radius:8px">
+        <table class="dt"><thead><tr><th>${t('tName')}</th><th>${t('tPos')}</th>
+        <th>${t('tHire')}</th><th>${t('tLeave')}</th><th>${t('cat')}</th></tr></thead><tbody>
+        ${res.preview.map(p=>`<tr><td>${p.fullName}</td><td>${p.position||'—'}</td>
+        <td>${fD(p.hireDate)}</td><td>${p.baseLeaveDays}</td><td>${p.category}</td></tr>`).join('')}
+        </tbody></table></div></div>`}
+  }catch(err){st.innerHTML=`<div class="cc cc-w m16">${t('impErr',{msg:err.message})}</div>`}};
+  r.onerror=()=>{st.innerHTML=`<div class="tsm m16" style="color:var(--danger)">${t('impReadErr')}</div>`};
+  r.readAsArrayBuffer(f)
+}
+
+function tpl(){
+  const data=[['ПІБ / ФИО / Ad Soyad','Посада / Должность / Pozisyon','Дата прийняття / Дата приёма / İşe Alınma Tarihi','Дата народження / Дата рождения / Doğum Tarihi','Тривалість / Продолжительность / İzin Süresi','Категорія / Категория / Kategori'],
+    ['Петренко Олена Іванівна','Бухгалтер','2023-03-15','1990-05-20',24,'standard'],
+    ['Ковальчук Іван Петрович','Інженер','2022-09-01','1985-11-10',30,'disabled_1_2'],
+    ['Сидоренко Марія Олексіївна','Вчитель','2021-08-25','1988-02-14',56,'teacher']];
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:32},{wch:22},{wch:22},{wch:22},{wch:20},{wch:16}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Employees');
+  XLSX.writeFile(wb,'nexus-hr-template.xlsx')
+}
+
+function expXls(){
+  if(!db.employees.length){alert(t('aNoExp'));return}
+  const data=[[t('tName'),t('tPos'),t('tHire'),t('birth'),t('leave'),t('cat'),t('tEarn'),t('tUsed'),t('tLeft')]];
+  db.employees.forEach(e=>{const er=earned(e),us=used(e);
+    data.push([e.fullName,e.position||'',e.hireDate,e.birthDate||'',e.baseLeaveDays,e.category,
+      Number(er.toFixed(2)),Number(us.toFixed(2)),Number((er-us).toFixed(2))])});
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:30},{wch:20},{wch:15},{wch:15},{wch:18},{wch:18},{wch:15},{wch:16},{wch:12}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'HR');
+  XLSX.writeFile(wb,`nexus-hr-export-${today()}.xlsx`)
+}
+
+/* CALC */
+function refreshSel(){
+  const o=db.employees.map(e=>`<option value="${e.id}">${e.fullName}</option>`).join('');
+  ['#ce','#me'].forEach(s=>{const el=$(s);const c=el.value;
+    el.innerHTML=`<option value="">${t('cSel')}</option>`+o;if(c)el.value=c})
+}
+
+function runCalc(){
+  const id=$('#ce').value,s=$('#cs').value,d=Number($('#cd').value);
+  if(!id||!s||!d){alert(t('aFillAll'));return}
+  const e=db.employees.find(x=>x.id===id);const r=calcPay(e,s,d);const cur=t('cur');
+  const mh=r.months.map(m=>`<div class="rr"><span class="rl">${String(m.m).padStart(2,'0')}.${m.y}</span>
+    <span class="rv">${fN(m.amount)} ${cur}</span></div>`).join('');
+  $('#calc-out').innerHTML=`<div class="res">
+    <div style="font-weight:700;margin-bottom:12px">${t('cPer')}: ${fD(r.ps)} — ${fD(r.pe)}</div>
+    <div style="max-height:280px;overflow-y:auto;margin-bottom:12px">${mh}</div>
+    <div class="rr t"><span>${t('cTotal')}</span><span>${fN(r.tot)} ${cur}</span></div>
+    <div class="rr"><span class="rl">${t('cCal')}</span><span class="rv">${r.cal}</span></div>
+    <div class="rr"><span class="rl">${t('cHol')}</span><span class="rv">${r.hol}</span></div>
+    <div class="rr"><span class="rl">${t('cCalc')}</span><span class="rv">${r.calc}</span></div>
+    <div class="rr"><span class="rl">${t('cAvg')}</span><span class="rv">${fN(r.avg)} ${cur}</span></div>
+    <div class="rr t"><span>${t('cPay',{n:d})}</span><span>${fN(r.pay)} ${cur}</span></div></div>`
+}
+
+function runComp(){
+  const id=$('#me').value,d=$('#md').value;
+  if(!id||!d){alert(t('aFillAll'));return}
+  const e=db.employees.find(x=>x.id===id);
+  const er=earned(e,d),us=used(e),cd=Math.max(0,er-us);
+  const r=calcPay(e,d,1),ca=r.avg*cd;const cur=t('cur');
+  $('#comp-out').innerHTML=`<div class="res">
+    <div class="rr"><span class="rl">${t('mDate')}</span><span class="rv">${fD(d)}</span></div>
+    <div class="rr"><span class="rl">${t('mEarn')}</span><span class="rv">${er.toFixed(2)}</span></div>
+    <div class="rr"><span class="rl">${t('mUsed')}</span><span class="rv">${us.toFixed(2)}</span></div>
+    <div class="rr"><span class="rl">${t('mDays')}</span><span class="rv">${cd.toFixed(2)}</span></div>
+    <div class="rr"><span class="rl">${t('cAvg')}</span><span class="rv">${fN(r.avg)} ${cur}</span></div>
+    <div class="rr t"><span>${t('mComp')}</span><span>${fN(ca)} ${cur}</span></div></div>`
+}
+
+function checkAll(){
+  const i=[];db.employees.forEach(e=>comp(e).forEach(c=>i.push(`${e.fullName}: ${c}`)));
+  if(i.length)alert(t('aViol')+i.join('\n'));else alert(t('aAllOk'))
+}
+
+/* SETTINGS */
+function renderSet(){
+  $('#set-base').value=db.baseLeaveDays;$('#set-hol').value=db.useHolidays?'1':'0';
+  const ce=Auth.can('settings');
+  $('#hol-list').innerHTML=db.holidays.length?db.holidays.map((h,i)=>`
+    <div class="tmi"><span><b class="tmn">${h}</b></span>
+    ${ce?`<button class="btn bd bxs" onclick="App.delHol(${i})">×</button>`:''}</div>`).join('')
+    :'<div class="tm">—</div>'
+}
+
+function saveSet(){if(!reqSet())return;db.baseLeaveDays=Number($('#set-base').value)||LAW.MIN;
+  db.useHolidays=$('#set-hol').value==='1';save();renderEmp();renderDash();renderSet();alert(t('aSave'))}
+function addHol(){if(!reqSet())return;const v=$('#new-hol').value.trim();
+  if(!/^\d{2}-\d{2}$/.test(v)){alert(t('aFmt'));return}
+  if(!db.holidays.includes(v))db.holidays.push(v);db.holidays.sort();save();
+  $('#new-hol').value='';renderSet();renderEmp();renderDash()}
+function delHol(i){if(!reqSet())return;db.holidays.splice(i,1);save();renderSet();renderEmp();renderDash()}
+
+/* JSON */
+function expJ(){const b=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download=`nexus-hr-backup-${today()}.json`;a.click();URL.revokeObjectURL(a.href)}
+function impJ(ev){if(!reqSet()){ev.target.value='';return}
+  const f=ev.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.employees)throw new Error(t('aBadFile'));
+    db=d;save();renderAll();alert(t('aImp'))}catch(e){alert(t('aReadErr')+e.message)}};
+  r.readAsText(f);ev.target.value=''}
+function clearAll(){if(!reqSet())return;if(!confirm(t('aConfClear')))return;
+  localStorage.removeItem(STORAGE);db=loadDB();renderAll();alert(t('aClear'))}
+
+function loadDemo(){
+  if(!reqEdit())return;
+  const cy=new Date().getFullYear();
+  const dm=[{fullName:'Петренко Олена Іванівна',position:'Бухгалтер',hireDate:`${cy-2}-03-15`,birthDate:'1990-05-20',baseLeaveDays:24,category:'standard'},
+    {fullName:'Ковальчук Іван Петрович',position:'Інженер-програміст',hireDate:`${cy-1}-09-01`,birthDate:'1985-11-10',baseLeaveDays:30,category:'disabled_1_2'},
+    {fullName:'Сидоренко Марія Олексіївна',position:'Вчитель математики',hireDate:`${cy-3}-08-25`,birthDate:'1988-02-14',baseLeaveDays:56,category:'teacher'}];
+  dm.forEach(d=>{
+    const e={id:uid(),...d,payments:[],leaves:[],unpaidPeriods:[],parentalPeriods:[],createdAt:today()};
+    for(let i=0;i<12;i++){const dt=new Date();dt.setMonth(dt.getMonth()-i-1);
+      e.payments.push({year:dt.getFullYear(),month:dt.getMonth()+1,amount:22000})}
+    const ls=new Date();ls.setMonth(ls.getMonth()-6);
+    e.leaves.push({id:uid(),start:tISO(ls),end:tISO(addD(ls,13)),days:14,type:'annual'});
+    db.employees.push(e)});
+  save();renderAll();alert(t('aDemo'))
+}
+
+/* RENDER */
+function renderAll(){applyRoles();renderEmp();renderSet();refreshSel();renderDash();
+  if(Auth.refreshUI)Auth.refreshUI()}
+
+/* I18N APPLY */
+function applyI18n(){
+  $('#auth-brand-sub').textContent=t('brand');
+  $('#auth-t').textContent=mode_dummy();
+  function mode_dummy(){return $('#auth-t').textContent}
+  $('#lbl-user').textContent=t('user');$('#lbl-pwd').textContent=t('pwd');$('#lbl-conf').textContent=t('pwdC');
+  $('#brand-sub').textContent=t('brand');
+  $('#nb-dash').textContent=t('navDash');$('#nb-emp').textContent=t('navEmp');$('#nb-imp').textContent=t('navImp');
+  $('#nb-calc').textContent=t('navCalc');$('#nb-laws').textContent=t('navLaws');$('#nb-set').textContent=t('navSet');
+  $('#t-dash').textContent=t('dashT');$('#t-dash-sub').textContent=t('dashS');$('#t-up').textContent=t('upc');
+  $('#t-add').textContent=t('addT');$('#l-name').textContent=t('name');$('#l-pos').textContent=t('pos');
+  $('#l-hire').textContent=t('hire');$('#l-birth').textContent=t('birth');$('#l-cat').textContent=t('cat');
+  $('#l-leave').textContent=t('leave');$('#btn-add').textContent=t('addB');$('#btn-demo').textContent=t('demoB');
+  $('#t-list').textContent=t('listT');
+  $('#c1').textContent=t('c1');$('#c2').textContent=t('c2');$('#c3').textContent=t('c3');
+  $('#c4').textContent=t('c4');$('#c5').textContent=t('c5');
+  $('#t-imp').textContent=t('impT');$('#t-imp-sub').textContent=t('impS');$('#t-dz').textContent=t('dropT');
+  $('#t-dzh').textContent=t('dropH');$('#t-cols').textContent=t('cols');$('#t-tpl').textContent=t('tpl');
+  $('#t-exp').textContent=t('expT');$('#t-exx').textContent=t('expX');$('#t-exj').textContent=t('expJ');$('#t-inj').textContent=t('impJ');
+  $('#t-calc').textContent=t('calcT');$('#t-calc-sub').textContent=t('calcS');
+  $('#l-cEmp').textContent=t('cEmp');$('#l-cStart').textContent=t('cStart');$('#l-cDays').textContent=t('cDays');
+  $('#btn-calc').textContent=t('cB');
+  $('#t-comp').textContent=t('compT');$('#l-mEmp').textContent=t('cEmp');$('#l-mDate').textContent=t('mDate');$('#btn-comp').textContent=t('cB');
+  $('#t-laws').textContent=t('lawsT');$('#t-laws-sub').textContent=t('lawsS');$('#btn-check').textContent=t('checkB');
+  $('#t-ref').textContent=t('refT');$('#t-ref-sub').textContent=t('refS');
+  $('#th-n').textContent=t('nN');$('#th-v').textContent=t('nV');$('#th-b').textContent=t('nB');
+  $('#t-users').textContent=t('users');$('#t-users-sub').textContent=t('usersH');$('#btn-add-u').textContent=t('addU');
+  $('#t-set').textContent=t('setT');$('#l-base').textContent=t('setBase');$('#l-mode').textContent=t('setMode');
+  $('#m1').textContent=t('setM1');$('#m2').textContent=t('setM2');$('#btn-save').textContent=t('setSave');
+  $('#t-mil').textContent=t('setMil');
+  $('#t-hol').textContent=t('holT');$('#t-hol-sub').textContent=t('holS');$('#l-hAdd').textContent=t('holAdd');$('#btn-hAdd').textContent=t('holB');
+  $('#t-data').textContent=t('dataT');$('#t-dEx').textContent=t('expJ');$('#t-dIm').textContent=t('impJ');$('#t-clear').textContent=t('dataClear');
+  $('#um-cp').textContent=t('chPwd');$('#um-lo').textContent=t('logout');
+  renderLaws();renderNorms();
+  $$('.lb,.auth-lb').forEach(b=>b.classList.toggle('active',b.dataset.lang===CL));
+  document.title=t('app.title')
+}
+
+function renderLaws(){
+  $('#laws-list').innerHTML=`
+    <a class="li" href="https://zakon.rada.gov.ua/laws/show/504/96-вр" target="_blank"><div class="li-i">📜</div>
+      <div><div class="li-t">${t('l504')}</div><div class="li-d">${t('l504d')}</div><div class="li-n">№ 504/96-ВР</div></div></a>
+    <a class="li" href="https://zakon.rada.gov.ua/laws/show/322-08" target="_blank"><div class="li-i">📜</div>
+      <div><div class="li-t">${t('lkz')}</div><div class="li-d">${t('lkzd')}</div><div class="li-n">№ 322-VIII</div></div></a>
+    <a class="li" href="https://zakon.rada.gov.ua/laws/show/100-95-п" target="_blank"><div class="li-i">📜</div>
+      <div><div class="li-t">${t('lp100')}</div><div class="li-d">${t('lp100d')}</div><div class="li-n">Постанова КМУ № 100</div></div></a>
+    <a class="li" href="https://zakon.rada.gov.ua/laws/show/2136-20" target="_blank"><div class="li-i">📜</div>
+      <div><div class="li-t">${t('l2136')}</div><div class="li-d">${t('l2136d')}</div><div class="li-n">№ 2136-IX</div></div></a>
+    <a class="li" href="https://zakon.rada.gov.ua/laws/show/2352-20" target="_blank"><div class="li-i">📜</div>
+      <div><div class="li-t">${t('l2352')}</div><div class="li-d">${t('l2352d')}</div><div class="li-n">№ 2352-IX</div></div></a>
+    <a class="li" href="https://data.rada.gov.ua/open/data/laws" target="_blank"><div class="li-i">🗄️</div>
+      <div><div class="li-t">${t('lportal')}</div><div class="li-d">${t('lportald')}</div></div></a>`
+}
+
+function renderNorms(){
+  $('#norms-body').innerHTML=`
+    <tr><td>${t('n1')}</td><td><b>24</b></td><td>${t('b6')}</td></tr>
+    <tr><td>${t('n2')}</td><td><b>30</b></td><td>${t('b6')}</td></tr>
+    <tr><td>${t('n3')}</td><td><b>26</b></td><td>${t('b6')}</td></tr>
+    <tr><td>${t('n4')}</td><td><b>31</b></td><td>${t('b6')}</td></tr>
+    <tr><td>${t('n5')}</td><td><b>56</b></td><td>${t('b6')}</td></tr>
+    <tr><td>${t('n6')}</td><td><b>59</b></td><td>${t('b10')}</td></tr>
+    <tr><td>${t('n7')}</td><td><b>14</b></td><td>${t('b12')}</td></tr>
+    <tr><td>${t('n8')}</td><td><b>${t('n8v')}</b></td><td>${t('b10')}</td></tr>
+    <tr><td>${t('n9')}</td><td><b>${t('n9v')}</b></td><td>${t('bp100')}</td></tr>
+    <tr><td>${t('n10')}</td><td><b>${t('n10v')}</b></td><td>${t('b25')}</td></tr>`
+}
+
+function initLang(){
+  $$('.lb,.auth-lb').forEach(b=>b.addEventListener('click',()=>{
+    CL=b.dataset.lang;localStorage.setItem(LK,CL);applyI18n();
+    if(Auth.getC())renderAll();Auth.refreshUI()
+  }))
+}
+
+function init(){
+  applyI18n();initTabs();initLang();
+  $$('.nb').forEach(b=>b.dataset.role||0);
+  const d=new Date();$('#cs').value=tISO(d);$('#md').value=tISO(d);
+  // pwd strength
+  const pi=$('#ap');if(pi)pi.addEventListener('input',()=>{
+    const b=$('#pwd-sb'),p=pi.value;b.className='pwd-sb';if(!p)return;
+    let s=0;if(p.length>=6)s++;if(p.length>=10)s++;if(/[A-ZА-Я]/.test(p))s++;if(/[0-9]/.test(p))s++;if(/[^A-Za-zА-Яа-я0-9]/.test(p))s++;
+    if(s<=2)b.classList.add('weak');else if(s<=3)b.classList.add('medium');else b.classList.add('strong')
+  });
+  // dz
+  const dz=$('#dz'),xi=$('#xls-in');
+  dz.addEventListener('click',()=>xi.click());
+  xi.addEventListener('change',e=>{if(e.target.files[0])handleXls(e.target.files[0]);e.target.value=''});
+  ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();dz.classList.add('dg')}));
+  ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();dz.classList.remove('dg')}));
+  dz.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)handleXls(f)});
+  // auth
+  Auth.init();Auth.initTrack();
+  console.log('%c NEXUS v3.2 ','background:#1e40af;color:#fff;padding:4px 12px;border-radius:4px;font-weight:bold')
+}
+
+return{addEmployee:addEmp,delEmp,filterEmp:filterEmp,openEmp,closeModal,
+  addLeave,delLeave,addPay,delPay,addPer,delPer,
+  runCalc,runComp,checkAll,loadDemo,
+  exportExcel:expXls,downloadTemplate:tpl,exportJSON:expJ,importJSON:impJ,
+  saveSettings:saveSet,addHoliday:addHol,delHol,clearAll,
+  renderAll,init,handleXls}
+})();
+window.App=App;
+
+document.addEventListener('DOMContentLoaded',()=>{
+  try{App.init()}catch(e){console.error(e);alert('Помилка: '+e.message)}
+});
+</script>
+</body>
+</html>

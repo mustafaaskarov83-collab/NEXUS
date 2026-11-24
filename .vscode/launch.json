@@ -1,0 +1,14 @@
+{
+    // Используйте IntelliSense, чтобы узнать о возможных атрибутах.
+    // Наведите указатель мыши, чтобы просмотреть описания существующих атрибутов.
+    // Для получения дополнительной информации посетите: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "editor-browser",
+            "request": "launch",
+            "name": "Open Test1.html",
+            "url": "file:///c%3A/Users/artbu/Desktop/PYTHON_WORK/%D0%A0%D0%90%D0%97%D0%A0%D0%90%D0%91%D0%9E%D0%A2%D0%9A%D0%90%20%D0%A1%D0%90%D0%99%D0%A2%D0%90/%D0%9C%D0%9E%D0%99_%D0%A1%D0%90%D0%99%D0%A2/Test1.html"
+        }
+    ]
+}
