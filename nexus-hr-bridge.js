@@ -1,6 +1,8 @@
-/* NEXUS — HR cloud bridge v1.0
+/* NEXUS — HR cloud bridge v1.1
  * Двостороння синхронізація співробітників: браузер ⇄ Supabase.
- * Підключається в hr.html ПІСЛЯ app.js. Не потребує інших файлів.
+ * Підключається в hr.html. Не потребує інших файлів.
+ * v1.1: гарантує повну структуру бази в localStorage (holidays, company, ...),
+ *       щоб app.js не падав на db.holidays.length; плашка більше не ховається до перезавантаження.
  */
 (() => {
   'use strict';
@@ -8,6 +10,7 @@
   const HR_KEY = 'nexus_hr_ua_v2';
   const PERIOD = 8000;
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const DEF_HOL = ['01-01', '03-08', '05-01', '05-09', '06-28', '07-15', '08-24', '10-01', '12-25'];
 
   let timer = null, busy = false, warned = false, pendingCount = 0;
 
@@ -15,6 +18,31 @@
   const api = () => window.nexusData || null;
   const isUuid = v => UUID_RE.test(String(v || ''));
   const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+  function ensureShape(db) {
+    if (!db || typeof db !== 'object' || Array.isArray(db)) db = {};
+    if (!Array.isArray(db.employees)) db.employees = [];
+    if (!Array.isArray(db.departments)) db.departments = [];
+    if (!Array.isArray(db.holidays)) db.holidays = DEF_HOL.slice();
+    if (typeof db.useHolidays !== 'boolean') db.useHolidays = false;
+    if (!db.baseLeaveDays) db.baseLeaveDays = 24;
+    if (!db.company || typeof db.company !== 'object') db.company = { name: '', edrpou: '', city: '', director: '' };
+    if (!db.meta || typeof db.meta !== 'object') db.meta = { created: new Date().toISOString().slice(0, 10) };
+    return db;
+  }
+
+  (function repairOnLoad() {
+    try {
+      const raw = localStorage.getItem(HR_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return;
+      const fixed = ensureShape(parsed);
+      if (JSON.stringify(fixed) !== JSON.stringify(parsed)) {
+        localStorage.setItem(HR_KEY, JSON.stringify(fixed));
+      }
+    } catch (e) { /* ігноруємо */ }
+  })();
 
   async function sessionOk() {
     const c = client();
@@ -28,8 +56,8 @@
   function readDB() {
     try {
       const db = JSON.parse(localStorage.getItem(HR_KEY) || '{}');
-      return db && typeof db === 'object' ? db : {};
-    } catch (e) { return {}; }
+      return ensureShape(db && typeof db === 'object' ? db : {});
+    } catch (e) { return ensureShape({}); }
   }
   function readLocal() {
     const db = readDB();
@@ -62,7 +90,6 @@
     return !!a && a === b;
   }
 
-  /* Обережно оновлюємо лише скалярні поля — масиви (відпустки, виплати) не чіпаємо */
   function mergeFromCloud(local, row) {
     const md = row.metadata || {};
     const before = JSON.stringify([local.fullName, local.position, local.department, local.hireDate, local.status]);
@@ -98,7 +125,6 @@
     return e;
   }
 
-  /* ── індикатор ── */
   function pill() {
     let el = document.getElementById('nexus-hr-bridge');
     if (el) return el;
@@ -131,7 +157,6 @@
     showPill(msg, '#FF3B47');
   }
 
-  /* ── основний цикл ── */
   async function sync() {
     if (busy) return;
     const d = api();
@@ -146,7 +171,6 @@
       const local = readLocal();
       let changed = false, added = 0;
 
-      /* 1. База → браузер */
       cloudRows.forEach(row => {
         const hit = local.find(e => samePerson(e, row));
         if (hit) {
@@ -157,7 +181,6 @@
         }
       });
 
-      /* 2. Браузер → база: те, чого в базі немає */
       const orphans = local.filter(e => !cloudRows.some(row => samePerson(e, row)));
       let pushed = 0;
       for (const e of orphans) {
@@ -174,15 +197,10 @@
       pendingCount = added + pushed;
 
       if (added > 0) {
-        showPill(added + ' нових записів із бази — натисніть, щоб побачити', '#22D3EE');
+        showPill(added + ' нових записів із бази — натисніть, щоб оновити сторінку', '#22D3EE');
       } else if (pushed > 0) {
         showPill(pushed + ' записів надіслано в базу', '#7CFF4F');
         setTimeout(hidePill, 4000);
-      }
-
-      /* 3. Якщо база принесла нових — тихо перемалювати таблицю */
-      if (added > 0 && window.App && typeof App.filterEmp === 'function') {
-        try { App.filterEmp(); hidePill(); } catch (e) {}
       }
     } catch (err) {
       warnOnce('Синхронізація кадрів недоступна: ' + (err && err.message || err));
