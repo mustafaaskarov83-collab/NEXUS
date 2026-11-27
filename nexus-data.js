@@ -100,6 +100,16 @@
     return data;
   }
 
+    function stripScan(contract) {
+    const c = Object.assign({}, contract || {});
+    if (c.scan && typeof c.scan === 'object' && c.scan.data) {
+      const meta = Object.assign({}, c.scan);
+      delete meta.data;
+      meta.storedLocally = true;
+      c.scan = meta;
+    }
+    return c;
+  }
   async function listEmployees() {
     const [employees, leaveRows, paymentRows, sickRows] = await Promise.all([
       rpc('nexus_list_employees'),
@@ -188,7 +198,7 @@
       p_birth_date: employee.birthDate || null,
       p_category: employee.category || null,
       p_status: employee.status || 'active',
-      p_contract: employee.contract || {},
+       p_contract: stripScan(employee.contract),
       p_reservation: employee.reservation || {},
       p_personal_data: employee.personalData || {},
       p_metadata: {
