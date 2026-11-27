@@ -564,8 +564,13 @@ function loadDB(){
     const r=localStorage.getItem(STORAGE);
     if(r){
       const p=pJ(r,null);
-      if(p&&p.employees){
+      if(p&&Array.isArray(p.employees)){
         if(!Array.isArray(p.departments))p.departments=[];
+        if(!Array.isArray(p.holidays))p.holidays=[...DEF_HOL];
+        if(typeof p.useHolidays!=='boolean')p.useHolidays=false;
+        if(!p.baseLeaveDays)p.baseLeaveDays=LAW.MIN;
+        if(!p.company||typeof p.company!=='object')p.company={name:'',edrpou:'',city:'',director:''};
+        if(!p.meta||typeof p.meta!=='object')p.meta={created:today(),version:APP_VERSION};
         p.employees.forEach(e=>{if(!Object.prototype.hasOwnProperty.call(e,'departmentId'))e.departmentId='';});
         return p;
       }
@@ -574,7 +579,41 @@ function loadDB(){
   return{employees:[],departments:[],holidays:[...DEF_HOL],baseLeaveDays:LAW.MIN,useHolidays:false,
     company:{name:'',edrpou:'',city:'',director:''},meta:{created:today(),version:APP_VERSION}};
 }
-function save(){try{localStorage.setItem(STORAGE,JSON.stringify(db))}catch{alert(t('aErrSave'))}}
+function save(){try{localStorage.setItem(STORAGE,JSON.stringify(db))}catch{alert(t('aErrSave'))}queueCloudSync()}
+
+/* ── Синхронізація змін співробітників у Supabase (єдина точка — save) ── */
+const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const syncedHash=new Map();
+let syncTimer=null,syncBusy=false,syncWarnAt=0;
+function empHash(e){return JSON.stringify(e)}
+function markSynced(){syncedHash.clear();db.employees.forEach(e=>syncedHash.set(e.id,empHash(e)))}
+function hasPendingSync(){
+  return syncBusy||!!syncTimer||db.employees.some(e=>UUID_RE.test(String(e.id))&&syncedHash.get(e.id)!==empHash(e));
+}
+function queueCloudSync(){
+  if(!window.nexusData)return;
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(()=>{syncTimer=null;flushCloudSync()},800);
+}
+async function flushCloudSync(){
+  if(!window.nexusData||syncBusy)return;
+  syncBusy=true;
+  try{
+    for(const e of db.employees.slice()){
+      if(!UUID_RE.test(String(e.id)))continue;
+      if(syncedHash.get(e.id)===empHash(e))continue;
+      try{
+        await saveEmployeeToCloud(e);
+        syncedHash.set(e.id,empHash(e));
+      }catch(err){
+        console.warn('[NEXUS HR] sync failed',e.fullName,err);
+        if(Date.now()-syncWarnAt>60000){syncWarnAt=Date.now();alert('Не вдалося зберегти зміни в базі: '+(err.message||err))}
+      }
+    }
+  }finally{syncBusy=false}
+}
+function reloadFromStorage(){db=loadDB();markSynced();renderAll()}
+markSynced();
 
 /* --- Трудовий договір (опційно, зворотно сумісно) --- */
 
@@ -969,8 +1008,6 @@ function renderDepartments(){
   renderDepartmentSelects();
 }
 
-const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 async function syncDepartmentToCloud(department){
   if(!window.nexusData)return department.id;
   const cloudDepartments=await nexusData.listDepartments();
@@ -1010,12 +1047,7 @@ async function saveEmployeeToCloud(employee){
   await nexusData.upsertEmployee(employee);
 }
 
-function syncEmployeeChange(employee){
-  if(!window.nexusData)return;
-  saveEmployeeToCloud(employee).catch(error=>
-    alert('Помилка синхронізації даних співробітника: '+(error.message||error))
-  );
-}
+function syncEmployeeChange(){queueCloudSync()}
 
 function saveDepartment(){
   if(!reqEdit())return;
@@ -1650,7 +1682,7 @@ function renderModal(){
           ${t('ctrScanUp')}
           <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" style="display:none" onchange="App.attachContractScan(event)">
         </label>`:''}
-        ${c.scanData?`<button class="btn bs" type="button" onclick="App.openContractScan('${e.id}')">${t('ctrScanOpen')}</button>
+        ${(c.scan&&c.scan.data)?`<button class="btn bs" type="button" onclick="App.openContractScan('${e.id}')">${t('ctrScanOpen')}</button>
           ${canE?`<button class="btn bd" type="button" onclick="App.removeContractScan('${e.id}')">× скан</button>`:''}`:''}
       </div>`;
       })()}
@@ -1999,7 +2031,7 @@ function fromWB(wb){
     let bl=ci.baseLeaveDays!==undefined?Number(row[ci.baseLeaveDays])||0:0;
     if(!bl){const mp={disabled_1_2:30,disabled_3:26,minor:31,teacher:56};bl=mp[ct]||db.baseLeaveDays}
     imp.push({
-      id:uid(),fullName:fn,
+      id:(window.nexusData&&nexusData.uuid&&nexusData.uuid())||uid(),fullName:fn,
       position:ci.position!==undefined?String(row[ci.position]||'').trim():'',
       hireDate:hd,birthDate:bd,baseLeaveDays:bl,
       insuranceYears:calcInsuranceYears(hd),category:ct,
@@ -2404,77 +2436,11 @@ return{
   printContract,attachContractScan,openContractScan,removeContractScan,
   fillContractTemplate,saveContractText,resetContractText,saveEmployeePosition,
   saveDepartment,editDepartment,cancelDepartmentEdit,openDepartmentForm,closeDepartmentForm,openEmployeeForm,closeEmployeeForm,saveEmployeeDepartment,
-  saveEmployeeReservation
+  saveEmployeeReservation,reloadFromStorage,hasPendingSync,markSynced
 };
 })();
 window.App=App;
 
 document.addEventListener('DOMContentLoaded',()=>{
   try{App.init()}catch(e){console.error(e);alert('Помилка: '+e.message)}
-});
-// --- СИНХРОНИЗАЦИЯ СОТРУДНИКОВ ИЗ SUPABASE (v2) ---
-async function syncEmployeesFromCloud() {
-  if (!window.nexusData) return;
-  let data;
-  try {
-    data = await nexusData.listEmployees();
-  } catch (error) {
-    console.error('❌ Ошибка загрузки сотрудников:', error.message || error);
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    console.log('В Supabase пока нет сотрудников.');
-    return;
-  }
-
-  let localDb = loadDB();
-  let added = 0;
-
-  data.forEach(cloudEmp => {
-    const employee = {
-      id: cloudEmp.id,
-      fullName: cloudEmp.full_name || '',
-      position: cloudEmp.position || '',
-      departmentId: cloudEmp.department_id || cloudEmp.department || '',
-      hireDate: cloudEmp.hire_date || '',
-      birthDate: cloudEmp.birth_date || '',
-      baseLeaveDays: cloudEmp.metadata?.baseLeaveDays || cloudEmp.base_leave_days || 24,
-      insuranceYears: Number(cloudEmp.metadata?.insuranceYears) || 0,
-      category: cloudEmp.category || 'standard',
-      projectIds: Array.isArray(cloudEmp.metadata?.projectIds) ? cloudEmp.metadata.projectIds : [],
-      contract: cloudEmp.contract || { number: '', type: 'indefinite', signedAt: '', endAt: '', note: '' },
-      reservation: cloudEmp.reservation || (typeof defaultReservation === 'function' ? defaultReservation() : {}),
-      payments: cloudEmp.payments || [],
-      leaves: cloudEmp.leaves || [],
-      unpaidPeriods: cloudEmp.unpaidPeriods || [],
-      parentalPeriods: cloudEmp.parentalPeriods || [],
-      sickLeaves: cloudEmp.sickLeaves || [],
-      metadata: cloudEmp.metadata || {},
-      personalData: cloudEmp.personal_data || {},
-      status: cloudEmp.status || 'active',
-      createdAt: cloudEmp.created_at ? String(cloudEmp.created_at).slice(0, 10) : new Date().toISOString().slice(0, 10)
-    };
-    const existingIndex = localDb.employees.findIndex(e => e.id === cloudEmp.id);
-    if (existingIndex < 0) {
-      localDb.employees.push(employee);
-      added++;
-    } else {
-      localDb.employees[existingIndex] = { ...localDb.employees[existingIndex], ...employee };
-    }
-  });
-
-  if (data.length > 0) {
-    localStorage.setItem(STORAGE, JSON.stringify(localDb));
-    console.log(`✅ Синхронизировано сотрудников из Supabase: ${data.length} (новых: ${added}).`);
-    if (typeof renderEmp === 'function') renderEmp();
-    if (typeof renderDash === 'function') renderDash();
-  } else {
-    console.log('✅ Все сотрудники актуальны.');
-  }
-}
-
-// Запускаем при загрузке страницы
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(syncEmployeesFromCloud, 600);
 });
