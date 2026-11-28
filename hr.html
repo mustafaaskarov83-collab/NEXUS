@@ -105,6 +105,8 @@
           <div class="fg">
             <input id="search" placeholder="Пошук..." style="width:200px" oninput="App.filterEmp()">
             <span class="bg bg-b" id="emp-count">0</span>
+            <button type="button" class="btn bs bsm active" id="employee-active-view" onclick="App.showEmployeeView('active')">Активні</button>
+            <button type="button" class="btn bs bsm" id="employee-archive-view" onclick="App.showEmployeeView('archived')">Архів</button>
             <button class="btn bp" type="button" onclick="App.openEmployeeForm()" id="btn-open-emp">➕ <span id="t-add">Додати співробітника</span></button>
           </div>
         </div>
@@ -119,6 +121,8 @@
             <div class="cs">Персональні дані та документи доступні лише працівникам із правом перегляду HR.</div>
           </div>
           <div class="fg">
+            <button type="button" class="btn bs bsm active" data-guest-view="active">Активні</button>
+            <button type="button" class="btn bs bsm" data-guest-view="archived">Архів</button>
             <button type="button" class="btn bs bsm" id="guest-applications-setup">Підключити прийом анкет</button>
             <button type="button" class="btn bs bsm" id="guest-applications-refresh">Оновити список</button>
           </div>
@@ -485,17 +489,17 @@
     .catch(toPortal);
 })();
 </script>
-<script src="nexus-data.js?v=649"></script>
+<script src="nexus-data.js?v=650"></script>
 <script src="nexus-core.js"></script>
 <script src="app-theme.js"></script>
-<script src="nexus-hr-bridge.js?v=1"></script>
-<script src="app.js?v=649"></script>
+<script src="nexus-hr-bridge.js?v=2"></script>
+<script src="app.js?v=650"></script>
 <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.7/dist/pizzip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.55.6/build/docxtemplater.js"></script>
 <script src="app-calendar.js"></script>
 <script src="cabinet-requests.js"></script>
 <script src="hr-requests.js"></script>
-<script src="guest-applications.js?v=1"></script>
+<script src="guest-applications.js?v=2"></script>
 <script src="nexus-assistant.js"></script>
 </body>
 </html>

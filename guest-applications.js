@@ -12,6 +12,7 @@
     png: 'image/png'
   };
   const ALLOWED_EXT = new Set(Object.keys(MIME_BY_EXT));
+  let guestApplicationView = 'active';
 
   function escapeHtml(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
@@ -137,8 +138,10 @@
     return escapeHtml(value);
   }
 
-  async function listApplications(client) {
-    const { data, error } = await client.rpc('nexus_list_guest_applications');
+  async function listApplications(client, archived) {
+    const { data, error } = await client.rpc(
+      archived ? 'nexus_list_archived_guest_applications' : 'nexus_list_guest_applications'
+    );
     if (error) throw error;
     return Array.isArray(data) ? data : [];
   }
@@ -169,6 +172,9 @@
       return;
     }
     if (setup && window.Auth && Auth.can) setup.hidden = !Auth.can('edit');
+    document.querySelectorAll('[data-guest-view]').forEach(button => {
+      button.classList.toggle('active', button.dataset.guestView === guestApplicationView);
+    });
     status.textContent = 'Завантаження анкет…';
     detail.innerHTML = '';
     list.innerHTML = '';
@@ -181,10 +187,10 @@
         return;
       }
       if (setup) setup.hidden = true;
-      const applications = await listApplications(client);
+      const applications = await listApplications(client, guestApplicationView === 'archived');
       status.textContent = applications.length
-        ? 'Анкет: ' + applications.length
-        : 'Поки що гостьових анкет немає.';
+        ? (guestApplicationView === 'archived' ? 'Архівованих анкет: ' : 'Активних анкет: ') + applications.length
+        : (guestApplicationView === 'archived' ? 'Архівованих анкет немає.' : 'Поки що гостьових анкет немає.');
       if (!applications.length) return;
 
       list.innerHTML = '<div style="overflow-x:auto"><table class="dt"><thead><tr>' +
@@ -194,11 +200,24 @@
           '<td><b>' + esc(item.full_name) + '</b></td>' +
           '<td>' + esc(item.phone) + (item.email ? '<div class="tsm">' + esc(item.email) + '</div>' : '') + '</td>' +
           '<td>' + esc(formatDate(item.created_at)) + '</td>' +
-          '<td><select class="guest-status-select" data-candidate-id="' + esc(item.id) + '">' +
+          '<td>' + (guestApplicationView === 'active'
+            ? '<select class="guest-status-select" data-candidate-id="' + esc(item.id) + '">' +
           ['new', 'reviewing', 'accepted', 'rejected'].map(value =>
             '<option value="' + value + '"' + (item.status === value ? ' selected' : '') + '>' + esc(statusLabel(value)) + '</option>'
-          ).join('') + '</select></td>' +
-          '<td><button type="button" class="btn bs bxs guest-detail-button" data-candidate-id="' + esc(item.id) + '">Переглянути</button></td>' +
+          ).join('') + '</select>'
+            : '<span class="bg bg-gr">Архівна</span>') + '</td>' +
+          '<td style="text-align:right;white-space:nowrap">' +
+          '<button type="button" class="btn bs bxs guest-detail-button" data-candidate-id="' + esc(item.id) + '">Переглянути</button>' +
+          (guestApplicationView === 'active' && window.Auth && Auth.can && Auth.can('edit')
+            ? ' <button type="button" class="btn bd bxs guest-archive-button" data-candidate-id="' + esc(item.id) + '">Архівувати</button>'
+            : '') +
+          (guestApplicationView === 'archived' && window.Auth && Auth.can && Auth.can('edit')
+            ? ' <button type="button" class="btn bs bxs guest-restore-button" data-candidate-id="' + esc(item.id) + '">Відновити</button>'
+            : '') +
+          (guestApplicationView === 'archived' && window.Auth && Auth.can && Auth.can('settings')
+            ? ' <button type="button" class="btn bd bxs guest-purge-button" data-candidate-id="' + esc(item.id) + '">Видалити назавжди</button>'
+            : '') +
+          '</td>' +
           '</tr>'
         ).join('') + '</tbody></table></div>';
 
@@ -207,6 +226,15 @@
       );
       list.querySelectorAll('.guest-detail-button').forEach(button =>
         button.addEventListener('click', () => showDetails(client, applications.find(x => x.id === button.dataset.candidateId)))
+      );
+      list.querySelectorAll('.guest-archive-button').forEach(button =>
+        button.addEventListener('click', () => updateArchive(client, button.dataset.candidateId, true))
+      );
+      list.querySelectorAll('.guest-restore-button').forEach(button =>
+        button.addEventListener('click', () => updateArchive(client, button.dataset.candidateId, false))
+      );
+      list.querySelectorAll('.guest-purge-button').forEach(button =>
+        button.addEventListener('click', () => purgeApplication(client, button.dataset.candidateId))
       );
     } catch (error) {
       console.error('[NEXUS HR] Не вдалося завантажити анкети кандидатів:', error);
@@ -229,6 +257,42 @@
     } finally {
       select.disabled = false;
     }
+  }
+
+  async function updateArchive(client, id, archived) {
+    const message = archived
+      ? 'Архівувати анкету? Документи та історія статусів будуть збережені.'
+      : 'Відновити анкету з архіву?';
+    if (!confirm(message)) return;
+    try {
+      const { error } = await client.rpc('nexus_archive_guest_application', {
+        p_id: id,
+        p_archived: archived
+      });
+      if (error) throw error;
+    } catch (error) {
+      console.error('[NEXUS HR] Не вдалося змінити архівний стан анкети:', error);
+      alert('Не вдалося змінити стан анкети: ' + asMessage(error));
+      return;
+    }
+    await loadHrInbox();
+  }
+
+  async function purgeApplication(client, id) {
+    if (!confirm('Остаточно видалити анкету кандидата та всі завантажені документи? Цю дію неможливо скасувати.')) return;
+    try {
+      const { error } = await client.functions.invoke('nexus-guest-application-admin', {
+        body: { id }
+      });
+      if (error) throw error;
+    } catch (error) {
+      console.error('[NEXUS HR] Не вдалося остаточно видалити анкету:', error);
+      alert('Не вдалося видалити анкету та її документи: ' + asMessage(error));
+      await loadHrInbox();
+      return;
+    }
+    document.getElementById('guest-application-detail').innerHTML = '';
+    await loadHrInbox();
   }
 
   async function showDetails(client, application) {
@@ -283,6 +347,12 @@
       .addEventListener('click', loadHrInbox);
     document.getElementById('guest-applications-setup')
       .addEventListener('click', configureHrInbox);
+    document.querySelectorAll('[data-guest-view]').forEach(button =>
+      button.addEventListener('click', () => {
+        guestApplicationView = button.dataset.guestView === 'archived' ? 'archived' : 'active';
+        loadHrInbox();
+      })
+    );
     document.querySelectorAll('.nb[data-tab="candidates"]').forEach(button =>
       button.addEventListener('click', loadHrInbox)
     );

@@ -159,7 +159,7 @@
         type: row.classification || 'sick'
       });
     });
-    return (employees || []).map(employee => {
+    return (employees || []).filter(employee => employee.status !== 'archived').map(employee => {
       const leaveGroups = leavesByEmployee.get(employee.id) || { leaves: [], unpaidPeriods: [], parentalPeriods: [] };
       return {
         ...employee,
@@ -273,6 +273,30 @@
 
   async function deleteEmployee(id) {
     return rpc('nexus_delete_employee', { p_id: id });
+  }
+
+  async function archiveEmployee(id) {
+    return rpc('nexus_archive_employee', { p_id: id });
+  }
+
+  async function listArchivedEmployees() {
+    return rpc('nexus_list_archived_employees');
+  }
+
+  async function restoreEmployee(id) {
+    return rpc('nexus_restore_employee', { p_id: id });
+  }
+
+  async function purgeEmployee(id) {
+    return rpc('nexus_purge_employee', { p_id: id });
+  }
+
+  async function setDepartmentActive(id, isActive) {
+    return rpc('nexus_set_department_active', { p_id: id, p_is_active: !!isActive });
+  }
+
+  async function purgeDepartment(id) {
+    return rpc('nexus_purge_department', { p_id: id });
   }
 
   async function deleteHrLeave(id) {
@@ -1477,6 +1501,12 @@
     upsertDepartment,
     upsertEmployee,
     deleteEmployee,
+    archiveEmployee,
+    listArchivedEmployees,
+    restoreEmployee,
+    purgeEmployee,
+    setDepartmentActive,
+    purgeDepartment,
     deleteHrLeave,
     deleteHrSickLeave,
     deleteHrPayrollPayment,

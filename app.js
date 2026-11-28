@@ -556,7 +556,7 @@ const CMAP={'піб':'fullName','фио':'fullName','ad soyad':'fullName','adsoy
   'тривалість відпустки':'baseLeaveDays','продолжительность отпуска':'baseLeaveDays','izin süresi':'baseLeaveDays',
   'категорія':'category','категория':'category','kategori':'category'};
 
-let db=loadDB(),curEmpId=null;
+let db=loadDB(),curEmpId=null,employeeView='active',archivedEmployees=[];
 function escH(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 function loadDB(){
@@ -944,7 +944,7 @@ function initTabs(){
 }
 
 function renderDash(){
-  const emps=db.employees;
+  const emps=db.employees.filter(e=>(e.status||'active')!=='archived');
   $('#dash-date').textContent=fD(today());
   let te=0,tu=0,tl=0,ol=0;
   emps.forEach(e=>{
@@ -978,9 +978,14 @@ function renderDepartmentSelects(){
   const selects=[$('#ed'),$('#emp-department')].filter(Boolean);
   selects.forEach(sel=>{
     const current=sel.value;
+    const activeDepartments=(db.departments||[]).filter(d=>d.isActive!==false);
     sel.innerHTML='<option value="">— Оберіть відділ —</option>'+
-      (db.departments||[]).slice().sort((a,b)=>a.code.localeCompare(b.code,'uk')).map(d=>
+      activeDepartments.slice().sort((a,b)=>a.code.localeCompare(b.code,'uk')).map(d=>
         `<option value="${d.id}">${escH(d.code)} — ${escH(d.name)}</option>`).join('');
+    const selectedDepartment=(db.departments||[]).find(d=>d.id===current);
+    if(selectedDepartment&&selectedDepartment.isActive===false&&sel.id==='emp-department'){
+      sel.insertAdjacentHTML('beforeend',`<option value="${escH(selectedDepartment.id)}" disabled>${escH(selectedDepartment.code)} — ${escH(selectedDepartment.name)} (архівний)</option>`);
+    }
     if(current && (db.departments||[]).some(d=>d.id===current))sel.value=current;
   });
 }
@@ -990,7 +995,7 @@ function renderDepartmentManagerSelect(currentId){
   if(!select)return;
   const current=currentId||select.value||'';
   const employees=(db.employees||[]).slice()
-    .filter(e=>e&&e.id&&(e.status||'active')!=='inactive')
+    .filter(e=>e&&e.id&&(e.status||'active')==='active')
     .sort((a,b)=>String(a.fullName||'').localeCompare(String(b.fullName||''),'uk'));
   select.innerHTML='<option value="">— Не призначено —</option>'+
     employees.map(e=>{
@@ -1012,19 +1017,28 @@ function renderDepartments(){
     return;
   }
   el.innerHTML=`<table class="dt"><thead><tr>
-    <th>Код відділу</th><th>Назва відділу</th><th>Керівник відділу</th><th>Співробітників</th><th></th>
+    <th>Код відділу</th><th>Назва відділу</th><th>Керівник відділу</th><th>Співробітників</th><th>Стан</th><th></th>
   </tr></thead><tbody>${deps.map(d=>{
     const count=db.employees.filter(e=>e.departmentId===d.id).length;
     const manager=db.employees.find(e=>e.id===d.managerEmployeeId);
     const managerText=manager
       ? `<b>${escH(manager.fullName||'Без імені')}</b>${manager.position?`<div class="tsm">${escH(manager.position)}</div>`:''}`
-      : '<span class="tsm">Не призначено</span>';
+      : d.managerEmployeeId
+        ? '<span class="tsm">Керівник недоступний або в архіві</span>'
+        : '<span class="tsm">Не призначено</span>';
+    const active=d.isActive!==false;
+    const actions=active
+      ? `<button class="btn bs bxs" onclick="App.editDepartment('${d.id}')">Редагувати</button>
+         <button class="btn bd bxs" onclick="App.setDepartmentActive('${d.id}',false)">Архівувати</button>`
+      : `<button class="btn bs bxs" onclick="App.setDepartmentActive('${d.id}',true)">Відновити</button>
+         ${Auth.can('settings')?`<button class="btn bd bxs" onclick="App.purgeDepartment('${d.id}')">Видалити назавжди</button>`:''}`;
     return `<tr>
       <td><b>${escH(d.code)}</b></td>
       <td>${escH(d.name)}</td>
       <td>${managerText}</td>
       <td><span class="bg bg-b">${count}</span></td>
-      <td style="text-align:right"><button class="btn bs bxs" onclick="App.editDepartment('${d.id}')">Редагувати</button></td>
+      <td><span class="bg ${active?'bg-g':'bg-gr'}">${active?'Активний':'Архівний'}</span></td>
+      <td style="text-align:right;white-space:nowrap">${actions}</td>
     </tr>`;
   }).join('')}</tbody></table>`;
   renderDepartmentSelects();
@@ -1110,6 +1124,7 @@ function saveDepartment(){
 function editDepartment(id){
   if(!reqEdit())return;
   const d=(db.departments||[]).find(x=>x.id===id);if(!d)return;
+  if(d.isActive===false){alert('Спочатку відновіть відділ, щоб редагувати його.');return}
   $('#dep-edit-id').value=d.id;
   $('#dep-code').value=d.code;
   $('#dep-name').value=d.name;
@@ -1119,6 +1134,45 @@ function editDepartment(id){
   const mt=$('#dep-mt'); if(mt) mt.textContent='Редагувати відділ';
   const m=$('#dep-modal'); if(m) m.classList.add('open');
   setTimeout(()=>{$('#dep-code').focus();},80);
+}
+
+async function setDepartmentActive(id,isActive){
+  if(!reqEdit())return;
+  const department=(db.departments||[]).find(d=>d.id===id);
+  if(!department)return;
+  if(!isActive&&department.isActive===false)return;
+  if(isActive&&department.isActive!==false)return;
+  const action=isActive?'відновити':'архівувати';
+  if(!confirm(`Ви впевнені, що хочете ${action} відділ «${department.name}»?`))return;
+  try{
+    await nexusData.setDepartmentActive(id,isActive);
+  }catch(error){
+    alert('Не вдалося змінити стан відділу: '+(error.message||error));
+    return;
+  }
+  department.isActive=isActive;
+  save();renderDepartments();renderEmp($('#search').value);
+}
+
+async function purgeDepartment(id){
+  if(!Auth.can('settings')){alert(t('denied'));return}
+  const department=(db.departments||[]).find(d=>d.id===id);
+  if(!department||department.isActive!==false)return;
+  const assigned=db.employees.filter(e=>e.departmentId===id).length;
+  const children=(db.departments||[]).filter(d=>d.parentId===id).length;
+  if(assigned||children){
+    alert('Відділ не порожній: спочатку перепризначте співробітників і дочірні відділи.');
+    return;
+  }
+  if(!confirm(`Остаточно видалити архівний відділ «${department.name}»? Цю дію неможливо скасувати.`))return;
+  try{
+    await nexusData.purgeDepartment(id);
+  }catch(error){
+    alert('Не вдалося видалити відділ. Перевірте, чи немає пов’язаних записів: '+(error.message||error));
+    return;
+  }
+  db.departments=db.departments.filter(d=>d.id!==id);
+  save();renderDepartments();renderEmp($('#search').value);
 }
 
 function cancelDepartmentEdit(){
@@ -1235,12 +1289,17 @@ async function delEmp(id){
   if(!reqEdit())return;
   const e=db.employees.find(x=>x.id===id);
   if(!e)return;
-  if(!confirm(t('aDel',{name:e.fullName})))return;
+  const managed=(db.departments||[]).filter(d=>d.managerEmployeeId===id);
+  if(managed.length){
+    alert(`Спочатку призначте іншого керівника для відділів: ${managed.map(d=>d.name).join(', ')}.`);
+    return;
+  }
+  if(!confirm(`Архівувати співробітника «${e.fullName}»? Кадрова історія буде збережена.`))return;
   if(window.nexusData){
     try{
-      await nexusData.deleteEmployee(id);
+      await nexusData.archiveEmployee(id);
     }catch(error){
-      alert('Помилка видалення співробітника: '+(error.message||error));
+      alert('Помилка архівування співробітника: '+(error.message||error));
       return;
     }
   }
@@ -1249,9 +1308,10 @@ async function delEmp(id){
 }
 function filterEmp(){renderEmp($('#search').value.toLowerCase().trim())}
 function renderEmp(q){
+  if(employeeView!=='active')return;
   db.employees.forEach(e=>{if(!Array.isArray(e.projectIds))e.projectIds=e.projectId?[e.projectId]:[]});
   const el=$('#emp-list');q=(q||'').toLowerCase().trim();
-  let list=db.employees;
+  let list=db.employees.filter(e=>(e.status||'active')!=='archived');
   if(q)list=list.filter(e=>{
     const d=(db.departments||[]).find(x=>x.id===e.departmentId);
     return e.fullName.toLowerCase().includes(q)||(e.position||'').toLowerCase().includes(q)||
@@ -1278,10 +1338,100 @@ function renderEmp(q){
       <td>${st}</td>
       <td style="text-align:right;white-space:nowrap">
         <button class="btn bp bxs" onclick="event.stopPropagation();App.openEmp('${e.id}')">${t('tCard')}</button>
-        ${ce?`<button class="btn bd bxs" onclick="App.delEmp('${e.id}')">×</button>`:''}
+        ${ce?`<button class="btn bd bxs" onclick="App.delEmp('${e.id}')">Архівувати</button>`:''}
       </td></tr>`;
   });
   h+='</tbody></table>';el.innerHTML=h;
+}
+
+async function showEmployeeView(view){
+  employeeView=view==='archived'?'archived':'active';
+  const activeButton=$('#employee-active-view');
+  const archivedButton=$('#employee-archive-view');
+  if(activeButton)activeButton.classList.toggle('active',employeeView==='active');
+  if(archivedButton)archivedButton.classList.toggle('active',employeeView==='archived');
+  const search=$('#search');
+  if(search)search.disabled=employeeView!=='active';
+  const addButton=$('#btn-open-emp');
+  if(addButton)addButton.hidden=employeeView!=='active';
+  if(employeeView==='active'){renderEmp(search?.value||'');return}
+
+  const host=$('#emp-list');
+  host.innerHTML='<div class="tm">Завантаження архіву співробітників…</div>';
+  try{
+    archivedEmployees=await nexusData.listArchivedEmployees();
+  }catch(error){
+    host.innerHTML=`<div class="tm">Не вдалося завантажити архів: ${escH(error.message||error)}</div>`;
+    return;
+  }
+  renderArchivedEmployees();
+}
+
+function renderArchivedEmployees(){
+  const host=$('#emp-list');
+  const rows=Array.isArray(archivedEmployees)?archivedEmployees:[];
+  $('#emp-count').textContent=rows.length;
+  if(!rows.length){host.innerHTML='<div class="tm">Архівованих співробітників немає.</div>';return}
+  const canManage=Auth.can('settings');
+  host.innerHTML='<div style="overflow-x:auto"><table class="dt"><thead><tr>' +
+    '<th>ПІБ</th><th>Посада</th><th>Відділ</th><th>Дата архівації</th><th></th>' +
+    '</tr></thead><tbody>' + rows.map(employee=>{
+      const dep=employee.department_code
+        ? `${employee.department_code} — ${employee.department_name||''}`
+        : '—';
+      return `<tr><td><b>${escH(employee.full_name||'')}</b></td>
+        <td>${escH(employee.position||'—')}</td><td>${escH(dep)}</td>
+        <td>${fD(String(employee.archived_at||'').slice(0,10))}</td>
+        <td style="text-align:right;white-space:nowrap">
+          ${Auth.can('edit')?`<button class="btn bs bxs" onclick="App.restoreEmployee('${employee.id}')">Відновити</button>`:''}
+          ${canManage?`<button class="btn bd bxs" onclick="App.purgeEmployee('${employee.id}')">Видалити назавжди</button>`:''}
+        </td></tr>`;
+    }).join('')+'</tbody></table></div>';
+}
+
+async function restoreEmployee(id){
+  if(!reqEdit())return;
+  const employee=archivedEmployees.find(item=>item.id===id);
+  if(!employee||!confirm(`Відновити співробітника «${employee.full_name}»?`))return;
+  try{
+    await nexusData.restoreEmployee(id);
+  }catch(error){
+    alert('Не вдалося відновити співробітника: '+(error.message||error));
+    return;
+  }
+  let restored;
+  try{
+    const activeEmployees=await nexusData.listEmployees();
+    restored=activeEmployees.find(item=>item.id===id);
+  }catch(error){
+    archivedEmployees=archivedEmployees.filter(item=>item.id!==id);
+    renderArchivedEmployees();
+    alert('Співробітника відновлено, але його картку не вдалося завантажити. Оновіть сторінку: '+(error.message||error));
+    return;
+  }
+  if(!restored){
+    archivedEmployees=archivedEmployees.filter(item=>item.id!==id);
+    renderArchivedEmployees();
+    alert('Співробітника відновлено, але його активна картка поки не повернулася зі списку. Оновіть сторінку.');
+    return;
+  }
+  if(!db.employees.some(item=>item.id===id))db.employees.push(restored);
+  else Object.assign(db.employees.find(item=>item.id===id),restored);
+  save();renderDepartments();refreshSel();renderDash();showEmployeeView('archived');
+}
+
+async function purgeEmployee(id){
+  if(!Auth.can('settings')){alert(t('denied'));return}
+  const employee=archivedEmployees.find(item=>item.id===id);
+  if(!employee||!confirm(`Остаточно видалити архівовану картку «${employee.full_name}»? Записи з кадровою історією завадять видаленню. Цю дію неможливо скасувати.`))return;
+  try{
+    await nexusData.purgeEmployee(id);
+  }catch(error){
+    alert('Не вдалося остаточно видалити співробітника. Спочатку приберіть пов’язані записи: '+(error.message||error));
+    return;
+  }
+  archivedEmployees=archivedEmployees.filter(item=>item.id!==id);
+  renderArchivedEmployees();
 }
 
 function openEmp(id){
@@ -2149,7 +2299,7 @@ function expXls(){
 function refreshSel(){
   const ps=window.NexusCore ? NexusCore.getProjects() : [];
   const ep=$('#e-projects'); if(ep){ const selected=new Set(Array.from(ep.selectedOptions||[]).map(o=>o.value)); ep.innerHTML=ps.filter(p=>p.status!=='cancelled').map(p=>'<option value="'+p.id+'">'+p.code+' — '+p.name+'</option>').join(''); Array.from(ep.options).forEach(o=>o.selected=selected.has(o.value)); }
-  const o=db.employees.map(e=>'<option value="'+e.id+'">'+e.fullName+'</option>').join('');
+  const o=db.employees.filter(e=>(e.status||'active')!=='archived').map(e=>'<option value="'+e.id+'">'+e.fullName+'</option>').join('');
   ['#ce','#me'].forEach(s=>{
     const el=$(s);if(!el)return;
     const c=el.value;
@@ -2468,6 +2618,7 @@ return{
   printContract,attachContractScan,openContractScan,removeContractScan,
   fillContractTemplate,saveContractText,resetContractText,saveEmployeePosition,
   saveDepartment,editDepartment,cancelDepartmentEdit,openDepartmentForm,closeDepartmentForm,openEmployeeForm,closeEmployeeForm,saveEmployeeDepartment,
+  setDepartmentActive,purgeDepartment,showEmployeeView,restoreEmployee,purgeEmployee,
   saveEmployeeReservation,reloadFromStorage,hasPendingSync,markSynced
 };
 })();
