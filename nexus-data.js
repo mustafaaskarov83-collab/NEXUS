@@ -182,7 +182,8 @@
       p_name: department.name,
       p_code: department.code || null,
       p_parent_id: department.parentId || null,
-      p_branch_id: department.branchId || null
+      p_branch_id: department.branchId || null,
+      p_manager_employee_id: department.managerEmployeeId || null
     });
   }
 
