@@ -588,7 +588,7 @@ let syncTimer=null,syncBusy=false,syncWarnAt=0;
 function empHash(e){return JSON.stringify(e)}
 function markSynced(){syncedHash.clear();db.employees.forEach(e=>syncedHash.set(e.id,empHash(e)))}
 function hasPendingSync(){
-  return syncBusy||!!syncTimer||db.employees.some(e=>UUID_RE.test(String(e.id))&&syncedHash.get(e.id)!==empHash(e));
+  return savingEmployeeMain||syncBusy||!!syncTimer||db.employees.some(e=>UUID_RE.test(String(e.id))&&syncedHash.get(e.id)!==empHash(e));
 }
 function queueCloudSync(){
   if(!window.nexusData)return;
@@ -596,7 +596,8 @@ function queueCloudSync(){
   syncTimer=setTimeout(()=>{syncTimer=null;flushCloudSync()},800);
 }
 async function flushCloudSync(){
-  if(!window.nexusData||syncBusy)return;
+  if(!window.nexusData)return;
+  if(syncBusy){queueCloudSync();return}
   syncBusy=true;
   try{
     for(const e of db.employees.slice()){
@@ -1084,6 +1085,28 @@ async function saveEmployeeToCloud(employee){
   await nexusData.upsertEmployee(employee);
 }
 
+async function saveEmployeeProfileToCloud(employee){
+  if(!window.nexusData)throw new Error('Supabase не підключено');
+  if(employee.departmentId){
+    const department=db.departments.find(d=>d.id===employee.departmentId);
+    if(!department)throw new Error('Не знайдено відділ співробітника.');
+    employee.departmentId=await syncDepartmentToCloud(department);
+  }
+  if(typeof nexusData.upsertEmployeeRecord!=='function'){
+    throw new Error('Оновіть сторінку, щоб завантажити актуальний модуль збереження HR.');
+  }
+  await nexusData.upsertEmployeeRecord(employee);
+}
+
+async function withEmployeeSyncLock(callback){
+  while(syncBusy)await new Promise(resolve=>setTimeout(resolve,25));
+  clearTimeout(syncTimer);
+  syncTimer=null;
+  syncBusy=true;
+  try{return await callback()}
+  finally{syncBusy=false}
+}
+
 function syncEmployeeChange(){queueCloudSync()}
 
 function saveDepartment(){
@@ -1484,24 +1507,35 @@ function employeeMainFormChanged(employee){
     ||values.baseLeaveDays!==Number(employee.baseLeaveDays==null?24:employee.baseLeaveDays);
 }
 
+function setEmployeeMainSaveStatus(message,isError){
+  const status=$('[data-employee-main-save-status]');
+  if(!status)return;
+  status.textContent=message;
+  status.style.color=isError?'#b42318':'';
+}
+
 async function saveEmployeeMain(){
   if(!reqEdit())return;
   const e=db.employees.find(x=>x.id===curEmpId);if(!e)return;
   const values=employeeMainFormValues();
-  if(!values.fullName){alert('Вкажіть ПІБ співробітника.');return}
-  if(!values.category){alert('Вкажіть категорію співробітника.');return}
+  if(!values.fullName){setEmployeeMainSaveStatus('Вкажіть ПІБ співробітника.',true);$('#emp-full-name')?.focus();return}
+  if(!values.category){setEmployeeMainSaveStatus('Вкажіть категорію співробітника.',true);$('#emp-category')?.focus();return}
   if(!Number.isFinite(values.baseLeaveDays)||values.baseLeaveDays<=0){
-    alert('Базова відпустка має бути числом більше нуля.');
+    setEmployeeMainSaveStatus('Базова відпустка має бути числом більше нуля.',true);
+    $('#emp-base-leave-days')?.focus();
     return;
   }
   const department=values.departmentId
     ? (db.departments||[]).find(d=>d.id===values.departmentId)
     : null;
-  if(values.departmentId&&!department){alert('Обраний відділ не знайдений.');return}
+  if(values.departmentId&&!department){setEmployeeMainSaveStatus('Обраний відділ не знайдений.',true);$('#emp-department')?.focus();return}
   if(department&&department.isActive===false&&department.id!==e.departmentId){
-    alert('Нових співробітників не можна призначати до архівного відділу.');
+    setEmployeeMainSaveStatus('Нових співробітників не можна призначати до архівного відділу.',true);
+    $('#emp-department')?.focus();
     return;
   }
+  const previousHash=empHash(e);
+  const hadPendingChanges=syncedHash.get(e.id)!==previousHash;
   const previous={
     fullName:e.fullName,position:e.position,departmentId:e.departmentId,
     hireDate:e.hireDate,birthDate:e.birthDate,category:e.category,
@@ -1511,21 +1545,25 @@ async function saveEmployeeMain(){
   const button=document.querySelector('[data-save-employee-main]');
   savingEmployeeMain=true;
   if(button){button.disabled=true;button.textContent='Збереження…'}
+  setEmployeeMainSaveStatus('Збереження в базі…',false);
   try{
-    await saveEmployeeToCloud(e);
+    await withEmployeeSyncLock(()=>saveEmployeeProfileToCloud(e));
+    if(!hadPendingChanges)syncedHash.set(e.id,empHash(e));
     save();
   }catch(error){
     Object.assign(e,previous);
-    alert('Не вдалося зберегти дані співробітника в базі: '+(error.message||error));
-    try{renderEmp();renderModal()}catch(_){}
+    console.error('[NEXUS HR] employee profile save failed',e.id,error);
+    setEmployeeMainSaveStatus('Не вдалося зберегти: '+(error.message||error),true);
     return;
   }finally{
     savingEmployeeMain=false;
+    if(button){button.disabled=false;button.textContent='💾 Зберегти зміни'}
   }
   if(window.NexusCore)NexusCore.audit('employee.main.update','employee',{
     employeeId:e.id,departmentId:e.departmentId,position:e.position
   });
   renderEmp();renderDepartments();renderModal();
+  setEmployeeMainSaveStatus('Зміни збережено в базі.',false);
 }
 
 async function saveEmployeeDepartment(){return saveEmployeeMain()}
@@ -1873,7 +1911,7 @@ function renderModal(){
       </div>
       ${canE?`<div class="ecard-actions">
         <button class="btn bp" type="button" data-save-employee-main onclick="App.saveEmployeeMain()">💾 Зберегти зміни</button>
-        <span class="ecard-hint">Зміни збережуться в базі після натискання кнопки.</span>
+        <span class="ecard-hint" data-employee-main-save-status role="status" aria-live="polite">Зміни збережуться в базі після натискання кнопки.</span>
       </div>`:'<p class="ecard-hint">Тільки перегляд</p>'}
       ${cc.length
         ? `<div class="ecard-alert warn"><b>Увага</b><ul>${cc.map(c=>'<li>'+c+'</li>').join('')}</ul></div>`

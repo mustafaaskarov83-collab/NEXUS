@@ -187,10 +187,8 @@
     });
   }
 
-  async function upsertEmployee(employee) {
-    const { context, membership } = await tenantMembership();
-    if (!membership.company_id) throw new Error('Для активного tenant не налаштовано компанію');
-    const result = await rpc('nexus_upsert_employee', {
+  function employeeRpcPayload(employee) {
+    return {
       p_id: employee.id,
       p_full_name: employee.fullName,
       p_position: employee.position || null,
@@ -199,7 +197,7 @@
       p_birth_date: employee.birthDate || null,
       p_category: employee.category || null,
       p_status: employee.status || 'active',
-       p_contract: stripScan(employee.contract),
+      p_contract: stripScan(employee.contract),
       p_reservation: employee.reservation || {},
       p_personal_data: employee.personalData || {},
       p_metadata: {
@@ -208,7 +206,19 @@
         insuranceYears: employee.insuranceYears,
         projectIds: employee.projectIds || []
       }
-    });
+    };
+  }
+
+  async function upsertEmployeeRecord(employee) {
+    const { membership } = await tenantMembership();
+    if (!membership.company_id) throw new Error('Для активного tenant не налаштовано компанію');
+    return rpc('nexus_upsert_employee', employeeRpcPayload(employee));
+  }
+
+  async function upsertEmployee(employee) {
+    const { context, membership } = await tenantMembership();
+    if (!membership.company_id) throw new Error('Для активного tenant не налаштовано компанію');
+    const result = await rpc('nexus_upsert_employee', employeeRpcPayload(employee));
     const leaveItems = [
       ...(employee.leaves || []).map(record => ({ record, type: record.type || 'annual', key: record.id })),
       ...(employee.unpaidPeriods || []).map(record => ({
@@ -1499,6 +1509,7 @@
     listEmployees,
     listDepartments,
     upsertDepartment,
+    upsertEmployeeRecord,
     upsertEmployee,
     deleteEmployee,
     archiveEmployee,
