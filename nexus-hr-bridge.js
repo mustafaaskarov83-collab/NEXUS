@@ -202,6 +202,7 @@
         db.departments.push({
           id: c.id, code: c.code || '', name: c.name || '',
           parentId: c.parent_id || null, branchId: c.branch_id || null,
+          managerEmployeeId: c.manager_employee_id || null,
           createdAt: todayStr(), updatedAt: todayStr()
         });
         return;
@@ -211,6 +212,9 @@
       l.name = c.name || l.name;
       l.parentId = c.parent_id || null;
       l.branchId = c.branch_id || null;
+      if (Object.prototype.hasOwnProperty.call(c, 'manager_employee_id')) {
+        l.managerEmployeeId = c.manager_employee_id || null;
+      }
     });
   }
 

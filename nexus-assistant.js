@@ -33,7 +33,7 @@
 
       '# 3. КАДРОВИЙ ОБЛІК (hr.html, nexus_hr_ua_v2)\n' +
       'Співробітники: ПІБ, посада, відділ (departmentId), контакти, статус, проекти (projectIds), дата прийому, дата народження тощо.\n' +
-      'Відділи: довідник departments[].\n' +
+      'Відділи: довідник departments[]; у кожного відділу може бути керівник (managerEmployeeId), вибраний зі списку співробітників.\n' +
       'Відпустки/лікарняні: у картці співробітника (leaves / vacations).\n' +
       'Трудовий договір: номер, дати, текст, друк/скан у картці.\n' +
       'Вкладка «Заявки»: шаблони DOCX/текст (nexus_hr_requests_v1), плейсхолдери {{ПІБ}}, {{Прізвище}}, {{Ім\'я}}, {{ПоБатькові}}.\n' +
@@ -572,7 +572,7 @@
       const emps = hr.employees || [];
       const deps = hr.departments || [];
       lines.push('Співробітників: ' + emps.length + ', відділів: ' + deps.length);
-      lines.push.apply(lines, dumpArray('departments', deps, ['id', 'name', 'title', 'code', 'head']));
+      lines.push.apply(lines, dumpArray('departments', deps, ['id', 'name', 'title', 'code', 'head', 'managerEmployeeId']));
       lines.push.apply(lines, dumpArray('employees', emps, [
         'id', 'fullName', 'lastName', 'firstName', 'middleName', 'position', 'jobTitle',
         'departmentId', 'status', 'phone', 'email', 'projectIds', 'projectId',

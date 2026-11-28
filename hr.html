@@ -332,6 +332,12 @@
         <div class="ff"><label>Код відділу <span class="rq">*</span></label><input id="dep-code" maxlength="30" placeholder="PROD-01"></div>
         <div class="ff" style="flex:2"><label>Назва відділу <span class="rq">*</span></label><input id="dep-name" maxlength="120" placeholder="Виробничий відділ"></div>
       </div>
+      <div class="ff m16">
+        <label>Керівник відділу</label>
+        <select id="dep-manager">
+          <option value="">— Не призначено —</option>
+        </select>
+      </div>
       <div class="fg m16">
         <button class="btn bp" onclick="App.saveDepartment()" id="dep-save">Додати відділ</button>
         <button class="btn bs" onclick="App.closeDepartmentForm()" id="dep-cancel">Скасувати</button>

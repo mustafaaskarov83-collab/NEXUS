@@ -985,6 +985,22 @@ function renderDepartmentSelects(){
   });
 }
 
+function renderDepartmentManagerSelect(currentId){
+  const select=$('#dep-manager');
+  if(!select)return;
+  const current=currentId||select.value||'';
+  const employees=(db.employees||[]).slice()
+    .filter(e=>e&&e.id&&(e.status||'active')!=='inactive')
+    .sort((a,b)=>String(a.fullName||'').localeCompare(String(b.fullName||''),'uk'));
+  select.innerHTML='<option value="">— Не призначено —</option>'+
+    employees.map(e=>{
+      const position=e.position?` — ${escH(e.position)}`:'';
+      return `<option value="${escH(e.id)}">${escH(e.fullName||'Без імені')}${position}</option>`;
+    }).join('');
+  if(current && employees.some(e=>e.id===current))select.value=current;
+  else select.value='';
+}
+
 function renderDepartments(){
   const el=$('#departments-list');
   if(!el)return;
@@ -992,20 +1008,27 @@ function renderDepartments(){
   if(!deps.length){
     el.innerHTML='<div class="tm">Відділів ще немає. Додайте перший відділ вище.</div>';
     renderDepartmentSelects();
+    renderDepartmentManagerSelect();
     return;
   }
   el.innerHTML=`<table class="dt"><thead><tr>
-    <th>Код відділу</th><th>Назва відділу</th><th>Співробітників</th><th></th>
+    <th>Код відділу</th><th>Назва відділу</th><th>Керівник відділу</th><th>Співробітників</th><th></th>
   </tr></thead><tbody>${deps.map(d=>{
     const count=db.employees.filter(e=>e.departmentId===d.id).length;
+    const manager=db.employees.find(e=>e.id===d.managerEmployeeId);
+    const managerText=manager
+      ? `<b>${escH(manager.fullName||'Без імені')}</b>${manager.position?`<div class="tsm">${escH(manager.position)}</div>`:''}`
+      : '<span class="tsm">Не призначено</span>';
     return `<tr>
       <td><b>${escH(d.code)}</b></td>
       <td>${escH(d.name)}</td>
+      <td>${managerText}</td>
       <td><span class="bg bg-b">${count}</span></td>
       <td style="text-align:right"><button class="btn bs bxs" onclick="App.editDepartment('${d.id}')">Редагувати</button></td>
     </tr>`;
   }).join('')}</tbody></table>`;
   renderDepartmentSelects();
+  renderDepartmentManagerSelect();
 }
 
 async function syncDepartmentToCloud(department){
@@ -1053,8 +1076,13 @@ function saveDepartment(){
   if(!reqEdit())return;
   const code=$('#dep-code').value.trim().toUpperCase();
   const name=$('#dep-name').value.trim();
+  const managerEmployeeId=$('#dep-manager').value||null;
   const editId=$('#dep-edit-id').value;
   if(!code||!name){alert('Вкажіть код і назву відділу.');return}
+  if(managerEmployeeId && !(db.employees||[]).some(e=>e.id===managerEmployeeId)){
+    alert('Обраний керівник не знайдений у списку співробітників.');
+    return;
+  }
   if(!/^[A-ZА-ЯІЇЄ0-9][A-ZА-ЯІЇЄ0-9._-]*$/i.test(code)){
     alert('Код відділу може містити лише літери, цифри, крапку, дефіс та підкреслення.');return;
   }
@@ -1065,8 +1093,9 @@ function saveDepartment(){
     department=db.departments.find(x=>x.id===editId);
     if(!department)return;
     department.code=code;department.name=name;department.updatedAt=today();
+    department.managerEmployeeId=managerEmployeeId;
   }else{
-    department={id:window.nexusData?.uuid()||uid(),code,name,createdAt:today(),updatedAt:today()};
+    department={id:window.nexusData?.uuid()||uid(),code,name,managerEmployeeId,createdAt:today(),updatedAt:today()};
     db.departments.push(department);
   }
   save();
@@ -1084,6 +1113,7 @@ function editDepartment(id){
   $('#dep-edit-id').value=d.id;
   $('#dep-code').value=d.code;
   $('#dep-name').value=d.name;
+  renderDepartmentManagerSelect(d.managerEmployeeId||'');
   $('#dep-save').textContent='Зберегти зміни';
   const dc=$('#dep-cancel'); if(dc) dc.style.display='';
   const mt=$('#dep-mt'); if(mt) mt.textContent='Редагувати відділ';
@@ -1095,6 +1125,7 @@ function cancelDepartmentEdit(){
   $('#dep-edit-id').value='';
   $('#dep-code').value='';
   $('#dep-name').value='';
+  renderDepartmentManagerSelect('');
   $('#dep-save').textContent='Додати відділ';
   const dc=$('#dep-cancel'); if(dc) dc.style.display='none';
   const mt=$('#dep-mt'); if(mt) mt.textContent='Додати відділ';
@@ -1172,6 +1203,7 @@ async function addEmp(){
     baseLeaveDays:Number($('#el').value)||LAW.MIN,
     insuranceYears:Number($('#ee').value)||calcInsuranceYears(h),
     category:$('#ec').value,
+    status:'active',
     projectIds: Array.from(document.querySelectorAll('#e-projects option:checked')).map(o=>o.value).filter(Boolean),
     contract:{number:ctrNum,type:ctrType,signedAt:ctrSigned,endAt:ctrEnd,note:''},
     reservation: defaultReservation(),
