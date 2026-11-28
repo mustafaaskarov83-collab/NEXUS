@@ -44,6 +44,14 @@ as $function$
    and core.has_permission(d.tenant_id,'hr.read');
 $function$;
 
+drop function if exists public.nexus_upsert_department(
+  uuid,
+  text,
+  text,
+  uuid,
+  uuid
+);
+
 create or replace function public.nexus_upsert_department(
   p_id uuid,
   p_name text,
