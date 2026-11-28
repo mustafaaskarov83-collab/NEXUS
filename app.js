@@ -3,7 +3,7 @@
    Версія проєкту визначається в ОДНОМУ місці — константі APP_VERSION.
    ═══════════════════════════════════════════════════════════════════════ */
 
-const APP_VERSION='6.1.8';
+const APP_VERSION='6.1.9';
 
 const LANG = {
 uk:{brand:'Кадровий облік',
@@ -556,7 +556,7 @@ const CMAP={'піб':'fullName','фио':'fullName','ad soyad':'fullName','adsoy
   'тривалість відпустки':'baseLeaveDays','продолжительность отпуска':'baseLeaveDays','izin süresi':'baseLeaveDays',
   'категорія':'category','категория':'category','kategori':'category'};
 
-let db=loadDB(),curEmpId=null,employeeView='active',archivedEmployees=[];
+let db=loadDB(),curEmpId=null,employeeView='active',archivedEmployees=[],savingEmployeeMain=false;
 function escH(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 function loadDB(){
@@ -1445,6 +1445,10 @@ function openEmp(id){
   }
 }
 function closeModal(){
+  if(savingEmployeeMain){alert('Зачекайте завершення збереження співробітника.');return}
+  const employee=db.employees.find(x=>x.id===curEmpId);
+  if(employee&&employeeMainFormChanged(employee)&&
+    !confirm('Є незбережені зміни в основних даних співробітника. Закрити картку без збереження?'))return;
   const m=document.getElementById('emp-modal');
   if(m){
     m.classList.remove('open');
@@ -1455,34 +1459,77 @@ function closeModal(){
   try { renderEmp(); refreshSel(); renderDash(); } catch(_){}
 }
 
-async function saveEmployeeDepartment(){
-  if(!reqEdit())return;
-  const e=db.employees.find(x=>x.id===curEmpId);if(!e)return;
-  const depId=$('#emp-department').value;
-  if(!depId){alert('Оберіть відділ для співробітника.');return}
-  e.departmentId=depId;
-  save();
-  if(window.nexusData){
-    try{
-      await saveEmployeeToCloud(e);
-      save();
-    }catch(error){
-      alert('Помилка збереження співробітника: '+(error.message||error));
-    }
-  }
-  renderEmp();renderModal();
+function employeeMainFormValues(){
+  const leaveDays=$('#emp-base-leave-days')?.value;
+  return {
+    fullName:($('#emp-full-name')?.value||'').trim(),
+    position:($('#emp-position')?.value||'').trim(),
+    departmentId:$('#emp-department')?.value||'',
+    hireDate:$('#emp-hire-date')?.value||'',
+    birthDate:$('#emp-birth-date')?.value||'',
+    category:($('#emp-category')?.value||'').trim(),
+    baseLeaveDays:leaveDays===''?NaN:Number(leaveDays)
+  };
 }
 
-function saveEmployeePosition(){
+function employeeMainFormChanged(employee){
+  if(!Auth.can('edit')||!$('#emp-full-name'))return false;
+  const values=employeeMainFormValues();
+  return values.fullName!==(employee.fullName||'')
+    ||values.position!==(employee.position||'')
+    ||values.departmentId!==(employee.departmentId||'')
+    ||values.hireDate!==(employee.hireDate||'')
+    ||values.birthDate!==(employee.birthDate||'')
+    ||values.category!==(employee.category||'standard')
+    ||values.baseLeaveDays!==Number(employee.baseLeaveDays==null?24:employee.baseLeaveDays);
+}
+
+async function saveEmployeeMain(){
   if(!reqEdit())return;
   const e=db.employees.find(x=>x.id===curEmpId);if(!e)return;
-  const pos=($('#emp-position')?.value||'').trim();
-  e.position=pos;
-  save();
-  if(window.NexusCore)NexusCore.audit('employee.position.update','employee',{employeeId:e.id,position:pos});
-  renderEmp();renderModal();
-  alert(t('ctrPosSaved'));
+  const values=employeeMainFormValues();
+  if(!values.fullName){alert('Вкажіть ПІБ співробітника.');return}
+  if(!values.category){alert('Вкажіть категорію співробітника.');return}
+  if(!Number.isFinite(values.baseLeaveDays)||values.baseLeaveDays<=0){
+    alert('Базова відпустка має бути числом більше нуля.');
+    return;
+  }
+  const department=values.departmentId
+    ? (db.departments||[]).find(d=>d.id===values.departmentId)
+    : null;
+  if(values.departmentId&&!department){alert('Обраний відділ не знайдений.');return}
+  if(department&&department.isActive===false&&department.id!==e.departmentId){
+    alert('Нових співробітників не можна призначати до архівного відділу.');
+    return;
+  }
+  const previous={
+    fullName:e.fullName,position:e.position,departmentId:e.departmentId,
+    hireDate:e.hireDate,birthDate:e.birthDate,category:e.category,
+    baseLeaveDays:e.baseLeaveDays
+  };
+  Object.assign(e,values);
+  const button=document.querySelector('[data-save-employee-main]');
+  savingEmployeeMain=true;
+  if(button){button.disabled=true;button.textContent='Збереження…'}
+  try{
+    await saveEmployeeToCloud(e);
+    save();
+  }catch(error){
+    Object.assign(e,previous);
+    alert('Не вдалося зберегти дані співробітника в базі: '+(error.message||error));
+    try{renderEmp();renderModal()}catch(_){}
+    return;
+  }finally{
+    savingEmployeeMain=false;
+  }
+  if(window.NexusCore)NexusCore.audit('employee.main.update','employee',{
+    employeeId:e.id,departmentId:e.departmentId,position:e.position
+  });
+  renderEmp();renderDepartments();renderModal();
 }
+
+async function saveEmployeeDepartment(){return saveEmployeeMain()}
+async function saveEmployeePosition(){return saveEmployeeMain()}
 
 function saveEmployeeProjects(){
   if(!reqEdit())return;
@@ -1816,16 +1863,17 @@ function renderModal(){
   <div class="ecard-body">
     <div class="ecard-pane is-on" data-emp-page="main">
       <div class="ecard-grid">
+        <label>ПІБ<input type="text" id="emp-full-name" value="${escH(e.fullName||'')}" required ${canE?'':'disabled'}></label>
         <label>Посада<input type="text" id="emp-position" value="${escH(e.position||'')}" placeholder="Менеджер" ${canE?'':'disabled'}></label>
         <label>Відділ<select id="emp-department" ${canE?'':'disabled'}></select></label>
-        <label>Дата прийняття<input type="date" value="${escH(e.hireDate||'')}" disabled></label>
-        <label>Дата народження<input type="date" value="${escH(e.birthDate||'')}" disabled></label>
-        <label>Категорія<input type="text" value="${escH(e.category||'standard')}" disabled></label>
-        <label>Базова відпустка<input type="number" value="${e.baseLeaveDays||24}" disabled></label>
+        <label>Дата прийняття<input type="date" id="emp-hire-date" value="${escH(e.hireDate||'')}" ${canE?'':'disabled'}></label>
+        <label>Дата народження<input type="date" id="emp-birth-date" value="${escH(e.birthDate||'')}" ${canE?'':'disabled'}></label>
+        <label>Категорія<input type="text" id="emp-category" value="${escH(e.category||'standard')}" required ${canE?'':'disabled'}></label>
+        <label>Базова відпустка<input type="number" id="emp-base-leave-days" min="0.5" step="0.5" required value="${e.baseLeaveDays==null?24:e.baseLeaveDays}" ${canE?'':'disabled'}></label>
       </div>
       ${canE?`<div class="ecard-actions">
-        <button class="btn bp" type="button" onclick="App.saveEmployeePosition()">Зберегти посаду</button>
-        <button class="btn bs" type="button" onclick="App.saveEmployeeDepartment()">Зберегти відділ</button>
+        <button class="btn bp" type="button" data-save-employee-main onclick="App.saveEmployeeMain()">💾 Зберегти зміни</button>
+        <span class="ecard-hint">Зміни збережуться в базі після натискання кнопки.</span>
       </div>`:'<p class="ecard-hint">Тільки перегляд</p>'}
       ${cc.length
         ? `<div class="ecard-alert warn"><b>Увага</b><ul>${cc.map(c=>'<li>'+c+'</li>').join('')}</ul></div>`
@@ -2617,7 +2665,7 @@ return{
   saveCompany,renderAll,init,handleXls,saveEmployeeProjects,saveEmployeeContract,nextContractNumber,onContractTypeChange,
   printContract,attachContractScan,openContractScan,removeContractScan,
   fillContractTemplate,saveContractText,resetContractText,saveEmployeePosition,
-  saveDepartment,editDepartment,cancelDepartmentEdit,openDepartmentForm,closeDepartmentForm,openEmployeeForm,closeEmployeeForm,saveEmployeeDepartment,
+  saveDepartment,editDepartment,cancelDepartmentEdit,openDepartmentForm,closeDepartmentForm,openEmployeeForm,closeEmployeeForm,saveEmployeeDepartment,saveEmployeeMain,
   setDepartmentActive,purgeDepartment,showEmployeeView,restoreEmployee,purgeEmployee,
   saveEmployeeReservation,reloadFromStorage,hasPendingSync,markSynced
 };
