@@ -420,6 +420,15 @@ body {
   border-top: 1px solid var(--border-light);
   text-align: center;
 }
+.portal-auth-link {
+ display:inline-block;
+ margin-bottom:10px;
+ color:var(--primary);
+ font-size:13px;
+ font-weight:600;
+ text-decoration:none;
+}
+.portal-auth-link:hover { text-decoration:underline; }
 .portal-auth-v { font-size: 11px; color: var(--text-muted); }
 body.portal-locked > :not(.portal-auth-ov) { display: none !important; }
 

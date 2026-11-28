@@ -18,6 +18,15 @@
     }
   });
 
+  window.nexusGuestSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: {
+      storageKey: 'nexus_guest_auth_v1',
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false
+    }
+  });
+
   window.supabaseClient = window.nexusSupabase;
 
   // NEXUS data facade: schema('hr').from('x') -> public view hr_x (RLS applies)

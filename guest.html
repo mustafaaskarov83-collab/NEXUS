@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEXUS — Анкета кандидата</title>
+  <link rel="stylesheet" href="portal.css">
+  <style>
+    .guest-page{min-height:100vh;padding:32px 16px}
+    .guest-card{max-width:760px;margin:0 auto;background:var(--bg-card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);overflow:hidden}
+    .guest-head{padding:24px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .guest-brand{font-weight:800;letter-spacing:.04em}
+    .guest-sub{color:var(--text-muted);font-size:13px}
+    .guest-body{padding:28px}
+    .guest-title{font-size:24px;margin-bottom:6px}
+    .guest-intro{color:var(--text-muted);margin-bottom:22px}
+    .guest-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .guest-field{display:flex;flex-direction:column;gap:6px}
+    .guest-field-wide{grid-column:1/-1}
+    .guest-field label{font-size:13px;font-weight:600}
+    .guest-field input,.guest-field textarea{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text);font:inherit}
+    .guest-field textarea{min-height:120px;resize:vertical}
+    .guest-hint{color:var(--text-muted);font-size:12px}
+    .guest-consent{display:flex;gap:10px;align-items:flex-start;margin:20px 0;font-size:13px}
+    .guest-consent input{margin-top:4px}
+    .guest-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .guest-status{margin:14px 0;color:var(--text-muted);font-size:13px}
+    .guest-status.error{color:var(--danger)}
+    .guest-status.success{color:var(--success)}
+    .guest-hp{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
+    .guest-back{color:var(--primary);font-size:13px;text-decoration:none}
+    @media(max-width:600px){.guest-grid{grid-template-columns:1fr}.guest-field-wide{grid-column:auto}.guest-head,.guest-body{padding:20px}}
+  </style>
+</head>
+<body>
+  <main class="guest-page">
+    <section class="guest-card">
+      <header class="guest-head">
+        <div>
+          <div class="guest-brand">NEXUS ENGENEERING</div>
+          <div class="guest-sub">Гостьовий модуль кандидатів</div>
+        </div>
+        <a class="guest-back" href="index.html">← До входу</a>
+      </header>
+      <div class="guest-body">
+        <h1 class="guest-title">Анкета кандидата</h1>
+        <p class="guest-intro">Залиште контакти, коротко розкажіть про себе та додайте резюме й документи. Анкета буде передана до відділу HR.</p>
+        <form id="guest-application-form">
+          <div class="guest-grid">
+            <div class="guest-field guest-field-wide">
+              <label for="guest-name">ПІБ <span aria-hidden="true">*</span></label>
+              <input id="guest-name" name="name" maxlength="160" autocomplete="name" required>
+            </div>
+            <div class="guest-field">
+              <label for="guest-phone">Телефон <span aria-hidden="true">*</span></label>
+              <input id="guest-phone" name="phone" type="tel" maxlength="40" autocomplete="tel" required>
+            </div>
+            <div class="guest-field">
+              <label for="guest-email">Email</label>
+              <input id="guest-email" name="email" type="email" maxlength="254" autocomplete="email">
+            </div>
+            <div class="guest-field guest-field-wide">
+              <label for="guest-message">Супровідне повідомлення</label>
+              <textarea id="guest-message" name="message" maxlength="5000" placeholder="Напишіть про свій досвід, навички або бажану роботу"></textarea>
+            </div>
+            <div class="guest-field">
+              <label for="guest-resume">Резюме</label>
+              <input id="guest-resume" name="resume" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+              <span class="guest-hint">PDF, DOC, DOCX, JPG або PNG; до 10 МБ.</span>
+            </div>
+            <div class="guest-field">
+              <label for="guest-documents">Додаткові документи / скан-копії</label>
+              <input id="guest-documents" name="documents" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple>
+              <span class="guest-hint">До 5 файлів; кожен — до 10 МБ.</span>
+            </div>
+          </div>
+          <label class="guest-consent">
+            <input id="guest-consent" type="checkbox" required>
+            <span>Надаю згоду на обробку моїх персональних даних та документів з метою розгляду кандидатури на роботу в NEXUS ENGENEERING. <span aria-hidden="true">*</span></span>
+          </label>
+          <div class="guest-hp" aria-hidden="true">
+            <label for="guest-website">Website</label>
+            <input id="guest-website" name="website" tabindex="-1" autocomplete="off">
+          </div>
+          <div id="guest-status" class="guest-status" role="status" aria-live="polite"></div>
+          <div class="guest-actions">
+            <button type="submit" class="portal-auth-btn" id="guest-submit">Надіслати анкету</button>
+            <span class="guest-hint">Поля з * обов’язкові. Документи зберігаються у приватному сховищі.</span>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="nexus-supabase.js"></script>
+  <script src="guest-applications.js?v=1"></script>
+</body>
+</html>

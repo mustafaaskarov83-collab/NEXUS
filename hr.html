@@ -73,6 +73,7 @@
     <div class="nav-in">
       <button class="nb active" data-tab="dashboard">📊 <span id="nb-dash">Панель</span></button>
       <button class="nb" data-tab="employees">👥 <span id="nb-emp">Співробітники</span></button>
+      <button class="nb" data-tab="candidates">💼 <span>Кандидати</span></button>
       <button class="nb" data-tab="requests">📄 <span id="nb-req">Заявки</span></button>
       <button class="nb" data-tab="calendar">📅 <span id="nb-cal">Календар</span></button>
       <button class="nb" data-tab="import" data-role="edit">📂 <span id="nb-imp">Імпорт Excel</span></button>
@@ -110,7 +111,23 @@
         <div id="emp-list"></div>
       </div>
     </section>
-    
+    <section id="tp-candidates" class="tp">
+      <div class="c">
+        <div class="ch">
+          <div>
+            <div class="ct">💼 Гостьові анкети кандидатів</div>
+            <div class="cs">Персональні дані та документи доступні лише працівникам із правом перегляду HR.</div>
+          </div>
+          <div class="fg">
+            <button type="button" class="btn bs bsm" id="guest-applications-setup">Підключити прийом анкет</button>
+            <button type="button" class="btn bs bsm" id="guest-applications-refresh">Оновити список</button>
+          </div>
+        </div>
+        <div id="guest-applications-status" class="m16" aria-live="polite"></div>
+        <div id="guest-applications-list"></div>
+        <div id="guest-application-detail" class="m16"></div>
+      </div>
+    </section>
     <section id="tp-requests" class="tp">
       <div class="c">
         <div class="ch">
@@ -478,6 +495,7 @@
 <script src="app-calendar.js"></script>
 <script src="cabinet-requests.js"></script>
 <script src="hr-requests.js"></script>
+<script src="guest-applications.js?v=1"></script>
 <script src="nexus-assistant.js"></script>
 </body>
 </html>
